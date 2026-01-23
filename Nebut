@@ -1,0 +1,190 @@
+javascript:(async () => {
+    const d = ms => new Promise(r => setTimeout(r, ms));
+
+    let panic = false;
+    let typing = false;
+
+    const panicMode = () => {
+        panic = true;
+        typing = false;
+        notif?.classList.add("exit");
+        setTimeout(() => notif?.remove(), 400);
+        gui?.remove();
+        splash?.remove();
+    };
+
+    document.addEventListener("keydown", e => {
+        if (e.key === "Escape") panicMode();
+    });
+
+    const play = u => {
+        const a = new Audio(u);
+        a.volume = 0.7;
+        a.play();
+    };
+
+    const style = document.createElement("style");
+    style.innerHTML = `
+        @font-face {
+            font-family: 'MuseoSans';
+            src: url('https://corsproxy.io/?url=https://r2.e-z.host/4d0a0bea-60f8-44d6-9e74-3032a64a9f32/ynddewua.ttf') format('truetype')
+        }
+
+        .but-notif {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0,0,0,.75);
+            backdrop-filter: blur(6px);
+            border: 1px solid #333;
+            padding: 8px 14px;
+            font-family: MuseoSans;
+            font-size: 13px;
+            color: #fff;
+            opacity: 0;
+            transform: translateY(10px) scale(.95);
+            transition: .35s ease;
+            z-index: 999999;
+            cursor: pointer;
+            box-shadow: 0 0 15px rgba(0,0,0,.6);
+        }
+
+        .but-notif.show {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+
+        .but-notif.exit {
+            opacity: 0;
+            transform: translateY(20px) scale(.9);
+        }
+    `;
+    document.head.appendChild(style);
+
+    const splash = document.createElement("div");
+    splash.style = `
+        position: fixed;
+        inset: 0;
+        background: #000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 999999;
+        opacity: 0;
+        transition: .5s;
+        font-family: MuseoSans;
+        font-size: 48px;
+        letter-spacing: 6px;
+        user-select: none;
+    `;
+    splash.innerHTML = `<span style="color:#fff">OI </span><span style="color:#ff2a2a">BUT</span>`;
+    document.body.appendChild(splash);
+
+    play("https://r2.e-z.host/4d0a0bea-60f8-44d6-9e74-3032a64a9f32/gcelzszy.wav");
+
+    await d(20);
+    splash.style.opacity = 1;
+    await d(2300);
+    splash.style.opacity = 0;
+    await d(800);
+    splash.remove();
+
+    const gui = document.createElement("div");
+    gui.style = `
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: #000;
+        border: 1px solid #333;
+        padding: 20px 24px;
+        z-index: 999999;
+        font-family: MuseoSans;
+        color: #fff;
+        min-width: 260px;
+    `;
+    gui.innerHTML = `
+        <div style="margin-bottom:10px;font-size:14px;opacity:.85">Você sabe o que fazer</div>
+        <input type="password" placeholder="key"
+            style="width:100%;padding:8px;background:#111;border:1px solid #333;color:#fff;outline:none;font-family:MuseoSans">
+        <div style="margin-top:12px;text-align:right">
+            <button style="background:#ff2a2a;border:none;color:#fff;padding:6px 12px;font-family:MuseoSans;cursor:pointer">
+                OK
+            </button>
+        </div>
+    `;
+    document.body.appendChild(gui);
+
+    let notifClicks = 0;
+
+    const notif = document.createElement("div");
+    notif.className = "but-notif";
+    document.body.appendChild(notif);
+
+    notif.onclick = () => {
+        if (++notifClicks >= 5) panicMode();
+    };
+
+    const dots = [".", "..", "..."];
+    let di = 0;
+
+    const animateNotif = async () => {
+        notif.classList.add("show");
+        while (typing && !panic) {
+            notif.textContent = "🦈 " + dots[di++ % dots.length];
+            await d(400);
+        }
+        notif.classList.add("exit");
+        setTimeout(() => notif.remove(), 400);
+    };
+
+    gui.querySelector("button").onclick = async () => {
+        if (gui.querySelector("input").value !== "diddy2026") {
+            gui.remove();
+            return;
+        }
+
+        gui.innerHTML = `<div style="text-align:center;color:#72ff72">boa but</div>`;
+        await d(900);
+        gui.remove();
+
+        const texto = prompt("Cola aí but");
+        if (!texto || panic) return;
+
+        const campo = await new Promise(r => {
+            const i = setInterval(() => {
+                const t = document.querySelector("textarea");
+                if (t) {
+                    clearInterval(i);
+                    r(t);
+                }
+            }, 400);
+        });
+
+        campo.focus();
+        typing = true;
+        notifClicks = 0;
+        animateNotif();
+
+        for (const c of texto) {
+            if (panic) break;
+            campo.setRangeText(
+                c,
+                campo.selectionStart,
+                campo.selectionEnd,
+                "end"
+            );
+            campo.dispatchEvent(
+                new InputEvent("input", {
+                    bubbles: true,
+                    data: c,
+                    inputType: "insertText"
+                })
+            );
+            await d(20);
+        }
+
+        typing = false;
+        if (!panic) alert("Terminou but");
+    };
+})();
