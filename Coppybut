@@ -1,0 +1,42 @@
+javascript:(() => {
+    if (window._c) return;
+    window._c = 1;
+
+    const copiar = () => {
+        let texto = getSelection().toString();
+        if (!texto) return;
+
+        let area = document.createElement("textarea");
+        area.value = texto;
+        document.body.appendChild(area);
+        area.select();
+        document.execCommand("copy");
+        document.body.removeChild(area);
+    };
+
+    addEventListener("keydown", (e) => {
+        if (e.key === "Tab") {
+            e.preventDefault();
+            copiar();
+        }
+    });
+
+    let botao = document.createElement("div");
+    botao.textContent = "📋";
+
+    Object.assign(botao.style, {
+        position: "fixed",
+        top: "15px",
+        left: "15px",
+        zIndex: 9e9,
+        background: "#111",
+        color: "#fff",
+        padding: "10px",
+        borderRadius: "50%",
+        cursor: "pointer",
+        userSelect: "none"
+    });
+
+    botao.onclick = copiar;
+    document.body.appendChild(botao);
+})();
