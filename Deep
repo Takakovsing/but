@@ -1,354 +1,600 @@
-(function () {
+(function() {
+
+    // ==============================
+    // KEY
+    // ==============================
 
     const KEY_CORRETA = "rzinmodder";
-
     const key = prompt("Digite a Key:");
-
     if (key !== KEY_CORRETA) {
         alert("Key inválida!");
         return;
     }
 
-    if (document.getElementById("pgFloat")) {
+    if (document.getElementById("pgMonitor")) {
         return;
     }
 
     // ==============================
-    // ESTADOS
+    // ESTADO
     // ==============================
 
-    let minimized = false;
-    let typing = false;
-    let typingPaused = false;
-    let altHidden = false;
+    let isActive = true;
+    let isMinimized = false;
 
     // ==============================
-    // BYPASS ANTI-COLA (BYPASS)
+    // BYPASS ANTI-COLA
     // ==============================
 
-    // Remove bloqueios de cópia
-    document.addEventListener('copy', function(e) {
-        e.stopPropagation();
-    }, true);
+    function applyBypass() {
+        // Remove bloqueios de eventos
+        document.addEventListener('copy', function(e) {
+            e.stopPropagation();
+        }, true);
 
-    // Remove bloqueios de seleção
-    document.addEventListener('selectstart', function(e) {
-        e.stopPropagation();
-    }, true);
+        document.addEventListener('selectstart', function(e) {
+            e.stopPropagation();
+        }, true);
 
-    // Remove bloqueios de context menu
-    document.addEventListener('contextmenu', function(e) {
-        e.stopPropagation();
-    }, true);
+        document.addEventListener('contextmenu', function(e) {
+            e.stopPropagation();
+        }, true);
 
-    // Força seleção em todos os elementos
-    const styleBypass = document.createElement("style");
-    styleBypass.innerHTML = `
-        * {
-            -webkit-user-select: text !important;
-            user-select: text !important;
-            -webkit-touch-callout: default !important;
-        }
-        input, textarea {
-            -webkit-user-select: text !important;
-            user-select: text !important;
-        }
-    `;
-    document.head.appendChild(styleBypass);
+        // Força seleção em todos os elementos
+        const style = document.createElement("style");
+        style.id = "pgBypassStyle";
+        style.innerHTML = `
+            * {
+                -webkit-user-select: text !important;
+                user-select: text !important;
+                -webkit-touch-callout: default !important;
+            }
+            input, textarea, [contenteditable] {
+                -webkit-user-select: text !important;
+                user-select: text !important;
+            }
+        `;
+        document.head.appendChild(style);
 
-    // Sobrescreve funções comuns de bloqueio
-    if (typeof document.execCommand === 'function') {
-        const originalExecCommand = document.execCommand;
+        // Sobrescreve execCommand
+        const originalExec = document.execCommand;
         document.execCommand = function(command, ...args) {
             if (command === 'copy' || command === 'cut') {
                 return true;
             }
-            return originalExecCommand.call(this, command, ...args);
+            return originalExec.call(this, command, ...args);
         };
+
+        // Protege clipboard
+        Object.defineProperty(navigator, 'clipboard', {
+            value: navigator.clipboard,
+            writable: false,
+            configurable: false
+        });
+
+        // Força seleção em todos elementos existentes
+        document.querySelectorAll('*').forEach(el => {
+            el.style.userSelect = 'text';
+            el.style.webkitUserSelect = 'text';
+            el.setAttribute('unselectable', 'off');
+        });
     }
 
-    // Impede que sites desabilitem o clipboard
-    Object.defineProperty(navigator, 'clipboard', {
-        value: navigator.clipboard,
-        writable: false,
-        configurable: false
-    });
-
     // ==============================
-    // FAVICON
+    // MONITORAMENTO
     // ==============================
 
-    const favicon = document.createElement("link");
-    favicon.rel = "icon";
-    favicon.href = "https://media.tenor.com/m11vauEEbcUAAAAM/meow-neko-arc.gif";
-    document.head.appendChild(favicon);
+    let monitorInterval = null;
+    let logs = [];
 
-    // ==============================
-    // STYLE
-    // ==============================
+    function startMonitoring() {
+        if (monitorInterval) return;
+        
+        logs = [];
+        addLog("🚀 Monitor iniciado");
 
-    const style = document.createElement("style");
-    style.innerHTML = `
-        body {
-            filter: invert(1) hue-rotate(180deg) !important;
-            transition: filter .45s ease !important;
+        monitorInterval = setInterval(() => {
+            // Verifica se ainda está ativo
+            const style = document.getElementById("pgBypassStyle");
+            if (!style) {
+                addLog("⚠️ CSS removido, reaplicando...");
+                applyBypass();
+            }
+
+            // Verifica elementos com bloqueio
+            const blocked = document.querySelectorAll('[style*="user-select: none"], [style*="user-select:none"]');
+            if (blocked.length > 0) {
+                addLog(`🛡️ Removendo bloqueio de ${blocked.length} elementos`);
+                blocked.forEach(el => {
+                    el.style.userSelect = 'text';
+                    el.style.webkitUserSelect = 'text';
+                    el.setAttribute('unselectable', 'off');
+                });
+            }
+
+            // Verifica eventos
+            const hasCopyBlocker = document.querySelector('[oncopy], [oncut], [onpaste]');
+            if (hasCopyBlocker) {
+                addLog("🔓 Removendo bloqueadores de eventos");
+                document.querySelectorAll('[oncopy], [oncut], [onpaste]').forEach(el => {
+                    el.removeAttribute('oncopy');
+                    el.removeAttribute('oncut');
+                    el.removeAttribute('onpaste');
+                });
+            }
+
+        }, 1000);
+    }
+
+    function stopMonitoring() {
+        if (monitorInterval) {
+            clearInterval(monitorInterval);
+            monitorInterval = null;
+            addLog("⏹️ Monitor pausado");
         }
+    }
 
-        #pgFloat,
-        #pgToggle,
-        #pgNotify {
-            filter: invert(1) hue-rotate(180deg) !important;
-        }
+    function addLog(message) {
+        const timestamp = new Date().toLocaleTimeString();
+        logs.unshift(`[${timestamp}] ${message}`);
+        if (logs.length > 50) logs.pop();
+        updateLogDisplay();
+    }
 
-        #pgFloat {
-            position: fixed;
-            top: 80px;
-            left: 50%;
-            width: 300px;
-            padding: 16px;
-            box-sizing: border-box;
-            background: rgba(20,20,20,.78);
-            backdrop-filter: blur(15px);
-            -webkit-backdrop-filter: blur(15px);
-            color: #eee;
-            border: 1px solid rgba(255,255,255,.18);
-            border-radius: 20px;
-            z-index: 999999;
-            font-family: "Trebuchet MS", Arial, sans-serif;
-            box-shadow: 0 15px 50px #000b;
-            user-select: none;
-            opacity: 1;
-            visibility: visible;
-            transform: translateX(-50%) scale(1);
-            transition: opacity .3s ease, transform .35s cubic-bezier(.2,.8,.2,1), visibility .35s ease;
+    function updateLogDisplay() {
+        const logDiv = document.getElementById("pgLogContent");
+        if (logDiv) {
+            logDiv.innerHTML = logs.join('<br>');
         }
-
-        #pgFloat.pgMini {
-            opacity: 0;
-            visibility: hidden;
-            transform: translateX(-50%) scale(.82);
-        }
-
-        #pgHead {
-            height: 32px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 18px;
-            font-weight: bold;
-            letter-spacing: 1px;
-            cursor: move;
-            margin-bottom: 12px;
-            user-select: none;
-            touch-action: none;
-        }
-
-        #pgLine {
-            height: 1px;
-            background: rgba(255,255,255,.2);
-            margin-bottom: 14px;
-        }
-
-        #pgText {
-            width: 100%;
-            height: 100px;
-            box-sizing: border-box;
-            background: rgba(0,0,0,.4);
-            color: #eee;
-            border: 1px solid rgba(255,255,255,.18);
-            border-radius: 13px;
-            padding: 12px;
-            resize: none;
-            outline: none;
-            font-family: "Trebuchet MS", Arial, sans-serif;
-            font-size: 14px;
-            user-select: text !important;
-            -webkit-user-select: text !important;
-        }
-
-        #pgText:focus {
-            border-color: rgba(255,255,255,.5);
-            box-shadow: 0 0 15px rgba(255,255,255,.08);
-        }
-
-        #pgFloat button {
-            width: 100%;
-            border: 1px solid rgba(255,255,255,.12);
-            border-radius: 12px;
-            padding: 12px;
-            margin-top: 9px;
-            background: rgba(255,255,255,.12);
-            color: #eee;
-            font-family: "Trebuchet MS", Arial, sans-serif;
-            font-weight: bold;
-            font-size: 14px;
-            cursor: pointer;
-            transition: background .2s ease, transform .2s ease, box-shadow .2s ease;
-        }
-
-        #pgFloat button:hover {
-            background: rgba(255,255,255,.2);
-            transform: translateY(-2px);
-            box-shadow: 0 6px 18px #0005;
-        }
-
-        #pgFloat button:active {
-            transform: scale(.97);
-        }
-
-        #pgToggle {
-            position: fixed;
-            right: 20px;
-            bottom: 25px;
-            width: 62px;
-            height: 62px;
-            border-radius: 50%;
-            background: #111;
-            border: 2px solid #555;
-            z-index: 1000000;
-            box-shadow: 0 8px 30px #000b;
-            cursor: pointer;
-            overflow: hidden;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: transform .3s cubic-bezier(.2,.8,.2,1), box-shadow .3s ease, border-color .3s ease;
-            user-select: none;
-            touch-action: none;
-        }
-
-        #pgToggle:hover {
-            transform: scale(1.08);
-            border-color: #aaa;
-            box-shadow: 0 12px 35px #000d;
-        }
-
-        #pgToggle:active {
-            transform: scale(.92);
-        }
-
-        #pgToggle img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            display: block;
-            pointer-events: none;
-        }
-
-        #pgNotify {
-            position: fixed;
-            top: 25px;
-            left: 50%;
-            transform: translateX(-50%) translateY(-20px);
-            background: #555;
-            color: #fff;
-            padding: 11px 25px;
-            border-radius: 10px;
-            font-family: "Trebuchet MS", Arial, sans-serif;
-            font-weight: bold;
-            font-size: 15px;
-            z-index: 1000001;
-            opacity: 0;
-            transition: opacity .3s ease, transform .35s ease;
-            box-shadow: 0 8px 25px #0008;
-            pointer-events: none;
-        }
-
-        /* Bypass para seleção em qualquer elemento */
-        .no-select {
-            -webkit-user-select: text !important;
-            user-select: text !important;
-        }
-    `;
-    document.head.appendChild(style);
+    }
 
     // ==============================
     // GUI
     // ==============================
 
+    const style = document.createElement("style");
+    style.innerHTML = `
+        #pgMonitor {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            width: 380px;
+            max-height: 500px;
+            background: rgba(0, 0, 0, 0.92);
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 16px;
+            padding: 16px;
+            z-index: 9999999;
+            color: #eee;
+            font-family: 'Segoe UI', Arial, sans-serif;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.8);
+            transition: all 0.3s ease;
+            user-select: none;
+        }
+
+        #pgMonitor.minimized {
+            max-height: 50px;
+            overflow: hidden;
+        }
+
+        #pgMonitorHeader {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            cursor: move;
+            user-select: none;
+        }
+
+        #pgMonitorTitle {
+            font-weight: bold;
+            font-size: 16px;
+            color: #0ff;
+            letter-spacing: 1px;
+        }
+
+        #pgMonitorBadge {
+            background: #0f0;
+            color: #000;
+            padding: 2px 10px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: bold;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        #pgMonitorControls {
+            display: flex;
+            gap: 8px;
+        }
+
+        #pgMonitorControls button {
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.15);
+            color: #eee;
+            padding: 4px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s;
+        }
+
+        #pgMonitorControls button:hover {
+            background: rgba(255,255,255,0.2);
+        }
+
+        #pgMonitorControls button.danger:hover {
+            background: rgba(255,0,0,0.3);
+            border-color: #f00;
+        }
+
+        #pgMonitorStats {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 10px;
+            font-size: 12px;
+            color: #aaa;
+        }
+
+        #pgMonitorStats span {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        #pgMonitorStats .num {
+            color: #0ff;
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        #pgLogContainer {
+            border-top: 1px solid rgba(255,255,255,0.1);
+            padding-top: 10px;
+            max-height: 250px;
+            overflow-y: auto;
+            font-size: 12px;
+            font-family: 'Courier New', monospace;
+            background: rgba(0,0,0,0.3);
+            border-radius: 8px;
+            padding: 8px;
+        }
+
+        #pgLogContainer::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        #pgLogContainer::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        #pgLogContainer::-webkit-scrollbar-thumb {
+            background: rgba(255,255,255,0.2);
+            border-radius: 10px;
+        }
+
+        #pgLogContent {
+            word-wrap: break-word;
+            line-height: 1.6;
+        }
+
+        #pgMonitorActions {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        #pgMonitorActions button {
+            flex: 1;
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,255,255,0.1);
+            color: #eee;
+            padding: 8px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s;
+            font-weight: bold;
+        }
+
+        #pgMonitorActions button:hover {
+            background: rgba(255,255,255,0.18);
+        }
+
+        #pgMonitorActions button.primary {
+            background: rgba(0, 255, 255, 0.15);
+            border-color: rgba(0, 255, 255, 0.3);
+        }
+
+        #pgMonitorActions button.primary:hover {
+            background: rgba(0, 255, 255, 0.25);
+        }
+
+        #pgMonitorActions button.danger {
+            background: rgba(255, 0, 0, 0.15);
+            border-color: rgba(255, 0, 0, 0.3);
+        }
+
+        #pgMonitorActions button.danger:hover {
+            background: rgba(255, 0, 0, 0.25);
+        }
+    `;
+    document.head.appendChild(style);
+
+    // ==============================
+    // CRIAR GUI
+    // ==============================
+
     const gui = document.createElement("div");
-    gui.id = "pgFloat";
+    gui.id = "pgMonitor";
     gui.innerHTML = `
-        <div id="pgHead">
-            PORTUGA TOOLS
+        <div id="pgMonitorHeader">
+            <div id="pgMonitorTitle">🛡️ MONITOR BYPASS</div>
+            <div id="pgMonitorBadge">ATIVO</div>
+            <div id="pgMonitorControls">
+                <button id="pgMinimizeBtn">−</button>
+                <button id="pgCloseBtn" class="danger">✕</button>
+            </div>
         </div>
-        <div id="pgLine"></div>
-        <textarea
-            id="pgText"
-            placeholder="Digite ou cole o texto aqui..."
-        ></textarea>
-        <button id="pgCopy">
-            FORÇAR CÓPIA
-        </button>
-        <button id="pgType">
-            DIGITAR TEXTO
-        </button>
-        <button id="pgForceSelect">
-            FORÇAR SELEÇÃO
-        </button>
+        <div id="pgMonitorStats">
+            <span>🔄 <span class="num" id="pgCheckCount">0</span> verificações</span>
+            <span>🛡️ <span class="num" id="pgBlockedCount">0</span> bloqueios removidos</span>
+            <span>⏱️ <span class="num" id="pgUptime">0s</span></span>
+        </div>
+        <div id="pgLogContainer">
+            <div id="pgLogContent">🚀 Iniciando monitor...</div>
+        </div>
+        <div id="pgMonitorActions">
+            <button id="pgCopyLog" class="primary">📋 Copiar Log</button>
+            <button id="pgClearLog">🗑️ Limpar</button>
+            <button id="pgForceBypass" class="primary">⚡ Forçar Bypass</button>
+        </div>
     `;
     document.body.appendChild(gui);
 
     // ==============================
-    // BOTÃO FLUTUANTE
+    // VARIÁVEIS DE ESTATÍSTICA
     // ==============================
 
-    const toggle = document.createElement("div");
-    toggle.id = "pgToggle";
-    toggle.innerHTML = `
-        <img
-            src="https://media.tenor.com/m11vauEEbcUAAAAM/meow-neko-arc.gif"
-        >
-    `;
-    document.body.appendChild(toggle);
+    let checkCount = 0;
+    let blockedCount = 0;
+    let startTime = Date.now();
 
     // ==============================
-    // NOTIFICAÇÃO
+    // ATUALIZAR ESTATÍSTICAS
     // ==============================
 
-    const notifyBox = document.createElement("div");
-    notifyBox.id = "pgNotify";
-    notifyBox.textContent = "Feito!!";
-    document.body.appendChild(notifyBox);
-
-    // ==============================
-    // ATALHO
-    // ==============================
-
-    const $ = function (id) {
-        return document.getElementById(id);
-    };
-
-    // ==============================
-    // NOTIFICAÇÃO
-    // ==============================
-
-    function notify(msg = "Feito!!") {
-        notifyBox.textContent = msg;
-        notifyBox.style.opacity = "1";
-        notifyBox.style.transform = "translateX(-50%) translateY(0)";
-        setTimeout(function () {
-            notifyBox.style.opacity = "0";
-            notifyBox.style.transform = "translateX(-50%) translateY(-20px)";
-        }, 1800);
+    function updateStats() {
+        document.getElementById("pgCheckCount").textContent = checkCount;
+        document.getElementById("pgBlockedCount").textContent = blockedCount;
+        const uptime = Math.floor((Date.now() - startTime) / 1000);
+        document.getElementById("pgUptime").textContent = uptime + 's';
     }
 
     // ==============================
-    // FORÇAR SELEÇÃO EM TODA PÁGINA
+    // MONITOR
     // ==============================
 
-    $("pgForceSelect").onclick = function() {
-        // Remove qualquer bloqueio de seleção
-        document.querySelectorAll('*').forEach(el => {
-            if (el.style) {
-                el.style.userSelect = 'text';
-                el.style.webkitUserSelect = 'text';
-                el.style.webkitTouchCallout = 'default';
-            }
-        });
+    // Sobrescreve o monitor original para contar
+    const originalStart = startMonitoring;
+    startMonitoring = function() {
+        if (monitorInterval) return;
+        logs = [];
+        addLog("🚀 Monitor iniciado");
+        startTime = Date.now();
 
-        // Força seleção de texto
-        const elements = document.querySelectorAll('body *');
+        monitorInterval = setInterval(() => {
+            checkCount++;
+            
+            // Verifica CSS
+            const style = document.getElementById("pgBypassStyle");
+            if (!style) {
+                addLog("⚠️ CSS removido, reaplicando...");
+                applyBypass();
+                blockedCount++;
+            }
+
+            // Verifica elementos bloqueados
+            const blocked = document.querySelectorAll('[style*="user-select: none"], [style*="user-select:none"]');
+            if (blocked.length > 0) {
+                addLog(`🛡️ Removendo bloqueio de ${blocked.length} elementos`);
+                blocked.forEach(el => {
+                    el.style.userSelect = 'text';
+                    el.style.webkitUserSelect = 'text';
+                    el.setAttribute('unselectable', 'off');
+                });
+                blockedCount += blocked.length;
+            }
+
+            // Verifica eventos
+            const hasCopyBlocker = document.querySelector('[oncopy], [oncut], [onpaste]');
+            if (hasCopyBlocker) {
+                addLog("🔓 Removendo bloqueadores de eventos");
+                document.querySelectorAll('[oncopy], [oncut], [onpaste]').forEach(el => {
+                    el.removeAttribute('oncopy');
+                    el.removeAttribute('oncut');
+                    el.removeAttribute('onpaste');
+                });
+                blockedCount++;
+            }
+
+            // Verifica seleção
+            const noSelect = document.querySelectorAll('[unselectable="on"]');
+            if (noSelect.length > 0) {
+                addLog(`📝 Removendo unselectable de ${noSelect.length} elementos`);
+                noSelect.forEach(el => {
+                    el.setAttribute('unselectable', 'off');
+                });
+                blockedCount += noSelect.length;
+            }
+
+            updateStats();
+
+        }, 1000);
+    };
+
+    // Aplica o bypass inicial
+    applyBypass();
+    startMonitoring();
+
+    // ==============================
+    // FUNÇÕES DA GUI
+    // ==============================
+
+    // Minimizar
+    document.getElementById("pgMinimizeBtn").onclick = function() {
+        isMinimized = !isMinimized;
+        gui.classList.toggle("minimized", isMinimized);
+        this.textContent = isMinimized ? '+' : '−';
+    };
+
+    // Fechar
+    document.getElementById("pgCloseBtn").onclick = function() {
+        if (confirm("Deseja fechar o monitor?")) {
+            stopMonitoring();
+            gui.style.display = 'none';
+        }
+    };
+
+    // Copiar Log
+    document.getElementById("pgCopyLog").onclick = function() {
+        const logText = logs.join('\n');
+        navigator.clipboard.writeText(logText).then(() => {
+            addLog("📋 Log copiado!");
+        }).catch(() => {
+            // Fallback
+            const temp = document.createElement("textarea");
+            temp.value = logText;
+            document.body.appendChild(temp);
+            temp.select();
+            document.execCommand("copy");
+            temp.remove();
+            addLog("📋 Log copiado!");
+        });
+    };
+
+    // Limpar Log
+    document.getElementById("pgClearLog").onclick = function() {
+        logs = [];
+        addLog("🗑️ Log limpo");
+        updateLogDisplay();
+    };
+
+    // Forçar Bypass
+    document.getElementById("pgForceBypass").onclick = function() {
+        addLog("⚡ Forçando bypass em toda página...");
+        applyBypass();
+        
+        // Força em todos elementos
+        document.querySelectorAll('*').forEach(el => {
+            el.style.userSelect = 'text';
+            el.style.webkitUserSelect = 'text';
+            el.setAttribute('unselectable', 'off');
+        });
+        
+        blockedCount += 10;
+        addLog("✅ Bypass forçado com sucesso!");
+        updateStats();
+    };
+
+    // ==============================
+    // ARRASTAR GUI
+    // ==============================
+
+    let isDragging = false;
+    let dragOffsetX = 0;
+    let dragOffsetY = 0;
+
+    const header = document.getElementById("pgMonitorHeader");
+
+    header.addEventListener("mousedown", function(e) {
+        isDragging = true;
+        dragOffsetX = e.clientX - gui.offsetLeft;
+        dragOffsetY = e.clientY - gui.offsetTop;
+        gui.style.cursor = 'grabbing';
+        e.preventDefault();
+    });
+
+    document.addEventListener("mousemove", function(e) {
+        if (!isDragging) return;
+        gui.style.left = (e.clientX - dragOffsetX) + 'px';
+        gui.style.top = (e.clientY - dragOffsetY) + 'px';
+        gui.style.bottom = 'auto';
+        gui.style.right = 'auto';
+    });
+
+    document.addEventListener("mouseup", function() {
+        isDragging = false;
+        gui.style.cursor = 'default';
+    });
+
+    // ==============================
+    // ARRASTAR TOUCH
+    // ==============================
+
+    let touchDrag = false;
+    let touchOffsetX = 0;
+    let touchOffsetY = 0;
+
+    header.addEventListener("touchstart", function(e) {
+        const touch = e.touches[0];
+        touchDrag = true;
+        touchOffsetX = touch.clientX - gui.offsetLeft;
+        touchOffsetY = touch.clientY - gui.offsetTop;
+    }, { passive: true });
+
+    document.addEventListener("touchmove", function(e) {
+        if (!touchDrag) return;
+        const touch = e.touches[0];
+        gui.style.left = (touch.clientX - touchOffsetX) + 'px';
+        gui.style.top = (touch.clientY - touchOffsetY) + 'px';
+        gui.style.bottom = 'auto';
+        gui.style.right = 'auto';
+    }, { passive: true });
+
+    document.addEventListener("touchend", function() {
+        touchDrag = false;
+    });
+
+    // ==============================
+    // ATALHOS
+    // ==============================
+
+    document.addEventListener("keydown", function(e) {
+        // Alt + M = Minimizar
+        if (e.key === 'm' && e.altKey) {
+            e.preventDefault();
+            document.getElementById("pgMinimizeBtn").click();
+        }
+        
+        // Alt + L = Copiar Log
+        if (e.key === 'l' && e.altKey) {
+            e.preventDefault();
+            document.getElementById("pgCopyLog").click();
+        }
+        
+        // Alt + B = Forçar Bypass
+        if (e.key === 'b' && e.altKey) {
+            e.preventDefault();
+            document.getElementById("pgForceBypass").click();
+        }
+    });
+
+    // ==============================
+    // INICIALIZAÇÃO
+    // ==============================
+
+    addLog("✅ Monitor iniciado com sucesso!");
+    addLog("💡 Atalhos: Alt+M (minimizar), Alt+L (copiar log), Alt+B (bypass)");
+    console.log("🛡️ Monitor Anti-Bypass ativado!");
+
+})();ocument.querySelectorAll('body *');
         elements.forEach(el => {
             el.setAttribute('unselectable', 'off');
             el.style.webkitUserSelect = 'text';
