@@ -1,40 +1,211 @@
-(function() {
+(function(){
+const KEY="rzinmodder",IMG="https://media.tenor.com/m11vauEEbcUAAAAM/meow-neko-arc.gif";
+if(prompt("Digite a Key:")!==KEY)return;
+if(document.getElementById("pgFloat"))return;
 
-    // ==============================
-    // KEY
-    // ==============================
+let typing=false,paused=false,hidden=false,min=false;
 
-    const KEY_CORRETA = "rzinmodder";
-    const key = prompt("Digite a Key:");
-    if (key !== KEY_CORRETA) {
-        alert("Key inválida!");
-        return;
-    }
+const s=document.createElement("style");
+s.textContent=`
+body{filter:invert(1) hue-rotate(180deg)!important;transition:.45s}
+#pgFloat,#pgToggle,#pgNotify{filter:invert(1) hue-rotate(180deg)!important}
+#pgFloat{position:fixed;top:80px;left:50%;width:280px;padding:16px;
+background:#141414dd;color:#eee;border:1px solid #ffffff30;border-radius:20px;
+z-index:999999;font-family:Arial;box-shadow:0 15px 50px #000b;
+transform:translateX(-50%);transition:.3s;user-select:none}
+#pgFloat.mini{opacity:0;visibility:hidden;transform:translateX(-50%) scale(.8)}
+#pgHead{text-align:center;font-size:18px;font-weight:bold;padding:8px;
+cursor:move;touch-action:none}
+#pgFloat button{width:100%;padding:13px;margin-top:10px;border:1px solid #ffffff20;
+border-radius:12px;background:#ffffff18;color:#eee;font-weight:bold;font-size:14px}
+#pgFloat button:active{transform:scale(.97)}
+#pgToggle{position:fixed;right:20px;bottom:25px;width:62px;height:62px;
+border-radius:50%;background:#111;border:2px solid #555;z-index:1000000;
+overflow:hidden;box-shadow:0 8px 30px #000b;touch-action:none}
+#pgToggle img{width:100%;height:100%;object-fit:cover}
+#pgNotify{position:fixed;top:25px;left:50%;transform:translate(-50%,-20px);
+background:#555;color:white;padding:10px 22px;border-radius:10px;
+font:bold 14px Arial;z-index:1000001;opacity:0;transition:.3s;pointer-events:none}
+`;
+document.head.appendChild(s);
 
-    if (document.getElementById("pgMonitor")) {
-        return;
-    }
+const f=document.createElement("link");
+f.rel="icon";f.href=IMG;document.head.appendChild(f);
 
-    // ==============================
-    // ESTADO
-    // ==============================
+const gui=document.createElement("div");
+gui.id="pgFloat";
+gui.innerHTML=`
+<div id="pgHead">PORTUGA TOOLS</div>
+<button id="pgType">⌨️ DIGITAR TEXTO</button>`;
+document.body.appendChild(gui);
 
-    let isActive = true;
-    let isMinimized = false;
+const toggle=document.createElement("div");
+toggle.id="pgToggle";
+toggle.innerHTML=`<img src="${IMG}">`;
+document.body.appendChild(toggle);
 
-    // ==============================
-    // BYPASS ANTI-COLA
-    // ==============================
+const note=document.createElement("div");
+note.id="pgNotify";
+note.textContent="Feito!";
+document.body.appendChild(note);
 
-    function applyBypass() {
-        // Remove bloqueios de eventos
-        document.addEventListener('copy', function(e) {
-            e.stopPropagation();
-        }, true);
+const $=id=>document.getElementById(id);
 
-        document.addEventListener('selectstart', function(e) {
-            e.stopPropagation();
-        }, true);
+function notify(t="Feito!"){
+ note.textContent=t;
+ note.style.opacity=1;
+ note.style.transform="translate(-50%,0)";
+ setTimeout(()=>{
+  note.style.opacity=0;
+  note.style.transform="translate(-50%,-20px)";
+ },1500);
+}
+
+function getField(){
+ return document.querySelector(
+  'textarea:not(#pgText),input:not([type="hidden"]),[contenteditable="true"]'
+ );
+}
+
+function put(field,char){
+ field.focus();
+
+ if(field.isContentEditable){
+  document.execCommand("insertText",false,char);
+ }else{
+  const start=field.selectionStart??field.value.length;
+  const end=field.selectionEnd??start;
+  field.setRangeText(char,start,end,"end");
+ }
+
+ field.dispatchEvent(new InputEvent("input",{
+  bubbles:true,data:char,inputType:"insertText"
+ }));
+}
+
+async function typeText(text){
+ const field=getField();
+
+ if(!field){
+  alert("Nenhuma caixa de texto foi encontrada!");
+  return;
+ }
+
+ typing=true;
+ paused=false;
+ field.focus();
+
+ for(const char of text){
+  while(paused&&typing)
+   await new Promise(r=>setTimeout(r,50));
+
+  if(!typing)return;
+
+  put(field,char);
+  await new Promise(r=>setTimeout(r,20));
+ }
+
+ typing=false;
+ if(!hidden)notify();
+}
+
+$("pgType").onclick=()=>{
+ const text=prompt("Digite ou cole o texto:");
+
+ if(text===null||!text)return;
+
+ typeText(text);
+};
+
+toggle.onclick=()=>{
+ if(toggle.dataset.dragged==="1"){
+  toggle.dataset.dragged="";
+  return;
+ }
+
+ min=!min;
+ gui.classList.toggle("mini",min);
+};
+
+let drag=null;
+
+function startDrag(el,e){
+ const p=e.touches?e.touches[0]:e;
+ drag={
+  el,
+  x:p.clientX-el.offsetLeft,
+  y:p.clientY-el.offsetTop
+ };
+}
+
+function moveDrag(e){
+ if(!drag)return;
+ const p=e.touches?e.touches[0]:e;
+ drag.el.style.left=p.clientX-drag.x+"px";
+ drag.el.style.top=p.clientY-drag.y+"px";
+ drag.el.style.right="auto";
+ drag.el.style.bottom="auto";
+ if(drag.el===gui)drag.el.style.transform="none";
+}
+
+function endDrag(){
+ if(drag?.el===toggle)toggle.dataset.dragged="1";
+ drag=null;
+}
+
+toggle.onmousedown=e=>{
+ startDrag(toggle,e);
+ e.preventDefault();
+};
+toggle.ontouchstart=e=>startDrag(toggle,e);
+
+$("pgHead").onmousedown=e=>{
+ startDrag(gui,e);
+ e.preventDefault();
+};
+$("pgHead").ontouchstart=e=>startDrag(gui,e);
+
+document.addEventListener("mousemove",moveDrag);
+document.addEventListener("touchmove",moveDrag,{passive:true});
+document.addEventListener("mouseup",endDrag);
+document.addEventListener("touchend",endDrag);
+
+function hide(){
+ hidden=!hidden;
+
+ gui.style.display=hidden?"none":"";
+ toggle.style.display=hidden?"none":"";
+ note.style.display=hidden?"none":"";
+
+ document.body.style.filter=hidden?
+  "none":
+  "invert(1) hue-rotate(180deg)";
+
+ if(typing)paused=hidden;
+}
+
+document.addEventListener("keydown",e=>{
+ if(e.key==="Escape"){
+  min=!min;
+  gui.classList.toggle("mini",min);
+ }
+
+ if(e.key==="Control"&&typing){
+  paused=!paused;
+  notify(paused?"Digitação pausada":"Digitação continuando");
+ }
+
+ if(e.key==="Alt")hide();
+});
+
+document.addEventListener("mousedown",e=>{
+ if(e.button===1){
+  e.preventDefault();
+  hide();
+ }
+});
+
+})();        }, true);
 
         document.addEventListener('contextmenu', function(e) {
             e.stopPropagation();
