@@ -1,6 +1,7 @@
 (async()=>{
 
 const KEY_CORRETA="rzinmodder";
+const ICON_URL="https://media.tenor.com/m11vauEEbcUAAAAM/meow-neko-arc.gif";
 
 const key=prompt("Digite a Key:");
 
@@ -9,7 +10,7 @@ if(key!==KEY_CORRETA){
     return;
 }
 
-if(document.getElementById("pgFloat"))return;
+if(document.getElementById("pgFloat")) return;
 
 
 // ==============================
@@ -19,22 +20,898 @@ if(document.getElementById("pgFloat"))return;
 let minimized=false;
 let typing=false;
 let typingPaused=false;
-let altHidden=false;
+let hiddenMode=false;
+
+let guiDragging=false;
+let guiTouchDragging=false;
+
+let toggleDragging=false;
+let toggleMoved=false;
 
 
 // ==============================
-// ÍCONE / FAVICON
+// FAVICON
 // ==============================
 
-const ICON_URL=
-    "https://media.tenor.com/m11vauEEbcUAAAAM/meow-neko-arc.gif";
+let oldIcon=document.querySelector(
+    'link[rel~="icon"]'
+);
 
-const favicon=document.createElement("link");
+if(oldIcon){
+    oldIcon.href=ICON_URL;
+}else{
+    const icon=document.createElement("link");
+    icon.rel="icon";
+    icon.href=ICON_URL;
+    document.head.appendChild(icon);
+}
 
-favicon.rel="icon";
-favicon.href=ICON_URL;
 
-document.head.appendChild(favicon);
+// ==============================
+// STYLE
+// ==============================
+
+const style=document.createElement("style");
+
+style.id="pgStyle";
+
+style.textContent=`
+
+body.pgInverted{
+    filter:invert(1) hue-rotate(180deg) !important;
+}
+
+#pgFloat{
+    position:fixed;
+
+    top:80px;
+    left:50%;
+
+    width:300px;
+
+    padding:16px;
+
+    box-sizing:border-box;
+
+    background:rgba(20,20,20,.82);
+
+    backdrop-filter:blur(15px);
+    -webkit-backdrop-filter:blur(15px);
+
+    color:#eee;
+
+    border:1px solid rgba(255,255,255,.18);
+
+    border-radius:20px;
+
+    z-index:2147483647;
+
+    font-family:
+        "Trebuchet MS",
+        Arial,
+        sans-serif;
+
+    box-shadow:
+        0 15px 50px rgba(0,0,0,.7);
+
+    user-select:none;
+
+    transform:translateX(-50%) scale(1);
+
+    opacity:1;
+
+    visibility:visible;
+
+    transition:
+        opacity .3s ease,
+        transform .3s ease,
+        visibility .3s ease;
+}
+
+#pgFloat.pgMini{
+
+    opacity:0;
+
+    visibility:hidden;
+
+    transform:
+        translateX(-50%)
+        scale(.82);
+}
+
+#pgHead{
+
+    height:32px;
+
+    display:flex;
+
+    align-items:center;
+
+    justify-content:center;
+
+    font-size:18px;
+
+    font-weight:bold;
+
+    letter-spacing:1px;
+
+    cursor:move;
+
+    margin-bottom:12px;
+
+    user-select:none;
+
+    touch-action:none;
+}
+
+#pgLine{
+
+    height:1px;
+
+    background:
+        rgba(255,255,255,.2);
+
+    margin-bottom:14px;
+}
+
+#pgText{
+
+    width:100%;
+
+    height:100px;
+
+    box-sizing:border-box;
+
+    background:
+        rgba(0,0,0,.45);
+
+    color:#eee;
+
+    border:
+        1px solid rgba(255,255,255,.18);
+
+    border-radius:13px;
+
+    padding:12px;
+
+    resize:none;
+
+    outline:none;
+
+    font-family:
+        "Trebuchet MS",
+        Arial,
+        sans-serif;
+
+    font-size:14px;
+
+    user-select:text !important;
+
+    -webkit-user-select:text !important;
+
+    pointer-events:auto !important;
+}
+
+#pgText:focus{
+
+    border-color:
+        rgba(255,255,255,.5);
+
+    box-shadow:
+        0 0 15px
+        rgba(255,255,255,.08);
+}
+
+#pgFloat button{
+
+    width:100%;
+
+    border:
+        1px solid rgba(255,255,255,.12);
+
+    border-radius:12px;
+
+    padding:12px;
+
+    margin-top:9px;
+
+    background:
+        rgba(255,255,255,.12);
+
+    color:#eee;
+
+    font-family:
+        "Trebuchet MS",
+        Arial,
+        sans-serif;
+
+    font-weight:bold;
+
+    font-size:14px;
+
+    cursor:pointer;
+
+    transition:
+        background .2s ease,
+        transform .2s ease;
+}
+
+#pgFloat button:hover{
+
+    background:
+        rgba(255,255,255,.2);
+
+    transform:
+        translateY(-2px);
+}
+
+#pgFloat button:active{
+
+    transform:
+        scale(.97);
+}
+
+#pgToggle{
+
+    position:fixed;
+
+    right:20px;
+    bottom:25px;
+
+    width:62px;
+    height:62px;
+
+    border-radius:50%;
+
+    background:#111;
+
+    border:2px solid #555;
+
+    z-index:2147483646;
+
+    box-shadow:
+        0 8px 30px rgba(0,0,0,.7);
+
+    cursor:pointer;
+
+    overflow:hidden;
+
+    display:flex;
+
+    align-items:center;
+
+    justify-content:center;
+
+    user-select:none;
+
+    touch-action:none;
+}
+
+#pgToggle img{
+
+    width:100%;
+    height:100%;
+
+    object-fit:cover;
+
+    pointer-events:none;
+}
+
+#pgNotify{
+
+    position:fixed;
+
+    top:25px;
+    left:50%;
+
+    transform:
+        translateX(-50%)
+        translateY(-20px);
+
+    background:#555;
+
+    color:white;
+
+    padding:11px 25px;
+
+    border-radius:10px;
+
+    font-family:
+        "Trebuchet MS",
+        Arial,
+        sans-serif;
+
+    font-weight:bold;
+
+    font-size:15px;
+
+    z-index:2147483647;
+
+    opacity:0;
+
+    transition:
+        opacity .3s ease,
+        transform .3s ease;
+
+    pointer-events:none;
+}
+
+`;
+
+document.head.appendChild(style);
+
+
+// ==============================
+// ATIVA DARK/INVERT
+// ==============================
+
+document.body.classList.add("pgInverted");
+
+
+// ==============================
+// GUI
+// ==============================
+
+const gui=document.createElement("div");
+
+gui.id="pgFloat";
+
+gui.innerHTML=`
+
+<div id="pgHead">
+    PORTUGA TOOLS
+</div>
+
+<div id="pgLine"></div>
+
+<textarea
+    id="pgText"
+    placeholder="Digite ou cole o texto aqui..."
+></textarea>
+
+<button id="pgCopy">
+    FORÇAR CÓPIA
+</button>
+
+<button id="pgType">
+    DIGITAR TEXTO
+</button>
+
+`;
+
+document.body.appendChild(gui);
+
+
+// ==============================
+// BOTÃO
+// ==============================
+
+const toggle=document.createElement("div");
+
+toggle.id="pgToggle";
+
+toggle.innerHTML=`
+<img src="${ICON_URL}">
+`;
+
+document.body.appendChild(toggle);
+
+
+// ==============================
+// NOTIFICAÇÃO
+// ==============================
+
+const notifyBox=document.createElement("div");
+
+notifyBox.id="pgNotify";
+
+notifyBox.textContent="Feito!!";
+
+document.body.appendChild(notifyBox);
+
+
+const $=id=>document.getElementById(id);
+
+
+// ==============================
+// CAIXA DE TEXTO
+// ==============================
+
+const pgText=$("pgText");
+
+
+// Deixa o textarea receber normalmente
+pgText.addEventListener(
+    "paste",
+    event=>{
+        event.stopPropagation();
+    }
+);
+
+pgText.addEventListener(
+    "keydown",
+    event=>{
+        event.stopPropagation();
+    }
+);
+
+pgText.addEventListener(
+    "keyup",
+    event=>{
+        event.stopPropagation();
+    }
+);
+
+
+// ==============================
+// NOTIFY
+// ==============================
+
+function notify(text="Feito!!"){
+
+    if(hiddenMode) return;
+
+    notifyBox.textContent=text;
+
+    notifyBox.style.opacity="1";
+
+    notifyBox.style.transform=
+        "translateX(-50%) translateY(0)";
+
+    clearTimeout(notifyBox._timer);
+
+    notifyBox._timer=setTimeout(()=>{
+
+        notifyBox.style.opacity="0";
+
+        notifyBox.style.transform=
+            "translateX(-50%) translateY(-20px)";
+
+    },1500);
+}
+
+
+// ==============================
+// COPIAR
+// ==============================
+
+$("pgCopy").onclick=async()=>{
+
+    const selected=
+        window.getSelection().toString();
+
+    if(!selected){
+
+        alert(
+            "Selecione algum texto primeiro!"
+        );
+
+        return;
+    }
+
+    try{
+
+        await navigator.clipboard.writeText(
+            selected
+        );
+
+    }catch(e){
+
+        const temp=
+            document.createElement("textarea");
+
+        temp.value=selected;
+
+        document.body.appendChild(temp);
+
+        temp.select();
+
+        document.execCommand("copy");
+
+        temp.remove();
+    }
+
+    notify();
+};
+
+
+// ==============================
+// DIGITAR
+// ==============================
+
+$("pgType").onclick=async()=>{
+
+    const text=pgText.value;
+
+    if(!text){
+
+        alert(
+            "Digite ou cole algum texto primeiro!"
+        );
+
+        return;
+    }
+
+    const field=
+        document.querySelector(
+            'textarea:not(#pgText)'
+        );
+
+    if(!field){
+
+        alert(
+            "Nenhuma caixa de texto foi encontrada!"
+        );
+
+        return;
+    }
+
+    typing=true;
+    typingPaused=false;
+
+    field.focus();
+
+    for(const char of text){
+
+        while(
+            typingPaused &&
+            typing
+        ){
+
+            await new Promise(
+                resolve=>
+                    setTimeout(resolve,50)
+            );
+        }
+
+        if(!typing) return;
+
+        field.setRangeText(
+            char,
+            field.selectionStart,
+            field.selectionEnd,
+            "end"
+        );
+
+        field.dispatchEvent(
+            new InputEvent(
+                "input",
+                {
+                    bubbles:true,
+                    data:char,
+                    inputType:"insertText"
+                }
+            )
+        );
+
+        await new Promise(
+            resolve=>
+                setTimeout(resolve,20)
+        );
+    }
+
+    typing=false;
+
+    notify();
+};
+
+
+// ==============================
+// BOTÃO → MINIMIZAR
+// ==============================
+
+toggle.onclick=()=>{
+
+    if(toggleMoved){
+
+        toggleMoved=false;
+
+        return;
+    }
+
+    minimized=!minimized;
+
+    gui.classList.toggle(
+        "pgMini",
+        minimized
+    );
+};
+
+
+// ==============================
+// ARRASTAR BOTÃO
+// ==============================
+
+let toggleOffsetX=0;
+let toggleOffsetY=0;
+
+toggle.addEventListener(
+    "mousedown",
+    event=>{
+
+        toggleDragging=true;
+        toggleMoved=false;
+
+        toggleOffsetX=
+            event.clientX-
+            toggle.offsetLeft;
+
+        toggleOffsetY=
+            event.clientY-
+            toggle.offsetTop;
+
+        event.preventDefault();
+    }
+);
+
+document.addEventListener(
+    "mousemove",
+    event=>{
+
+        if(!toggleDragging) return;
+
+        toggleMoved=true;
+
+        toggle.style.left=
+            event.clientX-
+            toggleOffsetX+
+            "px";
+
+        toggle.style.top=
+            event.clientY-
+            toggleOffsetY+
+            "px";
+
+        toggle.style.right="auto";
+        toggle.style.bottom="auto";
+    }
+);
+
+document.addEventListener(
+    "mouseup",
+    ()=>{
+
+        toggleDragging=false;
+    }
+);
+
+
+// ==============================
+// ARRASTAR GUI
+// SOMENTE PELO TÍTULO
+// ==============================
+
+let offsetX=0;
+let offsetY=0;
+
+$("pgHead").addEventListener(
+    "mousedown",
+    event=>{
+
+        guiDragging=true;
+
+        offsetX=
+            event.clientX-
+            gui.offsetLeft;
+
+        offsetY=
+            event.clientY-
+            gui.offsetTop;
+
+        event.preventDefault();
+    }
+);
+
+document.addEventListener(
+    "mousemove",
+    event=>{
+
+        if(!guiDragging) return;
+
+        gui.style.left=
+            event.clientX-
+            offsetX+
+            "px";
+
+        gui.style.top=
+            event.clientY-
+            offsetY+
+            "px";
+
+        gui.style.transform=
+            "scale(1)";
+    }
+);
+
+document.addEventListener(
+    "mouseup",
+    ()=>{
+
+        guiDragging=false;
+    }
+);
+
+
+// ==============================
+// CELULAR
+// GUI PELO TÍTULO
+// ==============================
+
+$("pgHead").addEventListener(
+    "touchstart",
+    event=>{
+
+        const touch=
+            event.touches[0];
+
+        guiTouchDragging=true;
+
+        offsetX=
+            touch.clientX-
+            gui.offsetLeft;
+
+        offsetY=
+            touch.clientY-
+            gui.offsetTop;
+    },
+    {passive:true}
+);
+
+document.addEventListener(
+    "touchmove",
+    event=>{
+
+        if(!guiTouchDragging) return;
+
+        const touch=
+            event.touches[0];
+
+        gui.style.left=
+            touch.clientX-
+            offsetX+
+            "px";
+
+        gui.style.top=
+            touch.clientY-
+            offsetY+
+            "px";
+
+        gui.style.transform=
+            "scale(1)";
+    },
+    {passive:true}
+);
+
+document.addEventListener(
+    "touchend",
+    ()=>{
+
+        guiTouchDragging=false;
+    }
+);
+
+
+// ==============================
+// ALT / SCROLL
+// ESCONDER + DESINVERTER
+// ==============================
+
+function toggleHiddenMode(){
+
+    hiddenMode=!hiddenMode;
+
+    if(hiddenMode){
+
+        if(typing){
+
+            typingPaused=true;
+        }
+
+        gui.style.display="none";
+
+        toggle.style.display="none";
+
+        notifyBox.style.display="none";
+
+        document.body.classList.remove(
+            "pgInverted"
+        );
+
+    }else{
+
+        gui.style.display="";
+
+        toggle.style.display="";
+
+        notifyBox.style.display="";
+
+        document.body.classList.add(
+            "pgInverted"
+        );
+
+        if(typing){
+
+            typingPaused=false;
+        }
+    }
+}
+
+
+// ==============================
+// TECLAS
+// ==============================
+
+document.addEventListener(
+    "keydown",
+    event=>{
+
+        // ESC
+        if(
+            event.key==="Escape" &&
+            document.activeElement!==pgText
+        ){
+
+            minimized=!minimized;
+
+            gui.classList.toggle(
+                "pgMini",
+                minimized
+            );
+
+            return;
+        }
+
+
+        // CTRL
+        if(
+            event.key==="Control" &&
+            typing
+        ){
+
+            typingPaused=!typingPaused;
+
+            notify(
+                typingPaused
+                ? "Digitação pausada"
+                : "Digitação continuando"
+            );
+
+            return;
+        }
+
+
+        // ALT
+        if(
+            event.key==="Alt" &&
+            document.activeElement!==pgText
+        ){
+
+            toggleHiddenMode();
+
+            return;
+        }
+    }
+);
+
+
+// ==============================
+// BOTÃO DO SCROLL
+// ==============================
+
+document.addEventListener(
+    "mousedown",
+    event=>{
+
+        // 1 = botão central
+        if(event.button!==1) return;
+
+        event.preventDefault();
+
+        toggleHiddenMode();
+    }
+);
+
+})();document.head.appendChild(favicon);
 
 
 // ==============================
