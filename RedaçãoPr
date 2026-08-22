@@ -1,7 +1,6 @@
 (async()=>{
 
 const KEY_CORRETA="rzinmodder";
-const ICON_URL="https://media.tenor.com/m11vauEEbcUAAAAM/meow-neko-arc.gif";
 
 const key=prompt("Digite a Key:");
 
@@ -10,7 +9,7 @@ if(key!==KEY_CORRETA){
     return;
 }
 
-if(document.getElementById("pgFloat")) return;
+if(document.getElementById("pgFloat"))return;
 
 
 // ==============================
@@ -20,31 +19,20 @@ if(document.getElementById("pgFloat")) return;
 let minimized=false;
 let typing=false;
 let typingPaused=false;
-let hiddenMode=false;
-
-let guiDragging=false;
-let guiTouchDragging=false;
-
-let toggleDragging=false;
-let toggleMoved=false;
+let altHidden=false;
 
 
 // ==============================
-// FAVICON
+// ÍCONE / FAVICON
 // ==============================
 
-let oldIcon=document.querySelector(
-    'link[rel~="icon"]'
-);
+const favicon=document.createElement("link");
 
-if(oldIcon){
-    oldIcon.href=ICON_URL;
-}else{
-    const icon=document.createElement("link");
-    icon.rel="icon";
-    icon.href=ICON_URL;
-    document.head.appendChild(icon);
-}
+favicon.rel="icon";
+favicon.href=
+    "https://media.tenor.com/m11vauEEbcUAAAAM/meow-neko-arc.gif";
+
+document.head.appendChild(favicon);
 
 
 // ==============================
@@ -53,27 +41,30 @@ if(oldIcon){
 
 const style=document.createElement("style");
 
-style.id="pgStyle";
-
 style.textContent=`
 
-body.pgInverted{
-    filter:invert(1) hue-rotate(180deg) !important;
+body{
+    filter:invert(1) hue-rotate(180deg)!important;
+    transition:filter .45s ease!important;
+}
+
+#pgFloat,
+#pgToggle,
+#pgNotify{
+    filter:invert(1) hue-rotate(180deg)!important;
 }
 
 #pgFloat{
     position:fixed;
-
     top:80px;
     left:50%;
 
     width:300px;
-
     padding:16px;
 
     box-sizing:border-box;
 
-    background:rgba(20,20,20,.82);
+    background:rgba(20,20,20,.78);
 
     backdrop-filter:blur(15px);
     -webkit-backdrop-filter:blur(15px);
@@ -81,37 +72,31 @@ body.pgInverted{
     color:#eee;
 
     border:1px solid rgba(255,255,255,.18);
-
     border-radius:20px;
 
-    z-index:2147483647;
+    z-index:999999;
 
-    font-family:
-        "Trebuchet MS",
-        Arial,
-        sans-serif;
+    font-family:"Trebuchet MS",Arial,sans-serif;
 
-    box-shadow:
-        0 15px 50px rgba(0,0,0,.7);
+    box-shadow:0 15px 50px #000b;
 
     user-select:none;
 
-    transform:translateX(-50%) scale(1);
-
     opacity:1;
-
     visibility:visible;
+
+    transform:
+        translateX(-50%)
+        scale(1);
 
     transition:
         opacity .3s ease,
-        transform .3s ease,
-        visibility .3s ease;
+        transform .35s cubic-bezier(.2,.8,.2,1),
+        visibility .35s ease;
 }
 
 #pgFloat.pgMini{
-
     opacity:0;
-
     visibility:hidden;
 
     transform:
@@ -120,17 +105,13 @@ body.pgInverted{
 }
 
 #pgHead{
-
     height:32px;
 
     display:flex;
-
     align-items:center;
-
     justify-content:center;
 
     font-size:18px;
-
     font-weight:bold;
 
     letter-spacing:1px;
@@ -140,12 +121,10 @@ body.pgInverted{
     margin-bottom:12px;
 
     user-select:none;
-
     touch-action:none;
 }
 
 #pgLine{
-
     height:1px;
 
     background:
@@ -155,15 +134,13 @@ body.pgInverted{
 }
 
 #pgText{
-
     width:100%;
-
     height:100px;
 
     box-sizing:border-box;
 
     background:
-        rgba(0,0,0,.45);
+        rgba(0,0,0,.4);
 
     color:#eee;
 
@@ -175,7 +152,6 @@ body.pgInverted{
     padding:12px;
 
     resize:none;
-
     outline:none;
 
     font-family:
@@ -185,15 +161,10 @@ body.pgInverted{
 
     font-size:14px;
 
-    user-select:text !important;
-
-    -webkit-user-select:text !important;
-
-    pointer-events:auto !important;
+    user-select:text;
 }
 
 #pgText:focus{
-
     border-color:
         rgba(255,255,255,.5);
 
@@ -203,7 +174,6 @@ body.pgInverted{
 }
 
 #pgFloat button{
-
     width:100%;
 
     border:
@@ -233,26 +203,26 @@ body.pgInverted{
 
     transition:
         background .2s ease,
-        transform .2s ease;
+        transform .2s ease,
+        box-shadow .2s ease;
 }
 
 #pgFloat button:hover{
-
     background:
         rgba(255,255,255,.2);
 
     transform:
         translateY(-2px);
+
+    box-shadow:
+        0 6px 18px #0005;
 }
 
 #pgFloat button:active{
-
-    transform:
-        scale(.97);
+    transform:scale(.97);
 }
 
 #pgToggle{
-
     position:fixed;
 
     right:20px;
@@ -265,12 +235,13 @@ body.pgInverted{
 
     background:#111;
 
-    border:2px solid #555;
+    border:
+        2px solid #555;
 
-    z-index:2147483646;
+    z-index:1000000;
 
     box-shadow:
-        0 8px 30px rgba(0,0,0,.7);
+        0 8px 30px #000b;
 
     cursor:pointer;
 
@@ -279,26 +250,42 @@ body.pgInverted{
     display:flex;
 
     align-items:center;
-
     justify-content:center;
 
-    user-select:none;
+    transition:
+        transform .3s cubic-bezier(.2,.8,.2,1),
+        box-shadow .3s ease,
+        border-color .3s ease;
 
+    user-select:none;
     touch-action:none;
 }
 
-#pgToggle img{
+#pgToggle:hover{
+    transform:scale(1.08);
 
+    border-color:#aaa;
+
+    box-shadow:
+        0 12px 35px #000d;
+}
+
+#pgToggle:active{
+    transform:scale(.92);
+}
+
+#pgToggle img{
     width:100%;
     height:100%;
 
     object-fit:cover;
 
+    display:block;
+
     pointer-events:none;
 }
 
 #pgNotify{
-
     position:fixed;
 
     top:25px;
@@ -310,7 +297,7 @@ body.pgInverted{
 
     background:#555;
 
-    color:white;
+    color:#fff;
 
     padding:11px 25px;
 
@@ -325,13 +312,16 @@ body.pgInverted{
 
     font-size:15px;
 
-    z-index:2147483647;
+    z-index:1000001;
 
     opacity:0;
 
     transition:
         opacity .3s ease,
-        transform .3s ease;
+        transform .35s ease;
+
+    box-shadow:
+        0 8px 25px #0008;
 
     pointer-events:none;
 }
@@ -339,13 +329,6 @@ body.pgInverted{
 `;
 
 document.head.appendChild(style);
-
-
-// ==============================
-// ATIVA DARK/INVERT
-// ==============================
-
-document.body.classList.add("pgInverted");
 
 
 // ==============================
@@ -365,8 +348,8 @@ gui.innerHTML=`
 <div id="pgLine"></div>
 
 <textarea
-    id="pgText"
-    placeholder="Digite ou cole o texto aqui..."
+id="pgText"
+placeholder="Digite o texto aqui..."
 ></textarea>
 
 <button id="pgCopy">
@@ -383,7 +366,7 @@ document.body.appendChild(gui);
 
 
 // ==============================
-// BOTÃO
+// BOTÃO FLUTUANTE
 // ==============================
 
 const toggle=document.createElement("div");
@@ -391,11 +374,46 @@ const toggle=document.createElement("div");
 toggle.id="pgToggle";
 
 toggle.innerHTML=`
-<img src="${ICON_URL}">
+
+<img src="https://media.tenor.com/m11vauEEbcUAAAAM/meow-neko-arc.gif">
+
 `;
 
 document.body.appendChild(toggle);
 
+// ==============================
+// COLAR NO GUI
+// ==============================
+
+$("pgText").addEventListener("paste", event => {
+
+    event.stopPropagation();
+
+    const text =
+        event.clipboardData?.getData("text/plain");
+
+    if (!text) return;
+
+    event.preventDefault();
+
+    const field = $("pgText");
+
+    field.setRangeText(
+        text,
+        field.selectionStart,
+        field.selectionEnd,
+        "end"
+    );
+
+    field.dispatchEvent(
+        new InputEvent("input", {
+            bubbles: true,
+            data: text,
+            inputType: "insertFromPaste"
+        })
+    );
+
+}, true);
 
 // ==============================
 // NOTIFICAÇÃO
@@ -404,7 +422,6 @@ document.body.appendChild(toggle);
 const notifyBox=document.createElement("div");
 
 notifyBox.id="pgNotify";
-
 notifyBox.textContent="Feito!!";
 
 document.body.appendChild(notifyBox);
@@ -414,65 +431,29 @@ const $=id=>document.getElementById(id);
 
 
 // ==============================
-// CAIXA DE TEXTO
+// NOTIFICAÇÃO
 // ==============================
 
-const pgText=$("pgText");
-
-
-// Deixa o textarea receber normalmente
-pgText.addEventListener(
-    "paste",
-    event=>{
-        event.stopPropagation();
-    }
-);
-
-pgText.addEventListener(
-    "keydown",
-    event=>{
-        event.stopPropagation();
-    }
-);
-
-pgText.addEventListener(
-    "keyup",
-    event=>{
-        event.stopPropagation();
-    }
-);
-
-
-// ==============================
-// NOTIFY
-// ==============================
-
-function notify(text="Feito!!"){
-
-    if(hiddenMode) return;
-
-    notifyBox.textContent=text;
+function notify(){
 
     notifyBox.style.opacity="1";
 
     notifyBox.style.transform=
         "translateX(-50%) translateY(0)";
 
-    clearTimeout(notifyBox._timer);
-
-    notifyBox._timer=setTimeout(()=>{
+    setTimeout(()=>{
 
         notifyBox.style.opacity="0";
 
         notifyBox.style.transform=
             "translateX(-50%) translateY(-20px)";
 
-    },1500);
+    },1800);
 }
 
 
 // ==============================
-// COPIAR
+// FORÇAR CÓPIA
 // ==============================
 
 $("pgCopy").onclick=async()=>{
@@ -516,17 +497,18 @@ $("pgCopy").onclick=async()=>{
 
 
 // ==============================
-// DIGITAR
+// DIGITAR TEXTO
 // ==============================
 
 $("pgType").onclick=async()=>{
 
-    const text=pgText.value;
+    const text=
+        $("pgText").value;
 
     if(!text){
 
         alert(
-            "Digite ou cole algum texto primeiro!"
+            "Digite algum texto primeiro!"
         );
 
         return;
@@ -553,6 +535,7 @@ $("pgType").onclick=async()=>{
 
     for(const char of text){
 
+        // PAUSA
         while(
             typingPaused &&
             typing
@@ -560,11 +543,20 @@ $("pgType").onclick=async()=>{
 
             await new Promise(
                 resolve=>
-                    setTimeout(resolve,50)
+                    setTimeout(
+                        resolve,
+                        50
+                    )
             );
         }
 
-        if(!typing) return;
+        if(!typing){
+
+            return;
+        }
+
+
+        // INSERE CARACTERE
 
         field.setRangeText(
             char,
@@ -572,6 +564,18 @@ $("pgType").onclick=async()=>{
             field.selectionEnd,
             "end"
         );
+
+
+        field.dispatchEvent(
+            new KeyboardEvent(
+                "keydown",
+                {
+                    key:char,
+                    bubbles:true
+                }
+            )
+        );
+
 
         field.dispatchEvent(
             new InputEvent(
@@ -584,27 +588,49 @@ $("pgType").onclick=async()=>{
             )
         );
 
+
+        field.dispatchEvent(
+            new KeyboardEvent(
+                "keyup",
+                {
+                    key:char,
+                    bubbles:true
+                }
+            )
+        );
+
+
         await new Promise(
             resolve=>
-                setTimeout(resolve,20)
+                setTimeout(
+                    resolve,
+                    20
+                )
         );
     }
 
     typing=false;
 
-    notify();
+    if(!altHidden){
+
+        notify();
+    }
 };
 
 
 // ==============================
-// BOTÃO → MINIMIZAR
+// MINIMIZAR / ABRIR
 // ==============================
 
 toggle.onclick=()=>{
 
-    if(toggleMoved){
+    if(
+        toggle.dataset.dragged===
+        "true"
+    ){
 
-        toggleMoved=false;
+        toggle.dataset.dragged=
+            "false";
 
         return;
     }
@@ -619,11 +645,17 @@ toggle.onclick=()=>{
 
 
 // ==============================
-// ARRASTAR BOTÃO
+// ARRASTAR BOTÃO FLUTUANTE
 // ==============================
+
+let toggleDragging=false;
+let toggleMoved=false;
 
 let toggleOffsetX=0;
 let toggleOffsetY=0;
+
+
+// PC
 
 toggle.addEventListener(
     "mousedown",
@@ -644,11 +676,13 @@ toggle.addEventListener(
     }
 );
 
+
 document.addEventListener(
     "mousemove",
     event=>{
 
-        if(!toggleDragging) return;
+        if(!toggleDragging)
+            return;
 
         toggleMoved=true;
 
@@ -667,9 +701,96 @@ document.addEventListener(
     }
 );
 
+
 document.addEventListener(
     "mouseup",
     ()=>{
+
+        if(!toggleDragging)
+            return;
+
+        if(toggleMoved){
+
+            toggle.dataset.dragged=
+                "true";
+        }
+
+        toggleDragging=false;
+    }
+);
+
+
+// CELULAR
+
+toggle.addEventListener(
+    "touchstart",
+    event=>{
+
+        const touch=
+            event.touches[0];
+
+        toggleDragging=true;
+        toggleMoved=false;
+
+        toggleOffsetX=
+            touch.clientX-
+            toggle.offsetLeft;
+
+        toggleOffsetY=
+            touch.clientY-
+            toggle.offsetTop;
+
+    },
+    {
+        passive:true
+    }
+);
+
+
+document.addEventListener(
+    "touchmove",
+    event=>{
+
+        if(!toggleDragging)
+            return;
+
+        const touch=
+            event.touches[0];
+
+        toggleMoved=true;
+
+        toggle.style.left=
+            touch.clientX-
+            toggleOffsetX+
+            "px";
+
+        toggle.style.top=
+            touch.clientY-
+            toggleOffsetY+
+            "px";
+
+        toggle.style.right="auto";
+        toggle.style.bottom="auto";
+
+    },
+    {
+        passive:true
+    }
+);
+
+
+document.addEventListener(
+    "touchend",
+    ()=>{
+
+        if(!toggleDragging)
+            return;
+
+        if(toggleMoved){
+
+            toggle.dataset.dragged=
+                "true";
+        }
 
         toggleDragging=false;
     }
@@ -678,17 +799,282 @@ document.addEventListener(
 
 // ==============================
 // ARRASTAR GUI
-// SOMENTE PELO TÍTULO
+// SOMENTE PELA BARRA
 // ==============================
+
+let dragging=false;
 
 let offsetX=0;
 let offsetY=0;
+
+
+// PC
 
 $("pgHead").addEventListener(
     "mousedown",
     event=>{
 
-        guiDragging=true;
+        dragging=true;
+
+        offsetX=
+            event.clientX-
+            gui.offsetLeft;
+
+        offsetY=
+            event.clientY-
+            gui.offsetTop;
+
+        event.preventDefault();
+    }
+);
+
+
+document.addEventListener(
+    "mousemove",
+    event=>{
+
+        if(!dragging)
+            return;
+
+        gui.style.left=
+            event.clientX-
+            offsetX+
+            "px";
+
+        gui.style.top=
+            event.clientY-
+            offsetY+
+            "px";
+
+        gui.style.transform=
+            "scale(1)";
+    }
+);
+
+
+document.addEventListener(
+    "mouseup",
+    ()=>{
+
+        dragging=false;
+    }
+);
+
+
+// CELULAR
+
+let touchDragging=false;
+
+let touchOffsetX=0;
+let touchOffsetY=0;
+
+
+$("pgHead").addEventListener(
+    "touchstart",
+    event=>{
+
+        const touch=
+            event.touches[0];
+
+        touchDragging=true;
+
+        touchOffsetX=
+            touch.clientX-
+            gui.offsetLeft;
+
+        touchOffsetY=
+            touch.clientY-
+            gui.offsetTop;
+
+    },
+    {
+        passive:true
+    }
+);
+
+
+document.addEventListener(
+    "touchmove",
+    event=>{
+
+        if(!touchDragging)
+            return;
+
+        const touch=
+            event.touches[0];
+
+        gui.style.left=
+            touch.clientX-
+            touchOffsetX+
+            "px";
+
+        gui.style.top=
+            touch.clientY-
+            touchOffsetY+
+            "px";
+
+        gui.style.transform=
+            "scale(1)";
+    },
+    {
+        passive:true
+    }
+);
+
+
+document.addEventListener(
+    "touchend",
+    ()=>{
+
+        touchDragging=false;
+    }
+);
+
+
+// ==============================
+// ESCONDER / MOSTRAR
+// ==============================
+
+function toggleHiddenMode(){
+
+    altHidden=!altHidden;
+
+
+    if(altHidden){
+
+        // Pausa a digitação
+        if(typing){
+
+            typingPaused=true;
+        }
+
+
+        // Esconde GUI
+        gui.style.display="none";
+
+        toggle.style.display="none";
+
+        notifyBox.style.display="none";
+
+
+        // DESINVERTE A PÁGINA INTEIRA
+        document.body.style.filter="none";
+
+    }else{
+
+        // Mostra GUI
+        gui.style.display="";
+
+        toggle.style.display="";
+
+        notifyBox.style.display="";
+
+
+        // INVERTE NOVAMENTE A PÁGINA
+        document.body.style.filter=
+            "invert(1) hue-rotate(180deg)";
+
+
+        // Continua a digitação
+        if(typing){
+
+            typingPaused=false;
+        }
+    }
+}
+
+
+// ==============================
+// ATALHOS
+// ==============================
+
+document.addEventListener(
+    "keydown",
+    event=>{
+
+        // ESC
+        if(event.key==="Escape"){
+
+            minimized=!minimized;
+
+            gui.classList.toggle(
+                "pgMini",
+                minimized
+            );
+
+            return;
+        }
+
+
+        // CTRL
+        if(event.key==="Control"){
+
+            if(typing){
+
+                typingPaused=
+                    !typingPaused;
+
+                if(typingPaused){
+
+                    notifyBox.textContent=
+                        "Digitação pausada";
+
+                }else{
+
+                    notifyBox.textContent=
+                        "Digitação continuando";
+                }
+
+                if(!altHidden){
+
+                    notify();
+                }
+            }
+
+            return;
+        }
+
+
+        // ALT
+        if(event.key==="Alt"){
+
+            toggleHiddenMode();
+
+            return;
+        }
+    }
+);
+
+
+// ==============================
+// CLIQUE NO SCROLL
+// BOTÃO CENTRAL
+// ==============================
+
+document.addEventListener(
+    "mousedown",
+    event=>{
+
+        // 0 = esquerdo
+        // 1 = scroll / botão central
+        // 2 = direito
+
+        if(event.button!==1)
+            return;
+
+
+        // Impede o autoscroll
+        event.preventDefault();
+
+
+        // Faz exatamente o mesmo
+        // que o ALT
+        toggleHiddenMode();
+    }
+);
+
+
+})();rue;
 
         offsetX=
             event.clientX-
