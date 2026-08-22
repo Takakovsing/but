@@ -1,4 +1,4 @@
-(async()=>{
+javascript:(async()=>{
 
 const KEY_CORRETA="rzinmodder";
 
@@ -11,33 +11,18 @@ if(key!==KEY_CORRETA){
 
 if(document.getElementById("pgFloat"))return;
 
-
-// ==============================
-// ESTADOS
-// ==============================
-
 let minimized=false;
 let typing=false;
 let typingPaused=false;
 let altHidden=false;
 
-
-// ==============================
-// ÍCONE / FAVICON
-// ==============================
-
 const favicon=document.createElement("link");
 
 favicon.rel="icon";
 favicon.href=
-    "https://media.tenor.com/m11vauEEbcUAAAAM/meow-neko-arc.gif";
+"https://media.tenor.com/m11vauEEbcUAAAAM/meow-neko-arc.gif";
 
 document.head.appendChild(favicon);
-
-
-// ==============================
-// STYLE
-// ==============================
 
 const style=document.createElement("style");
 
@@ -127,8 +112,7 @@ body{
 #pgLine{
     height:1px;
 
-    background:
-        rgba(255,255,255,.2);
+    background:rgba(255,255,255,.2);
 
     margin-bottom:14px;
 }
@@ -136,8 +120,7 @@ body{
 #pgFloat button{
     width:100%;
 
-    border:
-        1px solid rgba(255,255,255,.12);
+    border:1px solid rgba(255,255,255,.12);
 
     border-radius:12px;
 
@@ -145,8 +128,7 @@ body{
 
     margin-top:9px;
 
-    background:
-        rgba(255,255,255,.12);
+    background:rgba(255,255,255,.12);
 
     color:#eee;
 
@@ -168,14 +150,11 @@ body{
 }
 
 #pgFloat button:hover{
-    background:
-        rgba(255,255,255,.2);
+    background:rgba(255,255,255,.2);
 
-    transform:
-        translateY(-2px);
+    transform:translateY(-2px);
 
-    box-shadow:
-        0 6px 18px #0005;
+    box-shadow:0 6px 18px #0005;
 }
 
 #pgFloat button:active{
@@ -195,13 +174,11 @@ body{
 
     background:#111;
 
-    border:
-        2px solid #555;
+    border:2px solid #555;
 
     z-index:1000000;
 
-    box-shadow:
-        0 8px 30px #000b;
+    box-shadow:0 8px 30px #000b;
 
     cursor:pointer;
 
@@ -212,26 +189,8 @@ body{
     align-items:center;
     justify-content:center;
 
-    transition:
-        transform .3s cubic-bezier(.2,.8,.2,1),
-        box-shadow .3s ease,
-        border-color .3s ease;
-
     user-select:none;
     touch-action:none;
-}
-
-#pgToggle:hover{
-    transform:scale(1.08);
-
-    border-color:#aaa;
-
-    box-shadow:
-        0 12px 35px #000d;
-}
-
-#pgToggle:active{
-    transform:scale(.92);
 }
 
 #pgToggle img{
@@ -280,8 +239,7 @@ body{
         opacity .3s ease,
         transform .35s ease;
 
-    box-shadow:
-        0 8px 25px #0008;
+    box-shadow:0 8px 25px #0008;
 
     pointer-events:none;
 }
@@ -344,10 +302,10 @@ document.body.appendChild(toggle);
 const notifyBox=document.createElement("div");
 
 notifyBox.id="pgNotify";
+
 notifyBox.textContent="Feito!!";
 
 document.body.appendChild(notifyBox);
-
 
 const $=id=>document.getElementById(id);
 
@@ -419,30 +377,57 @@ $("pgCopy").onclick=async()=>{
 
 
 // ==============================
+// ESPERAR PELO TEXTAREA
+// MESMA LÓGICA DO SCRIPT ORIGINAL
+// ==============================
+
+function esperarTextarea(){
+
+    return new Promise(resolve=>{
+
+        const existente=
+            document.querySelector("textarea");
+
+        if(existente){
+
+            resolve(existente);
+            return;
+        }
+
+        const intervalo=
+            setInterval(()=>{
+
+                const campo=
+                    document.querySelector("textarea");
+
+                if(campo){
+
+                    clearInterval(intervalo);
+
+                    resolve(campo);
+                }
+
+            },500);
+
+    });
+}
+
+
+// ==============================
 // DIGITAR TEXTO
 // ==============================
 
 $("pgType").onclick=async()=>{
 
-    // PEDE SOMENTE O TEXTO
-    // A KEY JÁ FOI VALIDADA NO INÍCIO
-
-    const text=prompt("Digite o texto:");
+    const text=
+        prompt(
+            "Digite o texto que será digitado automaticamente:"
+        );
 
     if(text===null || !text){
 
-        return;
-    }
-
-    const field=
-        document.querySelector(
-            'textarea, input'
-        );
-
-    if(!field){
-
         alert(
-            "Nenhuma caixa de texto foi encontrada!"
+            "Nenhum texto foi digitado."
         );
 
         return;
@@ -451,11 +436,16 @@ $("pgType").onclick=async()=>{
     typing=true;
     typingPaused=false;
 
+    const field=
+        await esperarTextarea();
+
+    if(!typing)
+        return;
+
     field.focus();
 
     for(const char of text){
 
-        // PAUSA
         while(
             typingPaused &&
             typing
@@ -470,13 +460,8 @@ $("pgType").onclick=async()=>{
             );
         }
 
-        if(!typing){
-
+        if(!typing)
             return;
-        }
-
-
-        // INSERE CARACTERE
 
         field.setRangeText(
             char,
@@ -484,7 +469,6 @@ $("pgType").onclick=async()=>{
             field.selectionEnd,
             "end"
         );
-
 
         field.dispatchEvent(
             new KeyboardEvent(
@@ -495,7 +479,6 @@ $("pgType").onclick=async()=>{
                 }
             )
         );
-
 
         field.dispatchEvent(
             new InputEvent(
@@ -508,7 +491,6 @@ $("pgType").onclick=async()=>{
             )
         );
 
-
         field.dispatchEvent(
             new KeyboardEvent(
                 "keyup",
@@ -518,7 +500,6 @@ $("pgType").onclick=async()=>{
                 }
             )
         );
-
 
         await new Promise(
             resolve=>
@@ -565,7 +546,7 @@ toggle.onclick=()=>{
 
 
 // ==============================
-// ARRASTAR BOTÃO FLUTUANTE
+// ARRASTAR BOTÃO
 // ==============================
 
 let toggleDragging=false;
@@ -573,9 +554,6 @@ let toggleMoved=false;
 
 let toggleOffsetX=0;
 let toggleOffsetY=0;
-
-
-// PC
 
 toggle.addEventListener(
     "mousedown",
@@ -595,7 +573,6 @@ toggle.addEventListener(
         event.preventDefault();
     }
 );
-
 
 document.addEventListener(
     "mousemove",
@@ -621,7 +598,6 @@ document.addEventListener(
     }
 );
 
-
 document.addEventListener(
     "mouseup",
     ()=>{
@@ -640,7 +616,9 @@ document.addEventListener(
 );
 
 
+// ==============================
 // CELULAR
+// ==============================
 
 toggle.addEventListener(
     "touchstart",
@@ -665,7 +643,6 @@ toggle.addEventListener(
         passive:true
     }
 );
-
 
 document.addEventListener(
     "touchmove",
@@ -698,7 +675,6 @@ document.addEventListener(
     }
 );
 
-
 document.addEventListener(
     "touchend",
     ()=>{
@@ -719,16 +695,12 @@ document.addEventListener(
 
 // ==============================
 // ARRASTAR GUI
-// SOMENTE PELA BARRA
 // ==============================
 
 let dragging=false;
 
 let offsetX=0;
 let offsetY=0;
-
-
-// PC
 
 $("pgHead").addEventListener(
     "mousedown",
@@ -747,7 +719,6 @@ $("pgHead").addEventListener(
         event.preventDefault();
     }
 );
-
 
 document.addEventListener(
     "mousemove",
@@ -771,7 +742,6 @@ document.addEventListener(
     }
 );
 
-
 document.addEventListener(
     "mouseup",
     ()=>{
@@ -781,13 +751,14 @@ document.addEventListener(
 );
 
 
-// CELULAR
+// ==============================
+// CELULAR GUI
+// ==============================
 
 let touchDragging=false;
 
 let touchOffsetX=0;
 let touchOffsetY=0;
-
 
 $("pgHead").addEventListener(
     "touchstart",
@@ -811,7 +782,6 @@ $("pgHead").addEventListener(
         passive:true
     }
 );
-
 
 document.addEventListener(
     "touchmove",
@@ -841,7 +811,6 @@ document.addEventListener(
     }
 );
 
-
 document.addEventListener(
     "touchend",
     ()=>{
@@ -859,43 +828,32 @@ function toggleHiddenMode(){
 
     altHidden=!altHidden;
 
-
     if(altHidden){
 
-        // Pausa a digitação
         if(typing){
 
             typingPaused=true;
         }
 
-
-        // Esconde GUI
         gui.style.display="none";
 
         toggle.style.display="none";
 
         notifyBox.style.display="none";
 
-
-        // DESINVERTE A PÁGINA INTEIRA
         document.body.style.filter="none";
 
     }else{
 
-        // Mostra GUI
         gui.style.display="";
 
         toggle.style.display="";
 
         notifyBox.style.display="";
 
-
-        // INVERTE NOVAMENTE A PÁGINA
         document.body.style.filter=
             "invert(1) hue-rotate(180deg)";
 
-
-        // Continua a digitação
         if(typing){
 
             typingPaused=false;
@@ -912,7 +870,6 @@ document.addEventListener(
     "keydown",
     event=>{
 
-        // ESC
         if(event.key==="Escape"){
 
             minimized=!minimized;
@@ -925,8 +882,6 @@ document.addEventListener(
             return;
         }
 
-
-        // CTRL
         if(event.key==="Control"){
 
             if(typing){
@@ -954,8 +909,6 @@ document.addEventListener(
             return;
         }
 
-
-        // ALT
         if(event.key==="Alt"){
 
             toggleHiddenMode();
@@ -968,30 +921,19 @@ document.addEventListener(
 
 // ==============================
 // CLIQUE NO SCROLL
-// BOTÃO CENTRAL
 // ==============================
 
 document.addEventListener(
     "mousedown",
     event=>{
 
-        // 0 = esquerdo
-        // 1 = scroll / botão central
-        // 2 = direito
-
         if(event.button!==1)
             return;
 
-
-        // Impede o autoscroll
         event.preventDefault();
 
-
-        // Faz exatamente o mesmo
-        // que o ALT
         toggleHiddenMode();
     }
 );
-
 
 })();
