@@ -14,189 +14,335 @@ if(document.getElementById("pgFloat"))return;
 let minimized=false;
 let hidden=false;
 let pageText="";
+let apiKey="";
 let dragging=false;
 let offsetX=0;
 let offsetY=0;
 
+
+// ==============================
+// FAVICON
+// ==============================
+
 const favicon=document.createElement("link");
+
 favicon.rel="icon";
-favicon.href="https://media.tenor.com/m11vauEEbcUAAAAM/meow-neko-arc.gif";
+favicon.href=
+"https://media.tenor.com/m11vauEEbcUAAAAM/meow-neko-arc.gif";
+
 document.head.appendChild(favicon);
+
+
+// ==============================
+// STYLE
+// ==============================
 
 const style=document.createElement("style");
 
 style.textContent=`
 
-body{
-    filter:invert(1) hue-rotate(180deg)!important;
-    transition:filter .45s ease!important;
-}
-
-#pgFloat,#pgToggle,#pgNotify{
-    filter:invert(1) hue-rotate(180deg)!important;
+#pgFloat,
+#pgToggle,
+#pgNotify{
+    box-sizing:border-box;
 }
 
 #pgFloat{
+
     position:fixed;
+
     top:80px;
     left:50%;
+
     width:320px;
+
     padding:16px;
-    box-sizing:border-box;
-    background:rgba(20,20,20,.78);
+
+    background:rgba(20,20,20,.82);
+
     backdrop-filter:blur(15px);
     -webkit-backdrop-filter:blur(15px);
+
     color:#eee;
+
     border:1px solid rgba(255,255,255,.18);
+
     border-radius:20px;
+
     z-index:2147483640;
+
     font-family:"Trebuchet MS",Arial,sans-serif;
+
     box-shadow:0 15px 50px #000b;
+
     user-select:none;
+
     transform:translateX(-50%) scale(1);
-    transition:opacity .3s ease,
-               transform .35s cubic-bezier(.2,.8,.2,1),
-               visibility .35s ease;
+
+    transition:
+        opacity .3s ease,
+        transform .35s cubic-bezier(.2,.8,.2,1),
+        visibility .35s ease;
 }
 
 #pgFloat.pgMini{
+
     opacity:0;
+
     visibility:hidden;
-    transform:translateX(-50%) scale(.82);
+
+    transform:
+        translateX(-50%)
+        scale(.82);
 }
 
 #pgHead{
+
     height:32px;
+
     display:flex;
+
     align-items:center;
+
     justify-content:center;
+
     font-size:18px;
+
     font-weight:bold;
+
     letter-spacing:1px;
+
     cursor:move;
+
     margin-bottom:12px;
+
     touch-action:none;
 }
 
 #pgLine{
+
     height:1px;
-    background:rgba(255,255,255,.2);
+
+    background:
+        rgba(255,255,255,.2);
+
     margin-bottom:14px;
 }
 
-#pgQuestion,#pgAnswer{
+#pgQuestion,
+#pgAnswer{
+
     width:100%;
+
     box-sizing:border-box;
-    background:rgba(0,0,0,.4);
+
+    background:
+        rgba(0,0,0,.4);
+
     color:#eee;
-    border:1px solid rgba(255,255,255,.18);
+
+    border:
+        1px solid rgba(255,255,255,.18);
+
     border-radius:13px;
+
     padding:12px;
+
     outline:none;
-    font-family:"Trebuchet MS",Arial,sans-serif;
+
+    font-family:
+        "Trebuchet MS",
+        Arial,
+        sans-serif;
+
     font-size:14px;
+
     user-select:text;
 }
 
 #pgQuestion{
+
     height:80px;
+
     resize:none;
 }
 
 #pgAnswer{
+
     height:150px;
+
     resize:none;
+
     margin-top:10px;
 }
 
-#pgQuestion:focus,#pgAnswer:focus{
-    border-color:rgba(255,255,255,.5);
-    box-shadow:0 0 15px rgba(255,255,255,.08);
+#pgQuestion:focus,
+#pgAnswer:focus{
+
+    border-color:
+        rgba(255,255,255,.5);
+
+    box-shadow:
+        0 0 15px
+        rgba(255,255,255,.08);
 }
 
 #pgFloat button{
+
     width:100%;
-    border:1px solid rgba(255,255,255,.12);
+
+    border:
+        1px solid rgba(255,255,255,.12);
+
     border-radius:12px;
+
     padding:12px;
+
     margin-top:9px;
-    background:rgba(255,255,255,.12);
+
+    background:
+        rgba(255,255,255,.12);
+
     color:#eee;
-    font-family:"Trebuchet MS",Arial,sans-serif;
+
+    font-family:
+        "Trebuchet MS",
+        Arial,
+        sans-serif;
+
     font-weight:bold;
+
     font-size:14px;
+
     cursor:pointer;
-    transition:background .2s ease,
-               transform .2s ease,
-               box-shadow .2s ease;
+
+    transition:
+        background .2s ease,
+        transform .2s ease,
+        box-shadow .2s ease;
 }
 
 #pgFloat button:hover{
-    background:rgba(255,255,255,.2);
-    transform:translateY(-2px);
-    box-shadow:0 6px 18px #0005;
+
+    background:
+        rgba(255,255,255,.2);
+
+    transform:
+        translateY(-2px);
+
+    box-shadow:
+        0 6px 18px #0005;
 }
 
 #pgFloat button:active{
+
     transform:scale(.97);
 }
 
 #pgToggle{
+
     position:fixed;
+
     right:20px;
     bottom:25px;
+
     width:62px;
     height:62px;
+
     border-radius:50%;
+
     background:#111;
-    border:2px solid #555;
+
+    border:
+        2px solid #555;
+
     z-index:2147483641;
-    box-shadow:0 8px 30px #000b;
+
+    box-shadow:
+        0 8px 30px #000b;
+
     cursor:pointer;
+
     overflow:hidden;
+
     display:flex;
+
     align-items:center;
     justify-content:center;
-    transition:transform .3s cubic-bezier(.2,.8,.2,1),
-               box-shadow .3s ease,
-               border-color .3s ease;
+
+    transition:
+        transform .3s cubic-bezier(.2,.8,.2,1),
+        box-shadow .3s ease,
+        border-color .3s ease;
+
     user-select:none;
+
     touch-action:none;
 }
 
 #pgToggle:hover{
+
     transform:scale(1.08);
+
     border-color:#aaa;
 }
 
 #pgToggle:active{
+
     transform:scale(.92);
 }
 
 #pgToggle img{
+
     width:100%;
     height:100%;
+
     object-fit:cover;
+
+    display:block;
+
     pointer-events:none;
 }
 
 #pgNotify{
+
     position:fixed;
+
     top:25px;
     left:50%;
-    transform:translateX(-50%) translateY(-20px);
+
+    transform:
+        translateX(-50%)
+        translateY(-20px);
+
     background:#555;
+
     color:#fff;
+
     padding:11px 25px;
+
     border-radius:10px;
-    font-family:"Trebuchet MS",Arial,sans-serif;
+
+    font-family:
+        "Trebuchet MS",
+        Arial,
+        sans-serif;
+
     font-weight:bold;
+
     font-size:15px;
+
     z-index:2147483642;
+
     opacity:0;
-    transition:opacity .3s ease,
-               transform .35s ease;
-    box-shadow:0 8px 25px #0008;
+
+    transition:
+        opacity .3s ease,
+        transform .35s ease;
+
+    box-shadow:
+        0 8px 25px #0008;
+
     pointer-events:none;
 }
 
@@ -246,7 +392,7 @@ document.body.appendChild(gui);
 
 
 // ==============================
-// BOTÃO FLUTUANTE
+// BOTÃO
 // ==============================
 
 const toggle=document.createElement("div");
@@ -269,15 +415,17 @@ document.body.appendChild(toggle);
 const notifyBox=document.createElement("div");
 
 notifyBox.id="pgNotify";
+
 notifyBox.textContent="Feito!!";
 
 document.body.appendChild(notifyBox);
 
-const $=id=>document.getElementById(id);
+const $=id=>
+document.getElementById(id);
 
 
 // ==============================
-// NOTIFICAÇÃO
+// NOTIFY
 // ==============================
 
 function notify(text="Feito!!"){
@@ -306,21 +454,21 @@ function notify(text="Feito!!"){
 
 $("pgRead").onclick=()=>{
 
-    const clone=document.body.cloneNode(true);
+    const clone=
+        document.body.cloneNode(true);
 
-    const remover=[
+    [
         "#pgFloat",
         "#pgToggle",
         "#pgNotify",
         "script",
         "style",
         "noscript"
-    ];
+    ].forEach(seletor=>{
 
-    remover.forEach(seletor=>{
-
-        clone.querySelectorAll(seletor)
-            .forEach(e=>e.remove());
+        clone
+        .querySelectorAll(seletor)
+        .forEach(e=>e.remove());
 
     });
 
@@ -338,12 +486,10 @@ $("pgRead").onclick=()=>{
         return;
     }
 
-    // Limite para evitar enviar páginas gigantes
-    pageText=pageText.slice(0,50000);
+    pageText=
+        pageText.slice(0,50000);
 
-    notify(
-        "Página lida!"
-    );
+    notify("Página lida!");
 
 };
 
@@ -355,7 +501,9 @@ $("pgRead").onclick=()=>{
 $("pgAsk").onclick=async()=>{
 
     const pergunta=
-        $("pgQuestion").value.trim();
+        $("pgQuestion")
+        .value
+        .trim();
 
     if(!pergunta){
 
@@ -376,15 +524,22 @@ $("pgAsk").onclick=async()=>{
     }
 
 
-    // A chave NÃO fica salva no código
-    const apiKey=
-        prompt(
-            "Cole sua chave do OpenRouter:"
-        );
+    // ==========================
+    // PEDE A CHAVE SOMENTE 1 VEZ
+    // ==========================
 
     if(!apiKey){
 
-        return;
+        apiKey=
+            prompt(
+                "Cole sua chave do OpenRouter:"
+            );
+
+        if(!apiKey){
+
+            return;
+        }
+
     }
 
 
@@ -403,14 +558,17 @@ $("pgAsk").onclick=async()=>{
             await fetch(
                 "https://openrouter.ai/api/v1/chat/completions",
                 {
+
                     method:"POST",
 
                     headers:{
+
                         "Authorization":
                             "Bearer "+apiKey,
 
                         "Content-Type":
                             "application/json"
+
                     },
 
                     body:JSON.stringify({
@@ -421,13 +579,16 @@ $("pgAsk").onclick=async()=>{
                         messages:[
 
                             {
+
                                 role:"system",
 
                                 content:
-                                    "Você é um assistente que analisa o conteúdo de páginas da internet. Responda em português, de forma clara e objetiva. Use o conteúdo fornecido para responder."
+                                    "Você é um assistente que analisa páginas da internet. Responda em português, de forma clara e objetiva."
+
                             },
 
                             {
+
                                 role:"user",
 
                                 content:
@@ -436,6 +597,7 @@ $("pgAsk").onclick=async()=>{
                                     "\n\n"+
                                     "CONTEÚDO DA PÁGINA:\n"+
                                     pageText
+
                             }
 
                         ]
@@ -452,16 +614,32 @@ $("pgAsk").onclick=async()=>{
 
         if(!resposta.ok){
 
+            // Se a chave estiver inválida,
+            // apaga a chave salva na sessão.
+
+            if(
+                resposta.status===401 ||
+                resposta.status===403
+            ){
+
+                apiKey="";
+            }
+
             throw new Error(
                 dados?.error?.message ||
-                "Erro HTTP "+resposta.status
+                "Erro HTTP "+
+                resposta.status
             );
 
         }
 
 
         const resultado=
-            dados?.choices?.[0]?.message?.content;
+            dados
+            ?.choices
+            ?.[0]
+            ?.message
+            ?.content;
 
 
         if(!resultado){
@@ -511,11 +689,16 @@ $("pgAsk").onclick=async()=>{
 
 toggle.onclick=()=>{
 
-    if(toggle.dataset.dragged==="true"){
+    if(
+        toggle.dataset.dragged===
+        "true"
+    ){
 
-        toggle.dataset.dragged="false";
+        toggle.dataset.dragged=
+        "false";
 
         return;
+
     }
 
     minimized=!minimized;
@@ -534,6 +717,7 @@ toggle.onclick=()=>{
 
 let toggleDragging=false;
 let toggleMoved=false;
+
 let toggleOffsetX=0;
 let toggleOffsetY=0;
 
@@ -543,6 +727,7 @@ toggle.addEventListener(
     event=>{
 
         toggleDragging=true;
+
         toggleMoved=false;
 
         toggleOffsetX=
@@ -592,7 +777,8 @@ document.addEventListener(
 
         if(toggleMoved){
 
-            toggle.dataset.dragged="true";
+            toggle.dataset.dragged=
+            "true";
 
         }
 
@@ -603,7 +789,7 @@ document.addEventListener(
 
 
 // ==============================
-// ARRASTAR NO CELULAR
+// CELULAR
 // ==============================
 
 toggle.addEventListener(
@@ -614,6 +800,7 @@ toggle.addEventListener(
             event.touches[0];
 
         toggleDragging=true;
+
         toggleMoved=false;
 
         toggleOffsetX=
@@ -666,7 +853,8 @@ document.addEventListener(
 
         if(toggleMoved){
 
-            toggle.dataset.dragged="true";
+            toggle.dataset.dragged=
+            "true";
 
         }
 
@@ -734,10 +922,11 @@ document.addEventListener(
 
 
 // ==============================
-// ARRASTAR GUI CELULAR
+// GUI NO CELULAR
 // ==============================
 
 let touchDragging=false;
+
 let touchOffsetX=0;
 let touchOffsetY=0;
 
@@ -802,7 +991,7 @@ document.addEventListener(
 
 
 // ==============================
-// ESC / ALT / CTRL
+// ESC / ALT
 // ==============================
 
 function toggleHiddenMode(){
@@ -815,16 +1004,11 @@ function toggleHiddenMode(){
         toggle.style.display="none";
         notifyBox.style.display="none";
 
-        document.body.style.filter="none";
-
     }else{
 
         gui.style.display="";
         toggle.style.display="";
         notifyBox.style.display="";
-
-        document.body.style.filter=
-            "invert(1) hue-rotate(180deg)";
 
     }
 
@@ -857,7 +1041,7 @@ document.addEventListener(
 
 
 // ==============================
-// SCROLL / BOTÃO CENTRAL
+// BOTÃO CENTRAL
 // ==============================
 
 document.addEventListener(
