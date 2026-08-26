@@ -12,9 +12,18 @@ if(key!==KEY_CORRETA){
 if(document.getElementById("pgFloat"))return;
 
 let minimized=false;
-let typing=false;
-let typingPaused=false;
-let altHidden=false;
+let hidden=false;
+let pageText="";
+let apiKey="";
+let pageImages=[];
+let dragging=false;
+let offsetX=0;
+let offsetY=0;
+
+
+// ==============================
+// FAVICON
+// ==============================
 
 const favicon=document.createElement("link");
 
@@ -24,32 +33,33 @@ favicon.href=
 
 document.head.appendChild(favicon);
 
+
+// ==============================
+// STYLE
+// ==============================
+
 const style=document.createElement("style");
 
 style.textContent=`
 
-body{
-    filter:invert(1) hue-rotate(180deg)!important;
-    transition:filter .45s ease!important;
-}
-
 #pgFloat,
 #pgToggle,
 #pgNotify{
-    filter:invert(1) hue-rotate(180deg)!important;
+    box-sizing:border-box;
 }
 
 #pgFloat{
+
     position:fixed;
+
     top:80px;
     left:50%;
 
-    width:300px;
+    width:330px;
+
     padding:16px;
 
-    box-sizing:border-box;
-
-    background:rgba(20,20,20,.78);
+    background:rgba(20,20,20,.82);
 
     backdrop-filter:blur(15px);
     -webkit-backdrop-filter:blur(15px);
@@ -57,9 +67,10 @@ body{
     color:#eee;
 
     border:1px solid rgba(255,255,255,.18);
+
     border-radius:20px;
 
-    z-index:999999;
+    z-index:2147483640;
 
     font-family:"Trebuchet MS",Arial,sans-serif;
 
@@ -67,12 +78,7 @@ body{
 
     user-select:none;
 
-    opacity:1;
-    visibility:visible;
-
-    transform:
-        translateX(-50%)
-        scale(1);
+    transform:translateX(-50%) scale(1);
 
     transition:
         opacity .3s ease,
@@ -81,6 +87,7 @@ body{
 }
 
 #pgFloat.pgMini{
+
     opacity:0;
     visibility:hidden;
 
@@ -90,6 +97,7 @@ body{
 }
 
 #pgHead{
+
     height:32px;
 
     display:flex;
@@ -105,11 +113,11 @@ body{
 
     margin-bottom:12px;
 
-    user-select:none;
     touch-action:none;
 }
 
 #pgLine{
+
     height:1px;
 
     background:rgba(255,255,255,.2);
@@ -117,7 +125,60 @@ body{
     margin-bottom:14px;
 }
 
+#pgQuestion,
+#pgAnswer{
+
+    width:100%;
+
+    box-sizing:border-box;
+
+    background:rgba(0,0,0,.4);
+
+    color:#eee;
+
+    border:1px solid rgba(255,255,255,.18);
+
+    border-radius:13px;
+
+    padding:12px;
+
+    outline:none;
+
+    font-family:"Trebuchet MS",Arial,sans-serif;
+
+    font-size:14px;
+
+    user-select:text;
+}
+
+#pgQuestion{
+
+    height:80px;
+
+    resize:none;
+}
+
+#pgAnswer{
+
+    height:150px;
+
+    resize:none;
+
+    margin-top:10px;
+}
+
+#pgQuestion:focus,
+#pgAnswer:focus{
+
+    border-color:rgba(255,255,255,.5);
+
+    box-shadow:
+        0 0 15px
+        rgba(255,255,255,.08);
+}
+
 #pgFloat button{
+
     width:100%;
 
     border:1px solid rgba(255,255,255,.12);
@@ -132,10 +193,7 @@ body{
 
     color:#eee;
 
-    font-family:
-        "Trebuchet MS",
-        Arial,
-        sans-serif;
+    font-family:"Trebuchet MS",Arial,sans-serif;
 
     font-weight:bold;
 
@@ -150,6 +208,7 @@ body{
 }
 
 #pgFloat button:hover{
+
     background:rgba(255,255,255,.2);
 
     transform:translateY(-2px);
@@ -158,10 +217,38 @@ body{
 }
 
 #pgFloat button:active{
+
     transform:scale(.97);
 }
 
+#pgFloat button:disabled{
+
+    opacity:.55;
+
+    cursor:wait;
+
+    transform:none;
+}
+
+#pgStatus{
+
+    margin-top:9px;
+
+    padding:8px 10px;
+
+    border-radius:10px;
+
+    background:rgba(255,255,255,.06);
+
+    color:#aaa;
+
+    font-size:12px;
+
+    text-align:center;
+}
+
 #pgToggle{
+
     position:fixed;
 
     right:20px;
@@ -176,7 +263,7 @@ body{
 
     border:2px solid #555;
 
-    z-index:1000000;
+    z-index:2147483641;
 
     box-shadow:0 8px 30px #000b;
 
@@ -189,11 +276,30 @@ body{
     align-items:center;
     justify-content:center;
 
+    transition:
+        transform .3s cubic-bezier(.2,.8,.2,1),
+        box-shadow .3s ease,
+        border-color .3s ease;
+
     user-select:none;
+
     touch-action:none;
 }
 
+#pgToggle:hover{
+
+    transform:scale(1.08);
+
+    border-color:#aaa;
+}
+
+#pgToggle:active{
+
+    transform:scale(.92);
+}
+
 #pgToggle img{
+
     width:100%;
     height:100%;
 
@@ -205,6 +311,7 @@ body{
 }
 
 #pgNotify{
+
     position:fixed;
 
     top:25px;
@@ -222,16 +329,13 @@ body{
 
     border-radius:10px;
 
-    font-family:
-        "Trebuchet MS",
-        Arial,
-        sans-serif;
+    font-family:"Trebuchet MS",Arial,sans-serif;
 
     font-weight:bold;
 
     font-size:15px;
 
-    z-index:1000001;
+    z-index:2147483642;
 
     opacity:0;
 
@@ -260,18 +364,33 @@ gui.id="pgFloat";
 gui.innerHTML=`
 
 <div id="pgHead">
-    PORTUGA TOOLS
+    PORTUGA IA
 </div>
 
 <div id="pgLine"></div>
 
-<button id="pgType">
-    INSERIR TEXTO
+<textarea
+id="pgQuestion"
+placeholder="Digite sua pergunta para a IA..."
+></textarea>
+
+<button id="pgRead">
+    LER PÁGINA + IMAGENS
 </button>
 
-<button id="pgCopy">
-    FORÇAR CÓPIA
+<button id="pgAsk">
+    PERGUNTAR À IA
 </button>
+
+<div id="pgStatus">
+    Nenhuma página carregada
+</div>
+
+<textarea
+id="pgAnswer"
+placeholder="A resposta da IA aparecerá aqui..."
+readonly
+></textarea>
 
 `;
 
@@ -311,10 +430,12 @@ const $=id=>document.getElementById(id);
 
 
 // ==============================
-// NOTIFICAÇÃO
+// NOTIFY
 // ==============================
 
-function notify(){
+function notify(text="Feito!!"){
+
+    notifyBox.textContent=text;
 
     notifyBox.style.opacity="1";
 
@@ -333,194 +454,400 @@ function notify(){
 
 
 // ==============================
-// FORÇAR CÓPIA
+// LER PÁGINA
 // ==============================
 
-$("pgCopy").onclick=async()=>{
+$("pgRead").onclick=()=>{
 
-    const selected=
-        window.getSelection().toString();
+    const clone=document.body.cloneNode(true);
 
-    if(!selected){
+    [
+        "#pgFloat",
+        "#pgToggle",
+        "#pgNotify",
+        "script",
+        "style",
+        "noscript"
+    ].forEach(seletor=>{
+
+        clone
+        .querySelectorAll(seletor)
+        .forEach(e=>e.remove());
+
+    });
+
+
+    // ==========================
+    // TEXTO
+    // ==========================
+
+    pageText=
+        clone.innerText
+        .replace(/\n{3,}/g,"\n\n")
+        .trim();
+
+    pageText=
+        pageText.slice(0,50000);
+
+
+    // ==========================
+    // IMAGENS
+    // ==========================
+
+    pageImages=[];
+
+    const imagens=
+        [...document.images];
+
+
+    for(const img of imagens){
+
+        if(
+            !img.src ||
+            img.width<40 ||
+            img.height<40
+        ){
+
+            continue;
+        }
+
+
+        // Evita imagens do próprio GUI
+
+        if(
+            img.closest("#pgFloat") ||
+            img.closest("#pgToggle")
+        ){
+
+            continue;
+        }
+
+
+        const url=img.currentSrc||img.src;
+
+
+        if(
+            !url ||
+            url.startsWith("data:")
+        ){
+
+            continue;
+        }
+
+
+        if(
+            !pageImages.includes(url)
+        ){
+
+            pageImages.push(url);
+        }
+
+
+        // Máximo de 10 imagens
+
+        if(pageImages.length>=10){
+
+            break;
+        }
+
+    }
+
+
+    if(!pageText && !pageImages.length){
 
         alert(
-            "Selecione algum texto primeiro!"
+            "Não encontrei texto nem imagens!"
         );
 
         return;
     }
+
+
+    $("pgStatus").textContent=
+        "Texto: "+
+        pageText.length+
+        " caracteres | Imagens: "+
+        pageImages.length;
+
+
+    notify(
+        "Página carregada!"
+    );
+
+};
+
+
+// ==============================
+// PERGUNTAR À IA
+// ==============================
+
+$("pgAsk").onclick=async()=>{
+
+    const pergunta=
+        $("pgQuestion")
+        .value
+        .trim();
+
+
+    if(!pergunta){
+
+        alert(
+            "Digite uma pergunta primeiro!"
+        );
+
+        return;
+    }
+
+
+    if(!pageText && !pageImages.length){
+
+        alert(
+            "Clique em LER PÁGINA + IMAGENS primeiro!"
+        );
+
+        return;
+    }
+
+
+    // ==========================
+    // CHAVE DA API
+    // ==========================
+
+    if(!apiKey){
+
+        apiKey=
+            prompt(
+                "Cole sua chave do OpenRouter:"
+            );
+
+        if(!apiKey){
+
+            return;
+        }
+
+        apiKey=apiKey.trim();
+
+    }
+
+
+    $("pgAsk").textContent=
+        "CONSULTANDO IA...";
+
+    $("pgAsk").disabled=true;
+
+
+    $("pgAnswer").value=
+        "Analisando texto e imagens...";
+
 
     try{
 
-        await navigator.clipboard.writeText(
-            selected
-        );
 
-    }catch(e){
+        // ======================
+        // CONTEÚDO DA MENSAGEM
+        // ======================
 
-        const temp=
-            document.createElement("textarea");
+        const content=[
 
-        temp.value=selected;
+            {
+                type:"text",
 
-        document.body.appendChild(temp);
+                text:
+                    "PERGUNTA:\n"+
+                    pergunta+
+                    "\n\n"+
+                    "CONTEÚDO TEXTUAL DA PÁGINA:\n"+
+                    pageText
+            }
 
-        temp.select();
-
-        document.execCommand("copy");
-
-        temp.remove();
-    }
-
-    notify();
-};
+        ];
 
 
-// ==============================
-// ESPERAR PELO TEXTAREA
-// MESMA LÓGICA DO SCRIPT ORIGINAL
-// ==============================
+        // ======================
+        // ADICIONA IMAGENS
+        // ======================
 
-function esperarTextarea(){
-
-    return new Promise(resolve=>{
-
-        const existente=
-            document.querySelector("textarea");
-
-        if(existente){
-
-            resolve(existente);
-            return;
-        }
-
-        const intervalo=
-            setInterval(()=>{
-
-                const campo=
-                    document.querySelector("textarea");
-
-                if(campo){
-
-                    clearInterval(intervalo);
-
-                    resolve(campo);
-                }
-
-            },500);
-
-    });
-}
-
-
-// ==============================
-// DIGITAR TEXTO
-// ==============================
-
-$("pgType").onclick=async()=>{
-
-    const text=
-        prompt(
-            "Digite o texto que será digitado automaticamente:"
-        );
-
-    if(text===null || !text){
-
-        alert(
-            "Nenhum texto foi digitado."
-        );
-
-        return;
-    }
-
-    typing=true;
-    typingPaused=false;
-
-    const field=
-        await esperarTextarea();
-
-    if(!typing)
-        return;
-
-    field.focus();
-
-    for(const char of text){
-
-        while(
-            typingPaused &&
-            typing
+        for(
+            const imagem of pageImages
         ){
 
-            await new Promise(
-                resolve=>
-                    setTimeout(
-                        resolve,
-                        50
-                    )
-            );
+            content.push({
+
+                type:"image_url",
+
+                image_url:{
+                    url:imagem
+                }
+
+            });
+
         }
 
-        if(!typing)
-            return;
 
-        field.setRangeText(
-            char,
-            field.selectionStart,
-            field.selectionEnd,
-            "end"
-        );
+        // ======================
+        // REQUEST
+        // ======================
 
-        field.dispatchEvent(
-            new KeyboardEvent(
-                "keydown",
+        const resposta=
+            await fetch(
+                "https://openrouter.ai/api/v1/chat/completions",
                 {
-                    key:char,
-                    bubbles:true
+
+                    method:"POST",
+
+                    headers:{
+
+                        "Authorization":
+                            "Bearer "+apiKey,
+
+                        "Content-Type":
+                            "application/json"
+
+                    },
+
+                    body:JSON.stringify({
+
+                        model:
+                            "openrouter/free",
+
+                        messages:[
+
+                            {
+
+                                role:"system",
+
+                                content:
+                                    "Você é um assistente que analisa páginas da internet. Responda em português. Analise tanto o texto quanto as imagens fornecidas quando forem relevantes para a pergunta. Não mostre classificações internas de segurança como 'User Safety: safe'; responda diretamente à pergunta."
+
+                            },
+
+                            {
+
+                                role:"user",
+
+                                content:content
+
+                            }
+
+                        ]
+
+                    })
+
                 }
+            );
+
+
+        const dados=
+            await resposta.json();
+
+
+        // ======================
+        // ERRO DA API
+        // ======================
+
+        if(!resposta.ok){
+
+            if(
+                resposta.status===401 ||
+                resposta.status===403
+            ){
+
+                apiKey="";
+
+            }
+
+            throw new Error(
+                dados?.error?.message ||
+                "Erro HTTP "+
+                resposta.status
+            );
+
+        }
+
+
+        // ======================
+        // RESPOSTA
+        // ======================
+
+        let resultado=
+            dados
+            ?.choices
+            ?.[0]
+            ?.message
+            ?.content;
+
+
+        if(
+            typeof resultado!=="string"
+        ){
+
+            resultado=
+                JSON.stringify(
+                    resultado,
+                    null,
+                    2
+                );
+
+        }
+
+
+        if(!resultado){
+
+            throw new Error(
+                "A IA não retornou uma resposta."
+            );
+
+        }
+
+
+        // Remove classificações que
+        // eventualmente apareçam.
+
+        resultado=
+            resultado
+            .replace(
+                /^User Safety:\s*(safe|unsafe)\s*$/gim,
+                ""
             )
+            .trim();
+
+
+        $("pgAnswer").value=
+            resultado;
+
+
+        notify(
+            "Resposta recebida!"
         );
 
-        field.dispatchEvent(
-            new InputEvent(
-                "input",
-                {
-                    bubbles:true,
-                    data:char,
-                    inputType:"insertText"
-                }
-            )
+
+    }catch(erro){
+
+        $("pgAnswer").value=
+            "ERRO:\n\n"+
+            erro.message;
+
+
+        alert(
+            "Erro ao consultar a IA:\n\n"+
+            erro.message
         );
 
-        field.dispatchEvent(
-            new KeyboardEvent(
-                "keyup",
-                {
-                    key:char,
-                    bubbles:true
-                }
-            )
-        );
 
-        await new Promise(
-            resolve=>
-                setTimeout(
-                    resolve,
-                    20
-                )
-        );
+    }finally{
+
+        $("pgAsk").textContent=
+            "PERGUNTAR À IA";
+
+        $("pgAsk").disabled=false;
+
     }
 
-    typing=false;
-
-    if(!altHidden){
-
-        notify();
-    }
 };
 
 
 // ==============================
-// MINIMIZAR / ABRIR
+// MINIMIZAR
 // ==============================
 
 toggle.onclick=()=>{
@@ -531,22 +858,26 @@ toggle.onclick=()=>{
     ){
 
         toggle.dataset.dragged=
-            "false";
+        "false";
 
         return;
+
     }
 
+
     minimized=!minimized;
+
 
     gui.classList.toggle(
         "pgMini",
         minimized
     );
+
 };
 
 
 // ==============================
-// ARRASTAR BOTÃO
+// ARRASTAR BOTÃO - PC
 // ==============================
 
 let toggleDragging=false;
@@ -555,11 +886,13 @@ let toggleMoved=false;
 let toggleOffsetX=0;
 let toggleOffsetY=0;
 
+
 toggle.addEventListener(
     "mousedown",
     event=>{
 
         toggleDragging=true;
+
         toggleMoved=false;
 
         toggleOffsetX=
@@ -571,15 +904,16 @@ toggle.addEventListener(
             toggle.offsetTop;
 
         event.preventDefault();
+
     }
 );
+
 
 document.addEventListener(
     "mousemove",
     event=>{
 
-        if(!toggleDragging)
-            return;
+        if(!toggleDragging)return;
 
         toggleMoved=true;
 
@@ -594,30 +928,34 @@ document.addEventListener(
             "px";
 
         toggle.style.right="auto";
+
         toggle.style.bottom="auto";
+
     }
 );
+
 
 document.addEventListener(
     "mouseup",
     ()=>{
 
-        if(!toggleDragging)
-            return;
+        if(!toggleDragging)return;
 
         if(toggleMoved){
 
             toggle.dataset.dragged=
-                "true";
+            "true";
+
         }
 
         toggleDragging=false;
+
     }
 );
 
 
 // ==============================
-// CELULAR
+// ARRASTAR BOTÃO - CELULAR
 // ==============================
 
 toggle.addEventListener(
@@ -628,6 +966,7 @@ toggle.addEventListener(
             event.touches[0];
 
         toggleDragging=true;
+
         toggleMoved=false;
 
         toggleOffsetX=
@@ -639,8 +978,258 @@ toggle.addEventListener(
             toggle.offsetTop;
 
     },
-    {
-        passive:true
+    {passive:true}
+);
+
+
+document.addEventListener(
+    "touchmove",
+    event=>{
+
+        if(!toggleDragging)return;
+
+        const touch=
+            event.touches[0];
+
+        toggleMoved=true;
+
+        toggle.style.left=
+            touch.clientX-
+            toggleOffsetX+
+            "px";
+
+        toggle.style.top=
+            touch.clientY-
+            toggleOffsetY+
+            "px";
+
+        toggle.style.right="auto";
+
+        toggle.style.bottom="auto";
+
+    },
+    {passive:true}
+);
+
+
+document.addEventListener(
+    "touchend",
+    ()=>{
+
+        if(!toggleDragging)return;
+
+        if(toggleMoved){
+
+            toggle.dataset.dragged=
+            "true";
+
+        }
+
+        toggleDragging=false;
+
+    }
+);
+
+
+// ==============================
+// ARRASTAR GUI - PC
+// ==============================
+
+$("pgHead").addEventListener(
+    "mousedown",
+    event=>{
+
+        dragging=true;
+
+        offsetX=
+            event.clientX-
+            gui.offsetLeft;
+
+        offsetY=
+            event.clientY-
+            gui.offsetTop;
+
+        event.preventDefault();
+
+    }
+);
+
+
+document.addEventListener(
+    "mousemove",
+    event=>{
+
+        if(!dragging)return;
+
+        gui.style.left=
+            event.clientX-
+            offsetX+
+            "px";
+
+        gui.style.top=
+            event.clientY-
+            offsetY+
+            "px";
+
+        gui.style.transform=
+            "scale(1)";
+
+    }
+);
+
+
+document.addEventListener(
+    "mouseup",
+    ()=>{
+
+        dragging=false;
+
+    }
+);
+
+
+// ==============================
+// ARRASTAR GUI - CELULAR
+// ==============================
+
+let touchDragging=false;
+
+let touchOffsetX=0;
+let touchOffsetY=0;
+
+
+$("pgHead").addEventListener(
+    "touchstart",
+    event=>{
+
+        const touch=
+            event.touches[0];
+
+        touchDragging=true;
+
+        touchOffsetX=
+            touch.clientX-
+            gui.offsetLeft;
+
+        touchOffsetY=
+            touch.clientY-
+            gui.offsetTop;
+
+    },
+    {passive:true}
+);
+
+
+document.addEventListener(
+    "touchmove",
+    event=>{
+
+        if(!touchDragging)return;
+
+        const touch=
+            event.touches[0];
+
+        gui.style.left=
+            touch.clientX-
+            touchOffsetX+
+            "px";
+
+        gui.style.top=
+            touch.clientY-
+            touchOffsetY+
+            "px";
+
+        gui.style.transform=
+            "scale(1)";
+
+    },
+    {passive:true}
+);
+
+
+document.addEventListener(
+    "touchend",
+    ()=>{
+
+        touchDragging=false;
+
+    }
+);
+
+
+// ==============================
+// ESC / ALT
+// ==============================
+
+function toggleHiddenMode(){
+
+    hidden=!hidden;
+
+    if(hidden){
+
+        gui.style.display="none";
+
+        toggle.style.display="none";
+
+        notifyBox.style.display="none";
+
+    }else{
+
+        gui.style.display="";
+
+        toggle.style.display="";
+
+        notifyBox.style.display="";
+
+    }
+
+}
+
+
+document.addEventListener(
+    "keydown",
+    event=>{
+
+        if(event.key==="Escape"){
+
+            minimized=!minimized;
+
+            gui.classList.toggle(
+                "pgMini",
+                minimized
+            );
+
+        }
+
+
+        if(event.key==="Alt"){
+
+            toggleHiddenMode();
+
+        }
+
+    }
+);
+
+
+// ==============================
+// BOTÃO CENTRAL
+// ==============================
+
+document.addEventListener(
+    "mousedown",
+    event=>{
+
+        if(event.button!==1)return;
+
+        event.preventDefault();
+
+        toggleHiddenMode();
+
+    }
+);
+
+})();rue
     }
 );
 
