@@ -11,14 +11,27 @@ if(key!==KEY_CORRETA){
 
 if(document.getElementById("pgFloat"))return;
 
+
+// ==============================
+// ESTADOS
+// ==============================
+
 let minimized=false;
 let hidden=false;
+
 let pageText="";
-let apiKey="";
 let pageImages=[];
+
+let apiPrincipal="";
+let apiReserva="";
+
+let usandoReserva=false;
+
 let dragging=false;
 let offsetX=0;
 let offsetY=0;
+
+const MAX_TENTATIVAS_SAFETY=3;
 
 
 // ==============================
@@ -28,6 +41,7 @@ let offsetY=0;
 const favicon=document.createElement("link");
 
 favicon.rel="icon";
+
 favicon.href=
 "https://media.tenor.com/m11vauEEbcUAAAAM/meow-neko-arc.gif";
 
@@ -55,7 +69,7 @@ style.textContent=`
     top:80px;
     left:50%;
 
-    width:330px;
+    width:335px;
 
     padding:16px;
 
@@ -78,7 +92,9 @@ style.textContent=`
 
     user-select:none;
 
-    transform:translateX(-50%) scale(1);
+    transform:
+        translateX(-50%)
+        scale(1);
 
     transition:
         opacity .3s ease,
@@ -89,6 +105,7 @@ style.textContent=`
 #pgFloat.pgMini{
 
     opacity:0;
+
     visibility:hidden;
 
     transform:
@@ -101,10 +118,13 @@ style.textContent=`
     height:32px;
 
     display:flex;
+
     align-items:center;
+
     justify-content:center;
 
     font-size:18px;
+
     font-weight:bold;
 
     letter-spacing:1px;
@@ -120,23 +140,27 @@ style.textContent=`
 
     height:1px;
 
-    background:rgba(255,255,255,.2);
+    background:
+        rgba(255,255,255,.2);
 
     margin-bottom:14px;
 }
 
 #pgQuestion,
-#pgAnswer{
+#pgAnswer,
+#pgReserve{
 
     width:100%;
 
     box-sizing:border-box;
 
-    background:rgba(0,0,0,.4);
+    background:
+        rgba(0,0,0,.4);
 
     color:#eee;
 
-    border:1px solid rgba(255,255,255,.18);
+    border:
+        1px solid rgba(255,255,255,.18);
 
     border-radius:13px;
 
@@ -144,7 +168,10 @@ style.textContent=`
 
     outline:none;
 
-    font-family:"Trebuchet MS",Arial,sans-serif;
+    font-family:
+        "Trebuchet MS",
+        Arial,
+        sans-serif;
 
     font-size:14px;
 
@@ -167,10 +194,23 @@ style.textContent=`
     margin-top:10px;
 }
 
-#pgQuestion:focus,
-#pgAnswer:focus{
+#pgReserve{
 
-    border-color:rgba(255,255,255,.5);
+    height:70px;
+
+    resize:none;
+
+    margin-top:10px;
+
+    display:none;
+}
+
+#pgQuestion:focus,
+#pgAnswer:focus,
+#pgReserve:focus{
+
+    border-color:
+        rgba(255,255,255,.5);
 
     box-shadow:
         0 0 15px
@@ -181,7 +221,8 @@ style.textContent=`
 
     width:100%;
 
-    border:1px solid rgba(255,255,255,.12);
+    border:
+        1px solid rgba(255,255,255,.12);
 
     border-radius:12px;
 
@@ -189,11 +230,15 @@ style.textContent=`
 
     margin-top:9px;
 
-    background:rgba(255,255,255,.12);
+    background:
+        rgba(255,255,255,.12);
 
     color:#eee;
 
-    font-family:"Trebuchet MS",Arial,sans-serif;
+    font-family:
+        "Trebuchet MS",
+        Arial,
+        sans-serif;
 
     font-weight:bold;
 
@@ -209,11 +254,14 @@ style.textContent=`
 
 #pgFloat button:hover{
 
-    background:rgba(255,255,255,.2);
+    background:
+        rgba(255,255,255,.2);
 
-    transform:translateY(-2px);
+    transform:
+        translateY(-2px);
 
-    box-shadow:0 6px 18px #0005;
+    box-shadow:
+        0 6px 18px #0005;
 }
 
 #pgFloat button:active{
@@ -230,6 +278,24 @@ style.textContent=`
     transform:none;
 }
 
+#pgReserveTitle{
+
+    display:none;
+
+    margin-top:12px;
+
+    font-size:13px;
+
+    font-weight:bold;
+
+    color:#ccc;
+}
+
+#pgSaveReserve{
+
+    display:none;
+}
+
 #pgStatus{
 
     margin-top:9px;
@@ -238,7 +304,8 @@ style.textContent=`
 
     border-radius:10px;
 
-    background:rgba(255,255,255,.06);
+    background:
+        rgba(255,255,255,.06);
 
     color:#aaa;
 
@@ -252,9 +319,11 @@ style.textContent=`
     position:fixed;
 
     right:20px;
+
     bottom:25px;
 
     width:62px;
+
     height:62px;
 
     border-radius:50%;
@@ -265,7 +334,8 @@ style.textContent=`
 
     z-index:2147483641;
 
-    box-shadow:0 8px 30px #000b;
+    box-shadow:
+        0 8px 30px #000b;
 
     cursor:pointer;
 
@@ -274,6 +344,7 @@ style.textContent=`
     display:flex;
 
     align-items:center;
+
     justify-content:center;
 
     transition:
@@ -301,6 +372,7 @@ style.textContent=`
 #pgToggle img{
 
     width:100%;
+
     height:100%;
 
     object-fit:cover;
@@ -315,6 +387,7 @@ style.textContent=`
     position:fixed;
 
     top:25px;
+
     left:50%;
 
     transform:
@@ -329,7 +402,10 @@ style.textContent=`
 
     border-radius:10px;
 
-    font-family:"Trebuchet MS",Arial,sans-serif;
+    font-family:
+        "Trebuchet MS",
+        Arial,
+        sans-serif;
 
     font-weight:bold;
 
@@ -343,7 +419,8 @@ style.textContent=`
         opacity .3s ease,
         transform .35s ease;
 
-    box-shadow:0 8px 25px #0008;
+    box-shadow:
+        0 8px 25px #0008;
 
     pointer-events:none;
 }
@@ -392,6 +469,19 @@ placeholder="A resposta da IA aparecerá aqui..."
 readonly
 ></textarea>
 
+<div id="pgReserveTitle">
+    API RESERVA
+</div>
+
+<textarea
+id="pgReserve"
+placeholder="Cole a API reserva aqui..."
+></textarea>
+
+<button id="pgSaveReserve">
+    USAR API RESERVA
+</button>
+
 `;
 
 document.body.appendChild(gui);
@@ -426,7 +516,9 @@ notifyBox.textContent="Feito!!";
 
 document.body.appendChild(notifyBox);
 
-const $=id=>document.getElementById(id);
+
+const $=id=>
+document.getElementById(id);
 
 
 // ==============================
@@ -454,12 +546,90 @@ function notify(text="Feito!!"){
 
 
 // ==============================
+// PEDIR API PRINCIPAL
+// ==============================
+
+function pedirApiPrincipal(){
+
+    if(apiPrincipal)
+        return true;
+
+    const nova=
+        prompt(
+            "Cole sua chave principal do OpenRouter:"
+        );
+
+    if(!nova)
+        return false;
+
+    apiPrincipal=
+        nova.trim();
+
+    return true;
+}
+
+
+// ==============================
+// API RESERVA
+// SÓ APARECE QUANDO HOUVER
+// ERRO DE LIMITE/COTA
+// ==============================
+
+function mostrarApiReserva(){
+
+    $("pgReserveTitle").style.display=
+        "block";
+
+    $("pgReserve").style.display=
+        "block";
+
+    $("pgSaveReserve").style.display=
+        "block";
+
+    notify(
+        "API principal atingiu o limite"
+    );
+}
+
+
+// ==============================
+// VERIFICA SE É LIMITE/COTA
+// ==============================
+
+function ehErroDeLimite(status,mensagem=""){
+
+    const texto=
+        String(mensagem).toLowerCase();
+
+    return(
+        status===429 ||
+
+        texto.includes("rate limit") ||
+
+        texto.includes("rate_limit") ||
+
+        texto.includes("quota") ||
+
+        texto.includes("credit limit") ||
+
+        texto.includes("credits exhausted") ||
+
+        texto.includes("insufficient credits") ||
+
+        texto.includes("too many requests")
+    );
+}
+
+
+// ==============================
 // LER PÁGINA
 // ==============================
 
 $("pgRead").onclick=()=>{
 
-    const clone=document.body.cloneNode(true);
+    const clone=
+        document.body.cloneNode(true);
+
 
     [
         "#pgFloat",
@@ -477,14 +647,11 @@ $("pgRead").onclick=()=>{
     });
 
 
-    // ==========================
-    // TEXTO
-    // ==========================
-
     pageText=
         clone.innerText
         .replace(/\n{3,}/g,"\n\n")
         .trim();
+
 
     pageText=
         pageText.slice(0,50000);
@@ -496,11 +663,14 @@ $("pgRead").onclick=()=>{
 
     pageImages=[];
 
+
     const imagens=
         [...document.images];
 
 
-    for(const img of imagens){
+    for(
+        const img of imagens
+    ){
 
         if(
             !img.src ||
@@ -512,8 +682,6 @@ $("pgRead").onclick=()=>{
         }
 
 
-        // Evita imagens do próprio GUI
-
         if(
             img.closest("#pgFloat") ||
             img.closest("#pgToggle")
@@ -523,7 +691,9 @@ $("pgRead").onclick=()=>{
         }
 
 
-        const url=img.currentSrc||img.src;
+        const url=
+            img.currentSrc ||
+            img.src;
 
 
         if(
@@ -543,9 +713,9 @@ $("pgRead").onclick=()=>{
         }
 
 
-        // Máximo de 10 imagens
-
-        if(pageImages.length>=10){
+        if(
+            pageImages.length>=10
+        ){
 
             break;
         }
@@ -553,7 +723,10 @@ $("pgRead").onclick=()=>{
     }
 
 
-    if(!pageText && !pageImages.length){
+    if(
+        !pageText &&
+        !pageImages.length
+    ){
 
         alert(
             "Não encontrei texto nem imagens!"
@@ -578,6 +751,130 @@ $("pgRead").onclick=()=>{
 
 
 // ==============================
+// FAZER UMA REQUISIÇÃO
+// ==============================
+
+async function fazerPergunta(apiKey,pergunta){
+
+    const content=[
+
+        {
+            type:"text",
+
+            text:
+                "PERGUNTA:\n"+
+                pergunta+
+                "\n\n"+
+                "CONTEÚDO DA PÁGINA:\n"+
+                pageText
+        }
+
+    ];
+
+
+    for(
+        const imagem of pageImages
+    ){
+
+        content.push({
+
+            type:"image_url",
+
+            image_url:{
+                url:imagem
+            }
+
+        });
+
+    }
+
+
+    const resposta=
+        await fetch(
+            "https://openrouter.ai/api/v1/chat/completions",
+            {
+
+                method:"POST",
+
+                headers:{
+
+                    "Authorization":
+                        "Bearer "+apiKey,
+
+                    "Content-Type":
+                        "application/json"
+
+                },
+
+                body:JSON.stringify({
+
+                    model:
+                        "openrouter/free",
+
+                    messages:[
+
+                        {
+
+                            role:"system",
+
+                            content:
+                                "Responda em português de forma clara e objetiva. Analise o texto e as imagens fornecidas quando forem relevantes. Não inclua classificações internas de segurança na resposta."
+                        },
+
+                        {
+
+                            role:"user",
+
+                            content:content
+
+                        }
+
+                    ]
+
+                })
+
+            }
+        );
+
+
+    const dados=
+        await resposta.json();
+
+
+    return{
+        resposta,
+        dados
+    };
+
+}
+
+
+// ==============================
+// SAFETY
+// ==============================
+
+function respostaEhSafety(texto){
+
+    if(!texto)
+        return true;
+
+    const t=
+        String(texto)
+        .trim()
+        .toLowerCase();
+
+
+    return(
+        t==="user safety: safe" ||
+
+        t.startsWith(
+            "user safety: safe"
+        )
+    );
+}
+
+
+// ==============================
 // PERGUNTAR À IA
 // ==============================
 
@@ -599,7 +896,10 @@ $("pgAsk").onclick=async()=>{
     }
 
 
-    if(!pageText && !pageImages.length){
+    if(
+        !pageText &&
+        !pageImages.length
+    ){
 
         alert(
             "Clique em LER PÁGINA + IMAGENS primeiro!"
@@ -609,24 +909,28 @@ $("pgAsk").onclick=async()=>{
     }
 
 
-    // ==========================
-    // CHAVE DA API
-    // ==========================
+    if(
+        !usandoReserva &&
+        !pedirApiPrincipal()
+    ){
 
-    if(!apiKey){
+        return;
+    }
 
-        apiKey=
-            prompt(
-                "Cole sua chave do OpenRouter:"
-            );
 
-        if(!apiKey){
+    const apiAtual=
+        usandoReserva
+        ? apiReserva
+        : apiPrincipal;
 
-            return;
-        }
 
-        apiKey=apiKey.trim();
+    if(!apiAtual){
 
+        alert(
+            "Nenhuma API disponível."
+        );
+
+        return;
     }
 
 
@@ -635,173 +939,218 @@ $("pgAsk").onclick=async()=>{
 
     $("pgAsk").disabled=true;
 
-
     $("pgAnswer").value=
-        "Analisando texto e imagens...";
+        "Analisando...";
 
 
     try{
 
+        let resultado="";
 
-        // ======================
-        // CONTEÚDO DA MENSAGEM
-        // ======================
+        let ultimaMensagem="";
 
-        const content=[
-
-            {
-                type:"text",
-
-                text:
-                    "PERGUNTA:\n"+
-                    pergunta+
-                    "\n\n"+
-                    "CONTEÚDO TEXTUAL DA PÁGINA:\n"+
-                    pageText
-            }
-
-        ];
+        let limiteDetectado=false;
 
 
         // ======================
-        // ADICIONA IMAGENS
+        // TENTATIVAS
         // ======================
 
         for(
-            const imagem of pageImages
+            let tentativa=1;
+            tentativa<=MAX_TENTATIVAS_SAFETY;
+            tentativa++
         ){
 
-            content.push({
-
-                type:"image_url",
-
-                image_url:{
-                    url:imagem
-                }
-
-            });
-
-        }
+            $("pgAnswer").value=
+                "Consultando IA..."+
+                "\nTentativa "+
+                tentativa+
+                "/"+
+                MAX_TENTATIVAS_SAFETY;
 
 
-        // ======================
-        // REQUEST
-        // ======================
-
-        const resposta=
-            await fetch(
-                "https://openrouter.ai/api/v1/chat/completions",
-                {
-
-                    method:"POST",
-
-                    headers:{
-
-                        "Authorization":
-                            "Bearer "+apiKey,
-
-                        "Content-Type":
-                            "application/json"
-
-                    },
-
-                    body:JSON.stringify({
-
-                        model:
-                            "openrouter/free",
-
-                        messages:[
-
-                            {
-
-                                role:"system",
-
-                                content:
-                                    "Você é um assistente que analisa páginas da internet. Responda em português. Analise tanto o texto quanto as imagens fornecidas quando forem relevantes para a pergunta. Não mostre classificações internas de segurança como 'User Safety: safe'; responda diretamente à pergunta."
-
-                            },
-
-                            {
-
-                                role:"user",
-
-                                content:content
-
-                            }
-
-                        ]
-
-                    })
-
-                }
-            );
+            const retorno=
+                await fazerPergunta(
+                    apiAtual,
+                    pergunta
+                );
 
 
-        const dados=
-            await resposta.json();
+            const status=
+                retorno.resposta.status;
 
 
-        // ======================
-        // ERRO DA API
-        // ======================
+            const dados=
+                retorno.dados;
 
-        if(!resposta.ok){
+
+            const mensagemErro=
+                dados?.error?.message ||
+                "";
+
+
+            ultimaMensagem=
+                mensagemErro;
+
+
+            // ==================
+            // LIMITE/COTA
+            // ==================
 
             if(
-                resposta.status===401 ||
-                resposta.status===403
+                ehErroDeLimite(
+                    status,
+                    mensagemErro
+                )
             ){
 
-                apiKey="";
+                limiteDetectado=true;
+
+                break;
+            }
+
+
+            // ==================
+            // OUTRO ERRO
+            // ==================
+
+            if(
+                !retorno.resposta.ok
+            ){
+
+                throw new Error(
+                    mensagemErro ||
+                    "Erro HTTP "+
+                    status
+                );
 
             }
 
-            throw new Error(
-                dados?.error?.message ||
-                "Erro HTTP "+
-                resposta.status
-            );
-
-        }
-
-
-        // ======================
-        // RESPOSTA
-        // ======================
-
-        let resultado=
-            dados
-            ?.choices
-            ?.[0]
-            ?.message
-            ?.content;
-
-
-        if(
-            typeof resultado!=="string"
-        ){
 
             resultado=
-                JSON.stringify(
-                    resultado,
-                    null,
-                    2
-                );
+                dados
+                ?.choices
+                ?.[0]
+                ?.message
+                ?.content;
+
+
+            if(
+                typeof resultado!=="string"
+            ){
+
+                resultado=
+                    JSON.stringify(
+                        resultado,
+                        null,
+                        2
+                    );
+
+            }
+
+
+            // ==================
+            // SAFETY
+            // ==================
+
+            if(
+                respostaEhSafety(
+                    resultado
+                )
+            ){
+
+                if(
+                    tentativa<
+                    MAX_TENTATIVAS_SAFETY
+                ){
+
+                    await new Promise(
+                        resolve=>
+                            setTimeout(
+                                resolve,
+                                700
+                            )
+                    );
+
+                    continue;
+
+                }
+
+
+                // Terminou as tentativas
+                // de safety.
+
+                resultado=
+                    "";
+
+                break;
+
+            }
+
+
+            // ==================
+            // RESPOSTA NORMAL
+            // ==================
+
+            if(resultado){
+
+                break;
+            }
 
         }
 
+
+        // ======================
+        // LIMITE DA API
+        // ======================
+
+        if(limiteDetectado){
+
+            if(!usandoReserva){
+
+                mostrarApiReserva();
+
+                $("pgAnswer").value=
+                    "A API principal atingiu o limite.\n\n"+
+                    "Cole uma API reserva abaixo.";
+
+                return;
+
+            }else{
+
+                throw new Error(
+                    "A API reserva também atingiu o limite."
+                );
+
+            }
+
+        }
+
+
+        // ======================
+        // SAFETY ESGOTADO
+        // ======================
 
         if(!resultado){
 
-            throw new Error(
-                "A IA não retornou uma resposta."
+            $("pgAnswer").value=
+                "A IA não retornou uma resposta válida após "+
+                MAX_TENTATIVAS_SAFETY+
+                " tentativas.";
+
+            notify(
+                "Tentativas esgotadas"
             );
+
+            return;
 
         }
 
 
-        // Remove classificações que
-        // eventualmente apareçam.
+        // ======================
+        // LIMPEZA
+        // ======================
 
         resultado=
             resultado
@@ -817,7 +1166,9 @@ $("pgAsk").onclick=async()=>{
 
 
         notify(
-            "Resposta recebida!"
+            usandoReserva
+            ? "Resposta pela API reserva!"
+            : "Resposta recebida!"
         );
 
 
@@ -847,6 +1198,45 @@ $("pgAsk").onclick=async()=>{
 
 
 // ==============================
+// SALVAR API RESERVA
+// ==============================
+
+$("pgSaveReserve").onclick=()=>{
+
+    const nova=
+        $("pgReserve")
+        .value
+        .trim();
+
+
+    if(!nova){
+
+        alert(
+            "Cole uma API reserva primeiro!"
+        );
+
+        return;
+    }
+
+
+    apiReserva=
+        nova;
+
+    usandoReserva=true;
+
+
+    $("pgStatus").textContent=
+        "API reserva ativada";
+
+
+    notify(
+        "API reserva ativada!"
+    );
+
+};
+
+
+// ==============================
 // MINIMIZAR
 // ==============================
 
@@ -861,7 +1251,6 @@ toggle.onclick=()=>{
         "false";
 
         return;
-
     }
 
 
@@ -877,7 +1266,7 @@ toggle.onclick=()=>{
 
 
 // ==============================
-// ARRASTAR BOTÃO - PC
+// ARRASTAR BOTÃO PC
 // ==============================
 
 let toggleDragging=false;
@@ -913,19 +1302,24 @@ document.addEventListener(
     "mousemove",
     event=>{
 
-        if(!toggleDragging)return;
+        if(!toggleDragging)
+            return;
+
 
         toggleMoved=true;
+
 
         toggle.style.left=
             event.clientX-
             toggleOffsetX+
             "px";
 
+
         toggle.style.top=
             event.clientY-
             toggleOffsetY+
             "px";
+
 
         toggle.style.right="auto";
 
@@ -939,7 +1333,9 @@ document.addEventListener(
     "mouseup",
     ()=>{
 
-        if(!toggleDragging)return;
+        if(!toggleDragging)
+            return;
+
 
         if(toggleMoved){
 
@@ -948,6 +1344,7 @@ document.addEventListener(
 
         }
 
+
         toggleDragging=false;
 
     }
@@ -955,7 +1352,7 @@ document.addEventListener(
 
 
 // ==============================
-// ARRASTAR BOTÃO - CELULAR
+// ARRASTAR BOTÃO CELULAR
 // ==============================
 
 toggle.addEventListener(
@@ -963,270 +1360,4 @@ toggle.addEventListener(
     event=>{
 
         const touch=
-            event.touches[0];
-
-        toggleDragging=true;
-
-        toggleMoved=false;
-
-        toggleOffsetX=
-            touch.clientX-
-            toggle.offsetLeft;
-
-        toggleOffsetY=
-            touch.clientY-
-            toggle.offsetTop;
-
-    },
-    {passive:true}
-);
-
-
-document.addEventListener(
-    "touchmove",
-    event=>{
-
-        if(!toggleDragging)return;
-
-        const touch=
-            event.touches[0];
-
-        toggleMoved=true;
-
-        toggle.style.left=
-            touch.clientX-
-            toggleOffsetX+
-            "px";
-
-        toggle.style.top=
-            touch.clientY-
-            toggleOffsetY+
-            "px";
-
-        toggle.style.right="auto";
-
-        toggle.style.bottom="auto";
-
-    },
-    {passive:true}
-);
-
-
-document.addEventListener(
-    "touchend",
-    ()=>{
-
-        if(!toggleDragging)return;
-
-        if(toggleMoved){
-
-            toggle.dataset.dragged=
-            "true";
-
-        }
-
-        toggleDragging=false;
-
-    }
-);
-
-
-// ==============================
-// ARRASTAR GUI - PC
-// ==============================
-
-$("pgHead").addEventListener(
-    "mousedown",
-    event=>{
-
-        dragging=true;
-
-        offsetX=
-            event.clientX-
-            gui.offsetLeft;
-
-        offsetY=
-            event.clientY-
-            gui.offsetTop;
-
-        event.preventDefault();
-
-    }
-);
-
-
-document.addEventListener(
-    "mousemove",
-    event=>{
-
-        if(!dragging)return;
-
-        gui.style.left=
-            event.clientX-
-            offsetX+
-            "px";
-
-        gui.style.top=
-            event.clientY-
-            offsetY+
-            "px";
-
-        gui.style.transform=
-            "scale(1)";
-
-    }
-);
-
-
-document.addEventListener(
-    "mouseup",
-    ()=>{
-
-        dragging=false;
-
-    }
-);
-
-
-// ==============================
-// ARRASTAR GUI - CELULAR
-// ==============================
-
-let touchDragging=false;
-
-let touchOffsetX=0;
-let touchOffsetY=0;
-
-
-$("pgHead").addEventListener(
-    "touchstart",
-    event=>{
-
-        const touch=
-            event.touches[0];
-
-        touchDragging=true;
-
-        touchOffsetX=
-            touch.clientX-
-            gui.offsetLeft;
-
-        touchOffsetY=
-            touch.clientY-
-            gui.offsetTop;
-
-    },
-    {passive:true}
-);
-
-
-document.addEventListener(
-    "touchmove",
-    event=>{
-
-        if(!touchDragging)return;
-
-        const touch=
-            event.touches[0];
-
-        gui.style.left=
-            touch.clientX-
-            touchOffsetX+
-            "px";
-
-        gui.style.top=
-            touch.clientY-
-            touchOffsetY+
-            "px";
-
-        gui.style.transform=
-            "scale(1)";
-
-    },
-    {passive:true}
-);
-
-
-document.addEventListener(
-    "touchend",
-    ()=>{
-
-        touchDragging=false;
-
-    }
-);
-
-
-// ==============================
-// ESC / ALT
-// ==============================
-
-function toggleHiddenMode(){
-
-    hidden=!hidden;
-
-    if(hidden){
-
-        gui.style.display="none";
-
-        toggle.style.display="none";
-
-        notifyBox.style.display="none";
-
-    }else{
-
-        gui.style.display="";
-
-        toggle.style.display="";
-
-        notifyBox.style.display="";
-
-    }
-
-}
-
-
-document.addEventListener(
-    "keydown",
-    event=>{
-
-        if(event.key==="Escape"){
-
-            minimized=!minimized;
-
-            gui.classList.toggle(
-                "pgMini",
-                minimized
-            );
-
-        }
-
-
-        if(event.key==="Alt"){
-
-            toggleHiddenMode();
-
-        }
-
-    }
-);
-
-
-// ==============================
-// BOTÃO CENTRAL
-// ==============================
-
-document.addEventListener(
-    "mousedown",
-    event=>{
-
-        if(event.button!==1)return;
-
-        event.preventDefault();
-
-        toggleHiddenMode();
-
-    }
-);
-
-})();
+            event.touches[0]
