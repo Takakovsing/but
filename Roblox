@@ -1,5 +1,5 @@
 --==================================================
--- PARTE 1: GUI (Portuga Beautiful UI)
+-- PARTE 1: GUI (Portuga Beautiful UI) — CORRIGIDO
 --==================================================
 
 pcall(function()
@@ -23,12 +23,12 @@ gui.Enabled = false
 gui.Parent = game.CoreGui
 
 --==================================================
--- JANELA
+-- JANELA (tamanho original 300x300)
 --==================================================
 
 local main = Instance.new("Frame")
-main.Size = UDim2.new(0, 320, 0, 440)
-main.Position = UDim2.new(0.5, -160, 0.5, -220)
+main.Size = UDim2.new(0, 300, 0, 300)
+main.Position = UDim2.new(0.5, -150, 0.5, -150)
 main.BackgroundColor3 = BLACK
 main.BackgroundTransparency = 0.08
 main.BorderSizePixel = 0
@@ -121,10 +121,10 @@ local BUTTON_GAP = 7
 local CHILDREN_OFFSET = 5
 
 local gavetas = {}
-local UI = {}   -- exportado pra Parte 2
+local UI = {}
 
 --==================================================
--- CRIAR SWITCH
+-- CRIAR SWITCH (com callback onToggle)
 --==================================================
 
 local function criarSwitch(parent)
@@ -189,10 +189,16 @@ local function criarSwitch(parent)
     knobStroke.Parent = knob
 
     local ligado = false
+    local callbacks = {}
+
     local api = {}
 
     function api.getState()
         return ligado
+    end
+
+    function api.onToggle(fn)
+        table.insert(callbacks, fn)
     end
 
     function api.setVisual(v)
@@ -218,6 +224,7 @@ local function criarSwitch(parent)
 
     switch.MouseButton1Click:Connect(function()
         ligado = not ligado
+
         if ligado then
             TweenService:Create(switch, smallTween, {BackgroundColor3 = Color3.fromRGB(50,0,0)}):Play()
             TweenService:Create(border, smallTween, {Color = RED, Transparency = 0}):Play()
@@ -230,6 +237,11 @@ local function criarSwitch(parent)
             TweenService:Create(knob, drawerTween, {Position = UDim2.new(0,3,0.5,-11), BackgroundColor3 = Color3.fromRGB(180,180,185)}):Play()
             TweenService:Create(onText, smallTween, {TextTransparency = 1}):Play()
             TweenService:Create(offText, smallTween, {TextTransparency = 0}):Play()
+        end
+
+        -- Chama callbacks com o estado já atualizado
+        for _, fn in ipairs(callbacks) do
+            pcall(fn, ligado)
         end
     end)
 
@@ -294,16 +306,17 @@ end
 
 local function criarSwitchButton(parent, nome, ordem)
     local frame, stroke, label = criarLinhaBotao(parent, nome, ordem)
-    local switch = criarSwitch(frame)
-    switch.frame.Position = UDim2.new(1,-64,0.5,-14)
+    local switchApi = criarSwitch(frame)
+    switchApi.frame.Position = UDim2.new(1,-64,0.5,-14)
 
     local api = {
         frame = frame,
         label = label,
         stroke = stroke,
-        switch = switch,
-        getState = switch.getState,
-        setOn = switch.setVisual,
+        switch = switchApi,
+        onToggle = switchApi.onToggle,
+        setOn = switchApi.setVisual,
+        getState = switchApi.getState,
         type = "switch",
     }
     return api
@@ -355,7 +368,7 @@ local function criarCyclerButton(parent, nome, valorInicial, ordem)
 end
 
 --==================================================
--- BOTÃO TIPO ACTION (ex: PANIC)
+-- BOTÃO TIPO ACTION
 --==================================================
 
 local function criarActionButton(parent, nome, ordem)
@@ -448,7 +461,6 @@ local function criarGaveta(numero, nome, botoes)
     drawer.ZIndex = 5
     drawer.Parent = container
 
-    -- HEADER
     local header = Instance.new("TextButton")
     header.Size = UDim2.new(1,0,0,HEADER_HEIGHT)
     header.BackgroundColor3 = Color3.fromRGB(9,9,11)
@@ -504,7 +516,6 @@ local function criarGaveta(numero, nome, botoes)
     arrow.ZIndex = 11
     arrow.Parent = header
 
-    -- BOTÕES
     local children = Instance.new("Frame")
     children.Size = UDim2.new(1,0,0,0)
     children.Position = UDim2.new(0,0,0,HEADER_HEIGHT + CHILDREN_OFFSET)
@@ -520,7 +531,6 @@ local function criarGaveta(numero, nome, botoes)
     childLayout.SortOrder = Enum.SortOrder.LayoutOrder
     childLayout.Parent = children
 
-    -- CRIA BOTÕES
     for ordem, cfg in ipairs(botoes) do
         local api
         if cfg.tipo == "switch" then
@@ -535,7 +545,6 @@ local function criarGaveta(numero, nome, botoes)
         end
     end
 
-    -- DADOS
     local data = {
         drawer = drawer,
         children = children,
@@ -583,10 +592,10 @@ criarGaveta(1, "VISUAL", {
 })
 
 criarGaveta(2, "COMBATE", {
-    {tipo="switch", nome="AIMBOT",       key="aimSwitch"},
-    {tipo="cycler", nome="AIM PART", valor="HEAD",  key="partBtn"},
-    {tipo="cycler", nome="FOV AIM",  valor=120,     key="fovBtn"},
-    {tipo="switch", nome="AIM TOOL",     key="aimToolSwitch"},
+    {tipo="switch", nome="AIMBOT",   key="aimSwitch"},
+    {tipo="cycler", nome="AIM PART", valor="HEAD", key="partBtn"},
+    {tipo="cycler", nome="FOV AIM",  valor=120,    key="fovBtn"},
+    {tipo="switch", nome="AIM TOOL", key="aimToolSwitch"},
 })
 
 criarGaveta(3, "FILTROS", {
@@ -627,7 +636,7 @@ local Camera = workspace.CurrentCamera
 local Player = Players.LocalPlayer
 
 --==================================================
--- VARIÁVEIS DE ESTADO
+-- ESTADO
 --==================================================
 
 local espEnabled = false
@@ -793,45 +802,38 @@ if Player.Character then
 end
 
 --==================================================
--- CONECTAR SWITCHES
+-- CONECTAR SWITCHES via onToggle
 --==================================================
 
--- ESP
-UI.espSwitch.switch.frame.MouseButton1Click:Connect(function()
-    espEnabled = UI.espSwitch.getState()
+UI.espSwitch.onToggle(function(state)
+    espEnabled = state
 end)
 
--- AIMBOT
-UI.aimSwitch.switch.frame.MouseButton1Click:Connect(function()
-    aimbotEnabled = UI.aimSwitch.getState()
+UI.aimSwitch.onToggle(function(state)
+    aimbotEnabled = state
 end)
 
--- AIM TOOL
-UI.aimToolSwitch.switch.frame.MouseButton1Click:Connect(function()
-    aimToolEnabled = UI.aimToolSwitch.getState()
+UI.aimToolSwitch.onToggle(function(state)
+    aimToolEnabled = state
 end)
 
--- TEAM CHECK
-UI.teamCheckSwitch.switch.frame.MouseButton1Click:Connect(function()
-    teamCheck = UI.teamCheckSwitch.getState()
+UI.teamCheckSwitch.onToggle(function(state)
+    teamCheck = state
 end)
 
--- WALL CHECK
-UI.wallCheckSwitch.switch.frame.MouseButton1Click:Connect(function()
-    wallCheck = UI.wallCheckSwitch.getState()
+UI.wallCheckSwitch.onToggle(function(state)
+    wallCheck = state
 end)
 
--- BEHIND
-UI.behindSwitch.switch.frame.MouseButton1Click:Connect(function()
-    showBehindCount = UI.behindSwitch.getState()
-    behindText.Visible = showBehindCount
+UI.behindSwitch.onToggle(function(state)
+    showBehindCount = state
+    behindText.Visible = state
 end)
 
--- RAMPAGE
-UI.rampageSwitch.switch.frame.MouseButton1Click:Connect(function()
-    rampageEnabled = UI.rampageSwitch.getState()
-    rampageText.Visible = rampageEnabled
-    if not rampageEnabled then
+UI.rampageSwitch.onToggle(function(state)
+    rampageEnabled = state
+    rampageText.Visible = state
+    if not state then
         resetRampage()
     else
         updateRampageText()
@@ -941,7 +943,7 @@ local function executarPanic()
     behindText.Visible = false
     rampageText.Visible = false
 
-    -- UI
+    -- Visuais dos switches (setVisual NÃO dispara callbacks)
     UI.espSwitch.setOn(false)
     UI.aimSwitch.setOn(false)
     UI.aimToolSwitch.setOn(false)
@@ -983,7 +985,7 @@ UserInputService.InputBegan:Connect(function(i, g)
 end)
 
 --==================================================
--- LOOP PRINCIPAL (RAINBOW + BEHIND + ESP)
+-- LOOP PRINCIPAL
 --==================================================
 
 RunService.RenderStepped:Connect(function()
