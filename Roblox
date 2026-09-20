@@ -1031,6 +1031,9 @@ criarGaveta(gNum,"MISC",{
     {tipo="switch",nome="ANTI-AFK",key="afkSwitch"},
     {tipo="switch",nome="HIDE FOOTER",key="hideFooterSwitch"},
     {tipo="switch",nome="CLICK MAT",key="clickMatSwitch"},
+    {tipo="switch",nome="ANTI FLING",key="antiFlingSwitch"},
+    {tipo="switch",nome="STREAMER MODE",key="streamerSwitch"},
+    {tipo="switch",nome="BACON MODE",key="baconSwitch"},
 }); gNum=gNum+1
 
 if IS_PRISON then
@@ -1084,6 +1087,21 @@ local hideFooterEnabled=false
 local infJumpEnabled=false
 local noclipEnabled=false
 local clickMatEnabled=false
+local antiFlingEnabled=false
+local ANTI_FLING_THRESHOLD=500
+local ANTI_FLING_ROT_THRESHOLD=200
+local lastSafeCFrame=nil
+local lastSafeVelocity=Vector3.new(0,0,0)
+local streamerModeEnabled=false
+local streamerNameMap={}
+local streamerIdCounter=0
+local STREAMER_NAME_PREFIX="Player"
+local rgbHighlight=nil
+local rgbHue=0
+local baconEnabled=false
+local BACON_PART_NAME="PortugaBacon"
+local BACON_MESH="rbxassetid://125750702"
+local BACON_TEXTURE="rbxassetid://125751086"
 local originalGravity=workspace.Gravity
 local aimPart="Head"
 local FOV=120
@@ -1096,6 +1114,15 @@ local prisonClickMat=false
 local prisonArrest=false
 local prisonRange=60
 local prisonSpeed=0.08
+
+local function sfName(player)
+    if not streamerModeEnabled then return player.DisplayName,player.Name end
+    if not streamerNameMap[player.UserId] then
+        streamerIdCounter+=1
+        streamerNameMap[player.UserId]=STREAMER_NAME_PREFIX.." "..streamerIdCounter
+    end
+    return streamerNameMap[player.UserId],streamerNameMap[player.UserId]
+end
 
 local colors={Color3.fromRGB(0,0,0),Color3.fromRGB(255,255,255),Color3.fromRGB(170,0,255),Color3.fromRGB(255,0,0),Color3.fromRGB(255,255,0),Color3.fromRGB(0,170,255),Color3.fromRGB(0,255,0),Color3.fromRGB(255,0,170),Color3.fromRGB(120,120,120),Color3.fromRGB(255,100,0),Color3.fromRGB(0,255,255),Color3.fromRGB(150,75,0),Color3.fromRGB(128,0,128),Color3.fromRGB(0,100,0),Color3.fromRGB(255,180,180)}
 local colorNames={"BLACK","WHITE","PURPLE","RED","YELLOW","BLUE","GREEN","PINK","GRAY","ORANGE","CYAN","BROWN","DARKPURPLE","DARKGREEN","SALMON","RAINBOW"}
@@ -1266,6 +1293,12 @@ PL.CharacterAdded:Connect(function()
         if UI.jumpBox then local v=UI.jumpBox.getValue(); if v and v>0 then h.UseJumpPower=true; h.JumpPower=v end end
         if spinBotEnabled then h.AutoRotate=false end
     end
+    lastSafeCFrame=nil
+    lastSafeVelocity=Vector3.new(0,0,0)
+    task.wait(0.5)
+    local ch=PL.Character
+    local hrp=ch and ch:FindFirstChild("HumanoidRootPart")
+    if hrp then lastSafeCFrame=hrp.CFrame; lastSafeVelocity=hrp.AssemblyLinearVelocity end
 end)
 if PL.Character then hLD() end
 
@@ -1286,6 +1319,17 @@ UI.saNpcSwitch.onToggle(function(s) silentAimNpcEnabled=s end)
 UI.spinSwitch.onToggle(function(s) spinBotEnabled=s; local h=PL.Character and PL.Character:FindFirstChildOfClass("Humanoid"); if h then h.AutoRotate=not s end end)
 UI.infJumpSwitch.onToggle(function(s) infJumpEnabled=s end)
 UI.noclipSwitch.onToggle(function(s) noclipEnabled=s end)
+UI.antiFlingSwitch.onToggle(function(s)
+    antiFlingEnabled=s
+    if s then
+        local ch=PL.Character
+        local hrp=ch and ch:FindFirstChild("HumanoidRootPart")
+        if hrp then lastSafeCFrame=hrp.CFrame; lastSafeVelocity=hrp.AssemblyLinearVelocity end
+    else
+        lastSafeCFrame=nil
+        lastSafeVelocity=Vector3.new(0,0,0)
+    end
+end)
 
 if IS_PRISON then
     UI.prisonClickMatSwitch.onToggle(function(s) prisonClickMat=s end)
@@ -1408,7 +1452,8 @@ local function uH()
         if r.userLabel and r.player then
             local teamName=(r.player.Team and r.player.Team.Name) or "Sem Time"
             local teamColor=(r.player.Team and r.player.Team.TeamColor.Color) or Color3.fromRGB(120,120,120)
-            r.userLabel.Text="@"..r.player.Name.."  •  "..teamName
+            local _,sNM=sfName(r.player)
+            r.userLabel.Text="@"..sNM.."  •  "..teamName
             r.userLabel.TextColor3=teamColor
         end
         if r.avatarStroke then r.avatarStroke.Color=RED end
@@ -1443,7 +1488,7 @@ local function cPR(p,o)
     av.Position=UDim2.new(0,6,0.5,-18)
     av.BackgroundColor3=Color3.fromRGB(20,20,23)
     av.BorderSizePixel=0
-    av.Image="rbxthumb://type=AvatarHeadShot&id="..p.UserId.."&w=48&h=48"
+    av.Image=streamerModeEnabled and "" or ("rbxthumb://type=AvatarHeadShot&id="..p.UserId.."&w=48&h=48")
     av.ZIndex=11
     Instance.new("UICorner",av).CornerRadius=UDim.new(0,6)
     local as=Instance.new("UIStroke",av)
@@ -1454,7 +1499,8 @@ local function cPR(p,o)
     nl.Size=UDim2.new(1,-90,0,18)
     nl.Position=UDim2.new(0,48,0,6)
     nl.BackgroundTransparency=1
-    nl.Text=p.DisplayName
+    local sDN,sNM=sfName(p)
+    nl.Text=sDN
     nl.Font=Enum.Font.GothamBold
     nl.TextSize=11
     nl.TextColor3=Color3.fromRGB(240,240,240)
@@ -1467,7 +1513,7 @@ local function cPR(p,o)
     ul.Size=UDim2.new(1,-90,0,14)
     ul.Position=UDim2.new(0,48,0,24)
     ul.BackgroundTransparency=1
-    ul.Text="@"..p.Name.."  •  "..teamName
+    ul.Text="@"..sNM.."  •  "..teamName
     ul.Font=Enum.Font.Gotham
     ul.TextSize=10
     ul.TextColor3=teamColor
@@ -1569,7 +1615,7 @@ local function cFR(p,o)
     av.Position=UDim2.new(0,5,0.5,-15)
     av.BackgroundColor3=Color3.fromRGB(20,20,23)
     av.BorderSizePixel=0
-    av.Image="rbxthumb://type=AvatarHeadShot&id="..p.UserId.."&w=48&h=48"
+    av.Image=streamerModeEnabled and "" or ("rbxthumb://type=AvatarHeadShot&id="..p.UserId.."&w=48&h=48")
     av.ZIndex=11
     Instance.new("UICorner",av).CornerRadius=UDim.new(0,15)
     local as=Instance.new("UIStroke",av)
@@ -1580,7 +1626,8 @@ local function cFR(p,o)
     l.Size=UDim2.new(1,-46,1,0)
     l.Position=UDim2.new(0,42,0,0)
     l.BackgroundTransparency=1
-    l.Text=p.DisplayName.." (@"..p.Name..")"
+    local sDN,sNM=sfName(p)
+    l.Text=sDN.." (@"..sNM..")"
     l.Font=Enum.Font.GothamBold
     l.TextSize=10
     l.TextColor3=Color3.fromRGB(220,220,220)
@@ -1591,7 +1638,7 @@ local function cFR(p,o)
         if friends[p.Name] then friends[p.Name]=nil else friends[p.Name]=true end
         uFH()
     end)
-    FR[p]={frame=r,stroke=rs,label=l,avatarStroke=as,player=p}
+    FR[p]={frame=r,stroke=rs,label=l,avatarStroke=as,avatar=av,player=p}
 end
 local function rFL()
     local cur={}
@@ -1652,6 +1699,36 @@ RS.Stepped:Connect(function()
     if not ch then return end
     for _,p in pairs(ch:GetDescendants()) do
         if p:IsA("BasePart") and p.CanCollide then p.CanCollide=false end
+    end
+end)
+
+RS.Heartbeat:Connect(function()
+    if not antiFlingEnabled then return end
+    local ch=PL.Character
+    if not ch then return end
+    local hrp=ch:FindFirstChild("HumanoidRootPart")
+    local h=ch:FindFirstChildOfClass("Humanoid")
+    if not hrp or not h or h.Health<=0 then return end
+    local vel=hrp.AssemblyLinearVelocity
+    local rot=hrp.AssemblyAngularVelocity
+    local pos=hrp.Position
+    local flingDetected=false
+    if vel.Magnitude>ANTI_FLING_THRESHOLD then flingDetected=true end
+    if rot.Magnitude>ANTI_FLING_ROT_THRESHOLD then flingDetected=true end
+    if pos.Y~=pos.Y then flingDetected=true end
+    if flingDetected then
+        pcall(function()
+            hrp.AssemblyLinearVelocity=Vector3.new(0,0,0)
+            hrp.AssemblyAngularVelocity=Vector3.new(0,0,0)
+            hrp.Velocity=Vector3.new(0,0,0)
+            hrp.RotVelocity=Vector3.new(0,0,0)
+            if lastSafeCFrame then hrp.CFrame=lastSafeCFrame end
+        end)
+    else
+        if vel.Magnitude<150 then
+            lastSafeVelocity=vel
+            lastSafeCFrame=hrp.CFrame
+        end
     end
 end)
 
@@ -1739,7 +1816,6 @@ if IS_PRISON then
         if not ch then return end
         local tool=ch:FindFirstChildOfClass("Tool")
         local now=tick()
-
         if prisonClickMat and tool and ShootEvent then
             if now-prisonLastClick>=prisonSpeed then
                 local target,targetPart=getClosestPrisonTarget(prisonRange)
@@ -1760,8 +1836,6 @@ if IS_PRISON then
                 end
             end
         end
-
-        -- ARREST com cooldown 0 (tenta todo frame)
         if prisonArrest and tool and ArrestRemote then
             if now-prisonLastArrest>=0 then
                 local target=getClosestPrisonTarget(15)
@@ -1809,7 +1883,8 @@ local function collectConfig()
         aimToolEnabled=aimToolEnabled,silentAimEnabled=silentAimEnabled,silentAimNpcEnabled=silentAimNpcEnabled,
         fullBrightEnabled=fullBrightEnabled,spinBotEnabled=spinBotEnabled,antiAfkEnabled=antiAfkEnabled,
         hideFooterEnabled=hideFooterEnabled,infJumpEnabled=infJumpEnabled,noclipEnabled=noclipEnabled,
-        clickMatEnabled=clickMatEnabled,
+        clickMatEnabled=clickMatEnabled,antiFlingEnabled=antiFlingEnabled,
+        streamerModeEnabled=streamerModeEnabled,baconEnabled=baconEnabled,
         aimPart=aimPart,FOV=FOV,camFOV=camFOV,colorIndex=colorIndex,themeIndex=themeIndex,
         priorityIndex=priorityIndex,
         teamMiscEnabled=teamMiscEnabled,selectedTeamName=selectedTeam and selectedTeam.Name or nil,
@@ -1843,6 +1918,9 @@ local function applyConfigToSwitches(c)
     UI.infJumpSwitch.setOn(c.infJumpEnabled or false)
     UI.noclipSwitch.setOn(c.noclipEnabled or false)
     UI.clickMatSwitch.setOn(c.clickMatEnabled or false)
+    UI.antiFlingSwitch.setOn(c.antiFlingEnabled or false)
+    UI.streamerSwitch.setOn(c.streamerModeEnabled or false)
+    UI.baconSwitch.setOn(c.baconEnabled or false)
     espEnabled=c.espEnabled or false
     espNameEnabled=c.espNameEnabled==true
     aimbotEnabled=c.aimbotEnabled or false
@@ -1860,6 +1938,15 @@ local function applyConfigToSwitches(c)
     infJumpEnabled=c.infJumpEnabled or false
     noclipEnabled=c.noclipEnabled or false
     clickMatEnabled=c.clickMatEnabled or false
+    antiFlingEnabled=c.antiFlingEnabled or false
+    streamerModeEnabled=c.streamerModeEnabled or false
+    streamerNameMap={}
+    streamerIdCounter=0
+    title.Text=streamerModeEnabled and "HUB" or "PORTUGA"
+    subtitle.Text=streamerModeEnabled and "UTIL" or (IS_PRISON and "H U B • PRISON LIFE" or "H U B")
+    setRGBGlow(streamerModeEnabled)
+    baconEnabled=c.baconEnabled or false
+    if baconEnabled then applyBaconAll() else clearBaconAll() end
     if IS_PRISON then
         prisonClickMat=c.prisonClickMat or false
         prisonArrest=c.prisonArrest or false
@@ -1901,6 +1988,111 @@ local function applyFullConfig(c)
     if c.jump then UI.jumpBox.setValue(c.jump); local h=PL.Character and PL.Character:FindFirstChildOfClass("Humanoid"); if h then h.UseJumpPower=true; h.JumpPower=c.jump end end
     if c.gravity then UI.gravityBox.setValue(c.gravity); workspace.Gravity=c.gravity end
 end
+
+-- === RGB GLOW (parte do Streamer Mode) ===
+function setRGBGlow(enabled)
+    if rgbHighlight then pcall(function() rgbHighlight:Destroy() end); rgbHighlight=nil end
+    if enabled then
+        local ch=PL.Character
+        if not ch then return end
+        local hl=Instance.new("Highlight")
+        hl.FillColor=Color3.fromRGB(255,0,0)
+        hl.OutlineColor=Color3.fromRGB(255,0,0)
+        hl.FillTransparency=0.5
+        hl.OutlineTransparency=0
+        hl.DepthMode=Enum.HighlightDepthMode.AlwaysOnTop
+        hl.Adornee=ch
+        hl.Parent=ch
+        rgbHighlight=hl
+    end
+end
+RS.RenderStepped:Connect(function(dt)
+    if not streamerModeEnabled or not rgbHighlight then return end
+    rgbHue=(rgbHue+dt*0.4)%1
+    local c=Color3.fromHSV(rgbHue,1,1)
+    rgbHighlight.FillColor=c
+    rgbHighlight.OutlineColor=c
+end)
+
+-- === BACON HAIR (client-side) ===
+function addBacon(char)
+    if not char then return end
+    local head=char:FindFirstChild("Head")
+    if not head then return end
+    if head:FindFirstChild(BACON_PART_NAME) then return end
+    local bacon=Instance.new("Part")
+    bacon.Name=BACON_PART_NAME
+    bacon.Size=Vector3.new(1,1,1)
+    bacon.Transparency=0
+    bacon.CanCollide=false
+    bacon.Massless=true
+    bacon.CanQuery=false
+    bacon.CanTouch=false
+    bacon.CastShadow=false
+    local mesh=Instance.new("SpecialMesh",bacon)
+    mesh.MeshType=Enum.MeshType.FileMesh
+    mesh.MeshId=BACON_MESH
+    mesh.TextureId=BACON_TEXTURE
+    mesh.Scale=Vector3.new(1.3,1.3,1.3)
+    bacon.CFrame=head.CFrame*CFrame.new(0,0.85,0)
+    bacon.Parent=head
+    local weld=Instance.new("WeldConstraint",bacon)
+    weld.Part0=bacon
+    weld.Part1=head
+end
+function removeBacon(char)
+    if not char then return end
+    local head=char:FindFirstChild("Head")
+    if not head then return end
+    local b=head:FindFirstChild(BACON_PART_NAME)
+    if b then pcall(function() b:Destroy() end) end
+end
+function applyBaconAll()
+    for _,p in pairs(PS:GetPlayers()) do
+        if p.Character then pcall(addBacon,p.Character) end
+    end
+    if PL.Character then pcall(addBacon,PL.Character) end
+end
+function clearBaconAll()
+    for _,p in pairs(PS:GetPlayers()) do
+        if p.Character then pcall(removeBacon,p.Character) end
+    end
+    if PL.Character then pcall(removeBacon,PL.Character) end
+end
+
+PS.PlayerAdded:Connect(function(p)
+    p.CharacterAdded:Connect(function(ch)
+        task.wait(0.8)
+        if baconEnabled then pcall(addBacon,ch) end
+    end)
+    if baconEnabled and p.Character then task.wait(1); pcall(addBacon,p.Character) end
+end)
+PL.CharacterAdded:Connect(function(ch)
+    task.wait(1)
+    if streamerModeEnabled then setRGBGlow(true) end
+    if baconEnabled then pcall(addBacon,ch) end
+end)
+
+UI.streamerSwitch.onToggle(function(s)
+    streamerModeEnabled=s
+    streamerNameMap={}
+    streamerIdCounter=0
+    title.Text=s and "HUB" or "PORTUGA"
+    subtitle.Text=s and "UTIL" or (IS_PRISON and "H U B • PRISON LIFE" or "H U B")
+    setRGBGlow(s)
+    for _,r in pairs(PR) do r.frame:Destroy() end
+    PR={}
+    for _,r in pairs(FR) do r.frame:Destroy() end
+    FR={}
+    pcall(rPL)
+    pcall(rFL)
+    pcall(uH)
+    pcall(uFH)
+end)
+UI.baconSwitch.onToggle(function(s)
+    baconEnabled=s
+    if s then applyBaconAll() else clearBaconAll() end
+end)
 
 local function readIndex()
     if not isfile(INDEX_FILE) then return{} end
@@ -2192,6 +2384,13 @@ local function executarPanic()
     silentAimEnabled=false; silentAimTarget=nil; silentAimNpcEnabled=false
     fullBrightEnabled=false; spinBotEnabled=false; antiAfkEnabled=false
     hideFooterEnabled=false; infJumpEnabled=false; noclipEnabled=false; clickMatEnabled=false
+    antiFlingEnabled=false; lastSafeCFrame=nil; lastSafeVelocity=Vector3.new(0,0,0)
+    streamerModeEnabled=false; streamerNameMap={}; streamerIdCounter=0
+    title.Text="PORTUGA"
+    subtitle.Text=IS_PRISON and "H U B • PRISON LIFE" or "H U B"
+    if rgbHighlight then pcall(function() rgbHighlight:Destroy() end); rgbHighlight=nil end
+    baconEnabled=false
+    clearBaconAll()
     prisonClickMat=false; prisonArrest=false
     FOV=120; camFOV=70; camFovActive=false; CAM.FieldOfView=camFOV
     behindText.Visible=false; footer.Visible=true
@@ -2201,6 +2400,9 @@ local function executarPanic()
     UI.saSwitch.setOn(false); UI.saNpcSwitch.setOn(false); UI.spinSwitch.setOn(false)
     UI.fbSwitch.setOn(false); UI.afkSwitch.setOn(false); UI.hideFooterSwitch.setOn(false)
     UI.infJumpSwitch.setOn(false); UI.noclipSwitch.setOn(false); UI.clickMatSwitch.setOn(false)
+    UI.antiFlingSwitch.setOn(false)
+    UI.streamerSwitch.setOn(false)
+    UI.baconSwitch.setOn(false)
     if IS_PRISON then
         UI.prisonClickMatSwitch.setOn(false)
         UI.prisonArrestSwitch.setOn(false)
@@ -2262,7 +2464,10 @@ RS.RenderStepped:Connect(function()
                 e[1].Size=Vector2.new(sz*2,sz*3); e[1].Position=Vector2.new(ps.X-sz,ps.Y-sz); e[1].Color=lineColor; e[1].Visible=true
                 e[2].From=Vector2.new(CAM.ViewportSize.X/2,CAM.ViewportSize.Y); e[2].To=Vector2.new(ps.X,ps.Y); e[2].Color=lineColor; e[2].Visible=true
                 local ht="["..math.floor(h.Health).."]"
-                if espNameEnabled then e[3].Text=pl.Name.." "..ht else e[3].Text=ht end
+                if espNameEnabled then
+                    local sDN=sfName(pl)
+                    e[3].Text=sDN.." "..ht
+                else e[3].Text=ht end
                 e[3].Position=Vector2.new(ps.X,ps.Y-sz*1.8); e[3].Color=lineColor; e[3].Visible=true
             else for _,v in pairs(e) do v.Visible=false end end
         else for _,v in pairs(e) do v.Visible=false end end
@@ -2289,94 +2494,4 @@ local function getTarget()
             if teamMiscEnabled and selectedTeam then if p.Team~=selectedTeam then continue end end
             local ps,v=CAM:WorldToViewportPoint(pt.Position)
             if v then
-                local d=(Vector2.new(ps.X,ps.Y)-Vector2.new(CAM.ViewportSize.X/2,CAM.ViewportSize.Y/2)).Magnitude
-                if d<FOV then
-                    if wallCheck then
-                        local rp=RaycastParams.new()
-                        rp.FilterType=Enum.RaycastFilterType.Blacklist
-                        rp.FilterDescendantsInstances={PL.Character}
-                        local r=workspace:Raycast(CAM.CFrame.Position,(pt.Position-CAM.CFrame.Position).Unit*5000,rp)
-                        if r and not r.Instance:IsDescendantOf(ch) then continue end
-                    end
-                    if pri=="CLOSEST" then if d<bestDist then bestDist=d; best=p end
-                    elseif pri=="LOW HP" then if h.Health<bestHP then bestHP=h.Health; best=p end
-                    elseif pri=="HIGH HP" then if h.Health>worstHP then worstHP=h.Health; best=p end
-                    elseif pri=="FARTHEST" then if d>farDist then farDist=d; best=p end end
-                end
-            end
-        end
-    end
-    return best
-end
-
-RS.RenderStepped:Connect(function()
-    if aimbotEnabled then
-        local t=getTarget()
-        if t and t.Character then
-            local p=t.Character:FindFirstChild(aimPart)
-            if p then CAM.CFrame=CFrame.new(CAM.CFrame.Position,p.Position) end
-        end
-    end
-    if aimbotNpcEnabled then
-        local n=gNN(aimPart)
-        if n then
-            local p=n:FindFirstChild(aimPart) or n:FindFirstChild("HumanoidRootPart") or n:FindFirstChild("Head")
-            if p then CAM.CFrame=CFrame.new(CAM.CFrame.Position,p.Position) end
-        end
-    end
-end)
-
-RS.RenderStepped:Connect(function()
-    local mc=PL.Character
-    local mh=mc and mc:FindFirstChild("HumanoidRootPart")
-    if silentAimEnabled and silentAimTarget and mh then
-        local tc=silentAimTarget.Character
-        if tc then
-            local tp=tc:FindFirstChild("Head") or tc:FindFirstChild("HumanoidRootPart")
-            if tp then
-                local mp=mh.Position; local tpp=tp.Position
-                local d=Vector3.new(tpp.X-mp.X,0,tpp.Z-mp.Z)
-                if d.Magnitude>0.1 then mh.CFrame=CFrame.lookAt(mp,mp+d) end
-            end
-        end
-        return
-    end
-    if silentAimNpcEnabled and mh then
-        local n=gNN("Head") or gNN("HumanoidRootPart")
-        if n then
-            local tp=n:FindFirstChild("Head") or n:FindFirstChild("HumanoidRootPart")
-            if tp then
-                local mp=mh.Position; local tpp=tp.Position
-                local d=Vector3.new(tpp.X-mp.X,0,tpp.Z-mp.Z)
-                if d.Magnitude>0.1 then mh.CFrame=CFrame.lookAt(mp,mp+d) end
-            end
-        end
-    end
-end)
-
-RS:BindToRenderStep("PortugaSpinBot",Enum.RenderPriority.Camera.Value+1,function()
-    if not spinBotEnabled then
-        local mc=PL.Character
-        local h=mc and mc:FindFirstChildOfClass("Humanoid")
-        if h and not h.AutoRotate then h.AutoRotate=true end
-        return
-    end
-    local mc=PL.Character
-    local mh=mc and mc:FindFirstChild("HumanoidRootPart")
-    if not mh then return end
-    if aimToolEnabled then
-        local tool=mc:FindFirstChildOfClass("Tool")
-        if not tool then
-            local h=mc:FindFirstChildOfClass("Humanoid")
-            if h and not h.AutoRotate then h.AutoRotate=true end
-            return
-        end
-    end
-    local h=mc:FindFirstChildOfClass("Humanoid")
-    if h and h.AutoRotate then h.AutoRotate=false end
-    local a=(tick()*720)%360
-    local p=mh.Position
-    mh.CFrame=CFrame.new(p)*CFrame.Angles(0,math.rad(a),0)
-end)
-
-print("[Portuga HUB] Carregado"..(IS_PRISON and " — MODO PRISON LIFE ATIVO!" or ""))
+                local d=(Vector2.new(ps.X,ps.Y)-Vector2.new(CAM.ViewportSize
