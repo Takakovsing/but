@@ -19,7 +19,6 @@ local themeRegistry={}
 local function registerTheme(fn) table.insert(themeRegistry,fn); pcall(fn,RED) end
 local function applyTheme(c) RED=c; for _,fn in ipairs(themeRegistry) do pcall(fn,c) end end
 
--- GUI BASE
 local gui=Instance.new("ScreenGui")
 gui.Name="Portuga HUB"
 gui.ResetOnSpawn=false
@@ -95,7 +94,6 @@ local CHILDREN_OFFSET=5
 local gavetas={}
 local UI={}
 
--- FOOTER
 local footer=Instance.new("Frame",main)
 footer.Size=UDim2.new(1,-24,0,42)
 footer.Position=UDim2.new(0,12,1,-50)
@@ -142,7 +140,6 @@ registerTheme(function(c)
     footerAvatarStroke.Color=c
 end)
 
--- SWITCH
 local function criarSwitch(parent)
     local switch=Instance.new("TextButton",parent)
     switch.Size=UDim2.new(0,56,0,28)
@@ -229,7 +226,6 @@ local function criarSwitch(parent)
     return api
 end
 
--- TEXTBOX
 local function criarTextBox(parent,valorInicial)
     local box=Instance.new("TextButton",parent)
     box.Size=UDim2.new(0,70,0,28)
@@ -272,7 +268,6 @@ local function criarTextBox(parent,valorInicial)
     return api
 end
 
--- LINHA BASE
 local function criarLinhaBotao(parent,nome,ordem)
     local button=Instance.new("Frame",parent)
     button.Size=UDim2.new(1,0,0,BUTTON_HEIGHT)
@@ -356,7 +351,6 @@ local function criarTextBoxButton(parent,nome,valorInicial,ordem)
     return{frame=frame,label=label,stroke=stroke,textbox=tb,setValue=tb.setValue,getValue=tb.getValue,onSubmit=tb.onSubmit,type="textbox"}
 end
 
--- GAVETA SYSTEM
 local function fecharGaveta(data)
     if not data.aberta then return end
     data.aberta=false
@@ -651,7 +645,7 @@ criarGaveta(6,"PLAYER SETTINGS",{
     {tipo="switch",nome="WALL CLIMB",key="wallClimbSwitch"},
 })
 
--- GAVETA 7: CONFIG
+-- GAVETA 7
 local SAVE_ROW_H=30
 local SAVE_LIST_H=130
 local SAVE_BTN_H=32
@@ -775,7 +769,7 @@ criarGaveta(7,"CONFIG",{},SAVE_CUSTOM_H,function(parent)
     UI.delBtn=makeBtn("DELETE")
 end)
 
--- GAVETA 8: TP (mesmo estilo do CONFIG)
+-- GAVETA 8: TP
 local TP_ROW_H=30
 local TP_LIST_H=130
 local TP_BTN_H=32
@@ -899,13 +893,14 @@ criarGaveta(8,"TP",{},TP_CUSTOM_H,function(parent)
     UI.tpDelBtn=makeBtn("DELETE")
 end)
 
--- GAVETA 9: MISC
+-- GAVETA 9: MISC (com CLICK MAT)
 criarGaveta(9,"MISC",{
     {tipo="switch",nome="BEHIND COUNT",key="behindSwitch"},
     {tipo="cycler",nome="FOV CAMERA",valor=70,key="camFovBtn"},
     {tipo="switch",nome="FULL BRIGHT",key="fbSwitch"},
     {tipo="switch",nome="ANTI-AFK",key="afkSwitch"},
     {tipo="switch",nome="HIDE FOOTER",key="hideFooterSwitch"},
+    {tipo="switch",nome="CLICK MAT",key="clickMatSwitch"},
 })
 
 -- GAVETA 10: PANIC
@@ -944,6 +939,7 @@ local hideFooterEnabled=false
 local infJumpEnabled=false
 local noclipEnabled=false
 local wallClimbEnabled=false
+local clickMatEnabled=false
 local originalGravity=workspace.Gravity
 local aimPart="Head"
 local FOV=120
@@ -1147,6 +1143,7 @@ UI.behindSwitch.onToggle(function(s) showBehindCount=s; behindText.Visible=s end
 UI.fbSwitch.onToggle(function(s) fullBrightEnabled=s; if s then aFB() else rL() end end)
 UI.afkSwitch.onToggle(function(s) antiAfkEnabled=s end)
 UI.hideFooterSwitch.onToggle(function(s) hideFooterEnabled=s; footer.Visible=not s end)
+UI.clickMatSwitch.onToggle(function(s) clickMatEnabled=s end)
 UI.saSwitch.onToggle(function(s) silentAimEnabled=s end)
 UI.saNpcSwitch.onToggle(function(s) silentAimNpcEnabled=s end)
 UI.spinSwitch.onToggle(function(s) spinBotEnabled=s; local h=PL.Character and PL.Character:FindFirstChildOfClass("Humanoid"); if h then h.AutoRotate=not s end end)
@@ -1160,7 +1157,6 @@ PL.Idled:Connect(function()
     end
 end)
 
--- CYCLERS
 UI.colorBtn.clickBtn.MouseButton1Click:Connect(function()
     colorIndex+=1
     if colorIndex>#colorNames then colorIndex=1 end
@@ -1229,7 +1225,9 @@ UI.gravityBox.onSubmit(function(v)
     workspace.Gravity=v
 end)
 
+--==================================================
 -- PLAYER SELECT (com TP)
+--==================================================
 local PR={}
 local function uH()
     for _,r in pairs(PR) do
@@ -1456,7 +1454,9 @@ task.spawn(function()
     end
 end)
 
--- INF JUMP + NOCLIP + WALL CLIMB
+--==================================================
+-- INF JUMP + NOCLIP
+--==================================================
 UIS.JumpRequest:Connect(function()
     if not infJumpEnabled then return end
     local ch=PL.Character
@@ -1477,25 +1477,86 @@ RS.Stepped:Connect(function()
     end
 end)
 
+--==================================================
+-- WALL CLIMB (CORRIGIDO)
+--==================================================
 RS.Heartbeat:Connect(function()
     if not wallClimbEnabled then return end
     local ch=PL.Character
     if not ch then return end
     local hr=ch:FindFirstChild("HumanoidRootPart")
-    if not hr then return end
+    local hum=ch:FindFirstChildOfClass("Humanoid")
+    if not hr or not hum then return end
+
     if UIS:IsKeyDown(Enum.KeyCode.Space) then
-        local dir=hr.CFrame.LookVector
         local rp=RaycastParams.new()
         rp.FilterType=Enum.RaycastFilterType.Blacklist
         rp.FilterDescendantsInstances={ch}
-        local ray=workspace:Raycast(hr.Position,dir*2,rp)
-        if ray then
+        local dirs={hr.CFrame.LookVector,-hr.CFrame.RightVector,hr.CFrame.RightVector}
+        local wallFound=false
+        for _,dir in ipairs(dirs) do
+            local ray=workspace:Raycast(hr.Position,dir*4,rp)
+            if ray then wallFound=true; break end
+        end
+        if wallFound then
             local vel=hr.Velocity
-            hr.Velocity=Vector3.new(vel.X,30,vel.Z)
+            hr.Velocity=Vector3.new(vel.X*0.5,40,vel.Z*0.5)
+            pcall(function() hum:ChangeState(Enum.HumanoidStateType.GettingUp) end)
         end
     end
 end)
 
+--==================================================
+-- CLICK MAT
+--==================================================
+local clickMatLastClick=0
+local clickMatInterval=0.05
+
+RS.Heartbeat:Connect(function()
+    if not clickMatEnabled then return end
+    local ch=PL.Character
+    if not ch then return end
+    local tool=ch:FindFirstChildOfClass("Tool")
+    if not tool then return end
+
+    local now=tick()
+    if now-clickMatLastClick<clickMatInterval then return end
+
+    local best=nil
+    local bestDist=60
+    for _,p in pairs(PS:GetPlayers()) do
+        if p~=PL and p.Character then
+            local targetChar=p.Character
+            local targetHum=targetChar:FindFirstChild("Humanoid")
+            local targetPart=targetChar:FindFirstChild("HumanoidRootPart")
+            if targetHum and targetPart and targetHum.Health>0 then
+                if teamCheck and p.Team==PL.Team then continue end
+                if friends[p.Name] then continue end
+                if teamMiscEnabled and selectedTeam then if p.Team~=selectedTeam then continue end end
+                local dist=(targetPart.Position-ch.HumanoidRootPart.Position).Magnitude
+                if dist<bestDist then
+                    if wallCheck then
+                        local rp=RaycastParams.new()
+                        rp.FilterType=Enum.RaycastFilterType.Blacklist
+                        rp.FilterDescendantsInstances={ch}
+                        local ray=workspace:Raycast(ch.HumanoidRootPart.Position,(targetPart.Position-ch.HumanoidRootPart.Position).Unit*dist,rp)
+                        if ray and not ray.Instance:IsDescendantOf(targetChar) then continue end
+                    end
+                    bestDist=dist
+                    best=p
+                end
+            end
+        end
+    end
+    if best then
+        pcall(function() tool:Activate() end)
+        clickMatLastClick=now
+    end
+end)
+
+--==================================================
+-- REAPLICAÇÃO
+--==================================================
 RS.Heartbeat:Connect(function()
     local h=PL.Character and PL.Character:FindFirstChildOfClass("Humanoid")
     if h then
@@ -1534,7 +1595,7 @@ local function collectConfig()
         aimToolEnabled=aimToolEnabled,silentAimEnabled=silentAimEnabled,silentAimNpcEnabled=silentAimNpcEnabled,
         fullBrightEnabled=fullBrightEnabled,spinBotEnabled=spinBotEnabled,antiAfkEnabled=antiAfkEnabled,
         hideFooterEnabled=hideFooterEnabled,infJumpEnabled=infJumpEnabled,noclipEnabled=noclipEnabled,
-        wallClimbEnabled=wallClimbEnabled,
+        wallClimbEnabled=wallClimbEnabled,clickMatEnabled=clickMatEnabled,
         aimPart=aimPart,FOV=FOV,camFOV=camFOV,colorIndex=colorIndex,themeIndex=themeIndex,
         priorityIndex=priorityIndex,
         teamMiscEnabled=teamMiscEnabled,selectedTeamName=selectedTeam and selectedTeam.Name or nil,
@@ -1561,6 +1622,7 @@ local function applyConfigToSwitches(c)
     UI.infJumpSwitch.setOn(c.infJumpEnabled or false)
     UI.noclipSwitch.setOn(c.noclipEnabled or false)
     UI.wallClimbSwitch.setOn(c.wallClimbEnabled or false)
+    UI.clickMatSwitch.setOn(c.clickMatEnabled or false)
     espEnabled=c.espEnabled or false
     espNameEnabled=c.espNameEnabled==true
     aimbotEnabled=c.aimbotEnabled or false
@@ -1578,6 +1640,7 @@ local function applyConfigToSwitches(c)
     infJumpEnabled=c.infJumpEnabled or false
     noclipEnabled=c.noclipEnabled or false
     wallClimbEnabled=c.wallClimbEnabled or false
+    clickMatEnabled=c.clickMatEnabled or false
     footer.Visible=not hideFooterEnabled
     behindText.Visible=showBehindCount
     local h=PL.Character and PL.Character:FindFirstChildOfClass("Humanoid")
@@ -1741,7 +1804,7 @@ refreshSaveList()
 task.spawn(function() while true do task.wait(3); refreshSaveList() end end)
 
 --==================================================
--- TP SYSTEM (gaveta)
+-- TP SYSTEM
 --==================================================
 local TPPF="portuga_tp_"
 local TPE=".json"
@@ -1909,6 +1972,7 @@ local function executarPanic()
     infJumpEnabled=false
     noclipEnabled=false
     wallClimbEnabled=false
+    clickMatEnabled=false
     FOV=120
     camFOV=70
     camFovActive=false
@@ -1932,6 +1996,7 @@ local function executarPanic()
     UI.infJumpSwitch.setOn(false)
     UI.noclipSwitch.setOn(false)
     UI.wallClimbSwitch.setOn(false)
+    UI.clickMatSwitch.setOn(false)
     UI.partBtn.setValue("HEAD")
     UI.fovBtn.setValue(120)
     UI.camFovBtn.setValue(70)
