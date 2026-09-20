@@ -1037,7 +1037,6 @@ if IS_PRISON then
     criarGaveta(gNum,"PRISON LIFE",{
         {tipo="switch",nome="CLICK MAT (SHOOT)",key="prisonClickMatSwitch"},
         {tipo="switch",nome="ARREST",key="prisonArrestSwitch"},
-        {tipo="switch",nome="AUTO RELOAD (3s)",key="prisonReloadSwitch"},
         {tipo="cycler",nome="RANGE",valor=60,key="prisonRangeBtn"},
         {tipo="cycler",nome="SPEED",valor="12/s",key="prisonSpeedBtn"},
     }); gNum=gNum+1
@@ -1095,10 +1094,8 @@ local PRIORITY={"CLOSEST","LOW HP","HIGH HP","FARTHEST"}
 local friends={}
 local prisonClickMat=false
 local prisonArrest=false
-local prisonReload=false
 local prisonRange=60
 local prisonSpeed=0.08
-local reloadLastTime=0
 
 local colors={Color3.fromRGB(0,0,0),Color3.fromRGB(255,255,255),Color3.fromRGB(170,0,255),Color3.fromRGB(255,0,0),Color3.fromRGB(255,255,0),Color3.fromRGB(0,170,255),Color3.fromRGB(0,255,0),Color3.fromRGB(255,0,170),Color3.fromRGB(120,120,120),Color3.fromRGB(255,100,0),Color3.fromRGB(0,255,255),Color3.fromRGB(150,75,0),Color3.fromRGB(128,0,128),Color3.fromRGB(0,100,0),Color3.fromRGB(255,180,180)}
 local colorNames={"BLACK","WHITE","PURPLE","RED","YELLOW","BLUE","GREEN","PINK","GRAY","ORANGE","CYAN","BROWN","DARKPURPLE","DARKGREEN","SALMON","RAINBOW"}
@@ -1293,7 +1290,6 @@ UI.noclipSwitch.onToggle(function(s) noclipEnabled=s end)
 if IS_PRISON then
     UI.prisonClickMatSwitch.onToggle(function(s) prisonClickMat=s end)
     UI.prisonArrestSwitch.onToggle(function(s) prisonArrest=s end)
-    UI.prisonReloadSwitch.onToggle(function(s) prisonReload=s; reloadLastTime=tick() end)
 end
 
 PL.Idled:Connect(function()
@@ -1744,25 +1740,6 @@ if IS_PRISON then
         local tool=ch:FindFirstChildOfClass("Tool")
         local now=tick()
 
-        if prisonReload then
-            if now-reloadLastTime>=3 then
-                reloadLastTime=now
-                task.spawn(function()
-                    pcall(function()
-                        if VU and VU.TypeKey then
-                            VU:TypeKey(Enum.KeyCode.R)
-                            return
-                        end
-                        if keypress and keyrelease then
-                            keypress(Enum.KeyCode.R)
-                            task.wait(0.05)
-                            keyrelease(Enum.KeyCode.R)
-                        end
-                    end)
-                end)
-            end
-        end
-
         if prisonClickMat and tool and ShootEvent then
             if now-prisonLastClick>=prisonSpeed then
                 local target,targetPart=getClosestPrisonTarget(prisonRange)
@@ -1784,8 +1761,9 @@ if IS_PRISON then
             end
         end
 
+        -- ARREST com cooldown 0 (tenta todo frame)
         if prisonArrest and tool and ArrestRemote then
-            if now-prisonLastArrest>=0.2 then
+            if now-prisonLastArrest>=0 then
                 local target=getClosestPrisonTarget(15)
                 if target then
                     pcall(function() ArrestRemote:InvokeServer(target,1) end)
@@ -1841,7 +1819,6 @@ local function collectConfig()
     if IS_PRISON then
         cfg.prisonClickMat=prisonClickMat
         cfg.prisonArrest=prisonArrest
-        cfg.prisonReload=prisonReload
         cfg.prisonRange=prisonRange
         cfg.prisonSpeed=prisonSpeed
     end
@@ -1886,12 +1863,10 @@ local function applyConfigToSwitches(c)
     if IS_PRISON then
         prisonClickMat=c.prisonClickMat or false
         prisonArrest=c.prisonArrest or false
-        prisonReload=c.prisonReload or false
         prisonRange=c.prisonRange or 60
         prisonSpeed=c.prisonSpeed or 0.08
         UI.prisonClickMatSwitch.setOn(prisonClickMat)
         UI.prisonArrestSwitch.setOn(prisonArrest)
-        UI.prisonReloadSwitch.setOn(prisonReload)
         UI.prisonRangeBtn.setValue(prisonRange)
     end
     footer.Visible=not hideFooterEnabled
@@ -2217,7 +2192,7 @@ local function executarPanic()
     silentAimEnabled=false; silentAimTarget=nil; silentAimNpcEnabled=false
     fullBrightEnabled=false; spinBotEnabled=false; antiAfkEnabled=false
     hideFooterEnabled=false; infJumpEnabled=false; noclipEnabled=false; clickMatEnabled=false
-    prisonClickMat=false; prisonArrest=false; prisonReload=false
+    prisonClickMat=false; prisonArrest=false
     FOV=120; camFOV=70; camFovActive=false; CAM.FieldOfView=camFOV
     behindText.Visible=false; footer.Visible=true
     UI.espSwitch.setOn(false); UI.espNameSwitch.setOn(false)
@@ -2229,7 +2204,6 @@ local function executarPanic()
     if IS_PRISON then
         UI.prisonClickMatSwitch.setOn(false)
         UI.prisonArrestSwitch.setOn(false)
-        UI.prisonReloadSwitch.setOn(false)
     end
     UI.partBtn.setValue("HEAD"); UI.fovBtn.setValue(120); UI.camFovBtn.setValue(70)
     UI.teamMiscBtn.setValue("OFF"); UI.priorityBtn.setValue("CLOSEST")
