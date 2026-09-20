@@ -693,7 +693,6 @@ criarGaveta(gNum,"FRIEND LIST",{},FL_CH,function(parent)
     flsPad.PaddingRight=UDim.new(0,8)
     registerTheme(function(c) flsStroke.Color=c end)
     UI.friendSearchBox=flSearch
-
     local fs=Instance.new("ScrollingFrame",parent)
     fs.Size=UDim2.new(1,0,0,FL_H)
     fs.Position=UDim2.new(0,0,0,FL_SEARCH_H+FL_GAP)
@@ -1038,7 +1037,7 @@ if IS_PRISON then
     criarGaveta(gNum,"PRISON LIFE",{
         {tipo="switch",nome="CLICK MAT (SHOOT)",key="prisonClickMatSwitch"},
         {tipo="switch",nome="ARREST",key="prisonArrestSwitch"},
-        {tipo="switch",nome="AUTO RELOAD",key="prisonReloadSwitch"},
+        {tipo="switch",nome="AUTO RELOAD (3s)",key="prisonReloadSwitch"},
         {tipo="cycler",nome="RANGE",valor=60,key="prisonRangeBtn"},
         {tipo="cycler",nome="SPEED",valor="12/s",key="prisonSpeedBtn"},
     }); gNum=gNum+1
@@ -1741,8 +1740,9 @@ if IS_PRISON then
         local tool=ch:FindFirstChildOfClass("Tool")
         local now=tick()
 
+        -- AUTO RELOAD a cada 3 segundos
         if prisonReload then
-            if now-reloadLastTime>=7 then
+            if now-reloadLastTime>=3 then
                 reloadLastTime=now
                 task.spawn(function()
                     pcall(function()
