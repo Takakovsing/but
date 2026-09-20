@@ -8,7 +8,6 @@ local HS=game:GetService("HttpService")
 local VU=game:GetService("VirtualUser")
 local CAM=workspace.CurrentCamera
 local PL=PS.LocalPlayer
-
 local IS_PRISON=(game.PlaceId==155615604)
 local RepStorage=game:GetService("ReplicatedStorage")
 local ShootEvent,ReloadFunc,ArrestRemote
@@ -19,7 +18,6 @@ if IS_PRISON then
     local RF=RepStorage:FindFirstChild("Remotes")
     ArrestRemote=RF and RF:FindFirstChild("ArrestPlayer")
 end
-
 local THEME_PRESETS={RED=Color3.fromRGB(255,0,0),BLUE=Color3.fromRGB(0,120,255),GREEN=Color3.fromRGB(0,220,80),PURPLE=Color3.fromRGB(170,0,255),YELLOW=Color3.fromRGB(255,200,0),PINK=Color3.fromRGB(255,0,170),CYAN=Color3.fromRGB(0,220,255),ORANGE=Color3.fromRGB(255,100,0),WHITE=Color3.fromRGB(240,240,240)}
 local THEME_ORDER={"RED","BLUE","GREEN","PURPLE","YELLOW","PINK","CYAN","ORANGE","WHITE"}
 local themeIndex=1
@@ -53,24 +51,49 @@ mainStroke.Thickness=1.5
 mainStroke.Transparency=0.32
 
 local title=Instance.new("TextLabel",main)
-title.Size=UDim2.new(1,-20,0,28)
+title.Size=UDim2.new(1,-110,0,28)
 title.Position=UDim2.new(0,10,0,5)
 title.BackgroundTransparency=1
 title.Text="PORTUGA"
 title.Font=Enum.Font.Arcade
 title.TextSize=18
 title.TextColor3=Color3.fromRGB(255,255,255)
+title.TextXAlignment=Enum.TextXAlignment.Left
 title.ZIndex=5
 
 local subtitle=Instance.new("TextLabel",main)
-subtitle.Size=UDim2.new(1,0,0,15)
-subtitle.Position=UDim2.new(0,0,0,30)
+subtitle.Size=UDim2.new(1,-110,0,15)
+subtitle.Position=UDim2.new(0,10,0,30)
 subtitle.BackgroundTransparency=1
 subtitle.Text=IS_PRISON and "H U B • PRISON LIFE" or "H U B"
 subtitle.Font=Enum.Font.GothamBold
 subtitle.TextSize=9
 subtitle.TextColor3=RED
+subtitle.TextXAlignment=Enum.TextXAlignment.Left
 subtitle.ZIndex=5
+
+local drawerSearch=Instance.new("TextBox",main)
+drawerSearch.Size=UDim2.new(0,90,0,22)
+drawerSearch.Position=UDim2.new(1,-100,0,10)
+drawerSearch.BackgroundColor3=Color3.fromRGB(20,20,23)
+drawerSearch.BorderSizePixel=0
+drawerSearch.Text=""
+drawerSearch.PlaceholderText="🔍..."
+drawerSearch.PlaceholderColor3=Color3.fromRGB(120,120,125)
+drawerSearch.Font=Enum.Font.GothamBold
+drawerSearch.TextSize=10
+drawerSearch.TextColor3=Color3.fromRGB(240,240,240)
+drawerSearch.TextXAlignment=Enum.TextXAlignment.Left
+drawerSearch.ClearTextOnFocus=false
+drawerSearch.ZIndex=10
+Instance.new("UICorner",drawerSearch).CornerRadius=UDim.new(0,6)
+local dsStroke=Instance.new("UIStroke",drawerSearch)
+dsStroke.Color=RED
+dsStroke.Thickness=1
+dsStroke.Transparency=0.4
+local dsPad=Instance.new("UIPadding",drawerSearch)
+dsPad.PaddingLeft=UDim.new(0,6)
+dsPad.PaddingRight=UDim.new(0,6)
 
 local line=Instance.new("Frame",main)
 line.Size=UDim2.new(0.82,0,0,2)
@@ -149,6 +172,7 @@ registerTheme(function(c)
     container.ScrollBarImageColor3=c
     footerStroke.Color=c
     footerAvatarStroke.Color=c
+    dsStroke.Color=c
 end)
 
 local function criarSwitch(parent)
@@ -460,7 +484,7 @@ local function criarGaveta(numero,nome,botoes,customHeight,customFill,afterCreat
             if cfg.key and api then UI[cfg.key]=api end
         end
     end
-    local data={drawer=drawer,children=children,arrow=arrow,stroke=stroke,aberta=false,childrenHeight=childrenHeight,openHeight=openHeight}
+    local data={drawer=drawer,children=children,arrow=arrow,stroke=stroke,aberta=false,childrenHeight=childrenHeight,openHeight=openHeight,name=nome}
     table.insert(gavetas,data)
     header.MouseButton1Click:Connect(function() if data.aberta then fecharGaveta(data) else abrirGaveta(data) end end)
     header.MouseEnter:Connect(function() TS:Create(header,smallTween,{BackgroundColor3=darken(RED,0.2)}):Play(); TS:Create(stroke,smallTween,{Transparency=0.08}):Play() end)
@@ -490,6 +514,7 @@ criarGaveta(gNum,"COMBATE",{
 local SWITCHES_H=(BUTTON_HEIGHT*3)+(BUTTON_GAP*2)
 local SUB_HEADER_H=36
 local SUB_LIST_H=200
+local SUB_SEARCH_H=22
 local subBeta={data=nil,subOpen=false}
 criarGaveta(gNum,"SILENT BETA",{},SWITCHES_H+BUTTON_GAP+SUB_HEADER_H,function(parent)
     local innerLayout=Instance.new("UIListLayout",parent)
@@ -552,8 +577,33 @@ criarGaveta(gNum,"SILENT BETA",{},SWITCHES_H+BUTTON_GAP+SUB_HEADER_H,function(pa
     subList.Visible=false
     subList.ClipsDescendants=true
     subList.ZIndex=7
+    local psSearch=Instance.new("TextBox",subList)
+    psSearch.Size=UDim2.new(1,0,0,SUB_SEARCH_H)
+    psSearch.Position=UDim2.new(0,0,0,0)
+    psSearch.BackgroundColor3=Color3.fromRGB(20,20,23)
+    psSearch.BorderSizePixel=0
+    psSearch.Text=""
+    psSearch.PlaceholderText="🔍 Buscar player..."
+    psSearch.PlaceholderColor3=Color3.fromRGB(120,120,125)
+    psSearch.Font=Enum.Font.GothamBold
+    psSearch.TextSize=10
+    psSearch.TextColor3=Color3.fromRGB(240,240,240)
+    psSearch.TextXAlignment=Enum.TextXAlignment.Left
+    psSearch.ClearTextOnFocus=false
+    psSearch.ZIndex=11
+    Instance.new("UICorner",psSearch).CornerRadius=UDim.new(0,6)
+    local psStroke=Instance.new("UIStroke",psSearch)
+    psStroke.Color=RED
+    psStroke.Thickness=1
+    psStroke.Transparency=0.4
+    local psPad=Instance.new("UIPadding",psSearch)
+    psPad.PaddingLeft=UDim.new(0,8)
+    psPad.PaddingRight=UDim.new(0,8)
+    registerTheme(function(c) psStroke.Color=c end)
+    UI.playerSearchBox=psSearch
     local listScroll=Instance.new("ScrollingFrame",subList)
-    listScroll.Size=UDim2.new(1,0,0,SUB_LIST_H)
+    listScroll.Size=UDim2.new(1,0,0,SUB_LIST_H-SUB_SEARCH_H-4)
+    listScroll.Position=UDim2.new(0,0,0,SUB_SEARCH_H+4)
     listScroll.BackgroundColor3=Color3.fromRGB(9,9,11)
     listScroll.BackgroundTransparency=0.5
     listScroll.BorderSizePixel=0
@@ -583,9 +633,9 @@ criarGaveta(gNum,"SILENT BETA",{},SWITCHES_H+BUTTON_GAP+SUB_HEADER_H,function(pa
             subList.Size=UDim2.new(1,0,0,0)
             TS:Create(shArrow,drawerTween,{Rotation=90}):Play()
             TS:Create(shStroke,drawerTween,{Transparency=0.08}):Play()
-            TS:Create(subList,drawerTween,{Size=UDim2.new(1,0,0,SUB_LIST_H+4)}):Play()
+            TS:Create(subList,drawerTween,{Size=UDim2.new(1,0,0,SUB_LIST_H+8)}):Play()
             if subBeta.data then
-                subBeta.data.childrenHeight=SWITCHES_H+BUTTON_GAP+SUB_HEADER_H+SUB_LIST_H+4
+                subBeta.data.childrenHeight=SWITCHES_H+BUTTON_GAP+SUB_HEADER_H+SUB_LIST_H+8
                 subBeta.data.openHeight=HEADER_HEIGHT+CHILDREN_OFFSET+subBeta.data.childrenHeight
                 TS:Create(subBeta.data.drawer,drawerTween,{Size=UDim2.new(1,0,0,subBeta.data.openHeight)}):Play()
                 TS:Create(subBeta.data.children,drawerTween,{Size=UDim2.new(1,0,0,subBeta.data.childrenHeight)}):Play()
@@ -614,11 +664,39 @@ criarGaveta(gNum,"FILTROS",{
     {tipo="cycler",nome="TEAM MISC",valor="OFF",key="teamMiscBtn"},
 }); gNum=gNum+1
 
+local FL_SEARCH_H=24
+local FL_GAP=6
 local FL_H=200
-local FL_CH=FL_H+5
+local FL_CH=FL_SEARCH_H+FL_GAP+FL_H
 criarGaveta(gNum,"FRIEND LIST",{},FL_CH,function(parent)
+    local flSearch=Instance.new("TextBox",parent)
+    flSearch.Size=UDim2.new(1,0,0,FL_SEARCH_H)
+    flSearch.Position=UDim2.new(0,0,0,0)
+    flSearch.BackgroundColor3=Color3.fromRGB(20,20,23)
+    flSearch.BorderSizePixel=0
+    flSearch.Text=""
+    flSearch.PlaceholderText="🔍 Buscar amigo..."
+    flSearch.PlaceholderColor3=Color3.fromRGB(120,120,125)
+    flSearch.Font=Enum.Font.GothamBold
+    flSearch.TextSize=10
+    flSearch.TextColor3=Color3.fromRGB(240,240,240)
+    flSearch.TextXAlignment=Enum.TextXAlignment.Left
+    flSearch.ClearTextOnFocus=false
+    flSearch.ZIndex=10
+    Instance.new("UICorner",flSearch).CornerRadius=UDim.new(0,6)
+    local flsStroke=Instance.new("UIStroke",flSearch)
+    flsStroke.Color=RED
+    flsStroke.Thickness=1
+    flsStroke.Transparency=0.4
+    local flsPad=Instance.new("UIPadding",flSearch)
+    flsPad.PaddingLeft=UDim.new(0,8)
+    flsPad.PaddingRight=UDim.new(0,8)
+    registerTheme(function(c) flsStroke.Color=c end)
+    UI.friendSearchBox=flSearch
+
     local fs=Instance.new("ScrollingFrame",parent)
     fs.Size=UDim2.new(1,0,0,FL_H)
+    fs.Position=UDim2.new(0,0,0,FL_SEARCH_H+FL_GAP)
     fs.BackgroundColor3=Color3.fromRGB(9,9,11)
     fs.BackgroundTransparency=0.5
     fs.BorderSizePixel=0
@@ -655,7 +733,8 @@ local SAVE_ROW_H=30
 local SAVE_LIST_H=130
 local SAVE_BTN_H=32
 local SAVE_GAP=6
-local SAVE_CUSTOM_H=SAVE_ROW_H+SAVE_GAP+SAVE_LIST_H+SAVE_GAP+SAVE_BTN_H
+local SAVE_SEARCH_H=24
+local SAVE_CUSTOM_H=SAVE_ROW_H+SAVE_GAP+SAVE_SEARCH_H+SAVE_GAP+SAVE_LIST_H+SAVE_GAP+SAVE_BTN_H
 criarGaveta(gNum,"CONFIG",{},SAVE_CUSTOM_H,function(parent)
     local nameRow=Instance.new("Frame",parent)
     nameRow.Size=UDim2.new(1,0,0,SAVE_ROW_H)
@@ -712,9 +791,33 @@ criarGaveta(gNum,"CONFIG",{},SAVE_CUSTOM_H,function(parent)
     nameInput.ClearTextOnFocus=false
     nameInput.ZIndex=10
     registerTheme(function(c) nrStroke.Color=c; nrAccent.BackgroundColor3=c; nIB_Stroke.Color=c end)
+    local saveSearch=Instance.new("TextBox",parent)
+    saveSearch.Size=UDim2.new(1,0,0,SAVE_SEARCH_H)
+    saveSearch.Position=UDim2.new(0,0,0,SAVE_ROW_H+SAVE_GAP)
+    saveSearch.BackgroundColor3=Color3.fromRGB(20,20,23)
+    saveSearch.BorderSizePixel=0
+    saveSearch.Text=""
+    saveSearch.PlaceholderText="🔍 Buscar save..."
+    saveSearch.PlaceholderColor3=Color3.fromRGB(120,120,125)
+    saveSearch.Font=Enum.Font.GothamBold
+    saveSearch.TextSize=10
+    saveSearch.TextColor3=Color3.fromRGB(240,240,240)
+    saveSearch.TextXAlignment=Enum.TextXAlignment.Left
+    saveSearch.ClearTextOnFocus=false
+    saveSearch.ZIndex=10
+    Instance.new("UICorner",saveSearch).CornerRadius=UDim.new(0,6)
+    local ssStroke=Instance.new("UIStroke",saveSearch)
+    ssStroke.Color=RED
+    ssStroke.Thickness=1
+    ssStroke.Transparency=0.4
+    local ssPad=Instance.new("UIPadding",saveSearch)
+    ssPad.PaddingLeft=UDim.new(0,8)
+    ssPad.PaddingRight=UDim.new(0,8)
+    registerTheme(function(c) ssStroke.Color=c end)
+    UI.saveSearchBox=saveSearch
     local listScroll=Instance.new("ScrollingFrame",parent)
     listScroll.Size=UDim2.new(1,0,0,SAVE_LIST_H)
-    listScroll.Position=UDim2.new(0,0,0,SAVE_ROW_H+SAVE_GAP)
+    listScroll.Position=UDim2.new(0,0,0,SAVE_ROW_H+SAVE_GAP+SAVE_SEARCH_H+SAVE_GAP)
     listScroll.BackgroundColor3=Color3.fromRGB(9,9,11)
     listScroll.BackgroundTransparency=0.5
     listScroll.BorderSizePixel=0
@@ -738,7 +841,7 @@ criarGaveta(gNum,"CONFIG",{},SAVE_CUSTOM_H,function(parent)
     registerTheme(function(c) lsStroke.Color=c; listScroll.ScrollBarImageColor3=c end)
     local btnRow=Instance.new("Frame",parent)
     btnRow.Size=UDim2.new(1,0,0,SAVE_BTN_H)
-    btnRow.Position=UDim2.new(0,0,0,SAVE_ROW_H+SAVE_GAP+SAVE_LIST_H+SAVE_GAP)
+    btnRow.Position=UDim2.new(0,0,0,SAVE_ROW_H+SAVE_GAP+SAVE_SEARCH_H+SAVE_GAP+SAVE_LIST_H+SAVE_GAP)
     btnRow.BackgroundTransparency=1
     btnRow.ZIndex=8
     local btnLayout=Instance.new("UIListLayout",btnRow)
@@ -778,7 +881,8 @@ local TP_ROW_H=30
 local TP_LIST_H=130
 local TP_BTN_H=32
 local TP_GAP=6
-local TP_CUSTOM_H=TP_ROW_H+TP_GAP+TP_LIST_H+TP_GAP+TP_BTN_H
+local TP_SEARCH_H=24
+local TP_CUSTOM_H=TP_ROW_H+TP_GAP+TP_SEARCH_H+TP_GAP+TP_LIST_H+TP_GAP+TP_BTN_H
 criarGaveta(gNum,"TP",{},TP_CUSTOM_H,function(parent)
     local nameRow=Instance.new("Frame",parent)
     nameRow.Size=UDim2.new(1,0,0,TP_ROW_H)
@@ -835,9 +939,33 @@ criarGaveta(gNum,"TP",{},TP_CUSTOM_H,function(parent)
     nameInput.ClearTextOnFocus=false
     nameInput.ZIndex=10
     registerTheme(function(c) nrStroke.Color=c; nrAccent.BackgroundColor3=c; nIB_Stroke.Color=c end)
+    local tpSearch=Instance.new("TextBox",parent)
+    tpSearch.Size=UDim2.new(1,0,0,TP_SEARCH_H)
+    tpSearch.Position=UDim2.new(0,0,0,TP_ROW_H+TP_GAP)
+    tpSearch.BackgroundColor3=Color3.fromRGB(20,20,23)
+    tpSearch.BorderSizePixel=0
+    tpSearch.Text=""
+    tpSearch.PlaceholderText="🔍 Buscar posição..."
+    tpSearch.PlaceholderColor3=Color3.fromRGB(120,120,125)
+    tpSearch.Font=Enum.Font.GothamBold
+    tpSearch.TextSize=10
+    tpSearch.TextColor3=Color3.fromRGB(240,240,240)
+    tpSearch.TextXAlignment=Enum.TextXAlignment.Left
+    tpSearch.ClearTextOnFocus=false
+    tpSearch.ZIndex=10
+    Instance.new("UICorner",tpSearch).CornerRadius=UDim.new(0,6)
+    local tpSearchStroke=Instance.new("UIStroke",tpSearch)
+    tpSearchStroke.Color=RED
+    tpSearchStroke.Thickness=1
+    tpSearchStroke.Transparency=0.4
+    local tpPad=Instance.new("UIPadding",tpSearch)
+    tpPad.PaddingLeft=UDim.new(0,8)
+    tpPad.PaddingRight=UDim.new(0,8)
+    registerTheme(function(c) tpSearchStroke.Color=c end)
+    UI.tpSearchBox=tpSearch
     local listScroll=Instance.new("ScrollingFrame",parent)
     listScroll.Size=UDim2.new(1,0,0,TP_LIST_H)
-    listScroll.Position=UDim2.new(0,0,0,TP_ROW_H+TP_GAP)
+    listScroll.Position=UDim2.new(0,0,0,TP_ROW_H+TP_GAP+TP_SEARCH_H+TP_GAP)
     listScroll.BackgroundColor3=Color3.fromRGB(9,9,11)
     listScroll.BackgroundTransparency=0.5
     listScroll.BorderSizePixel=0
@@ -861,7 +989,7 @@ criarGaveta(gNum,"TP",{},TP_CUSTOM_H,function(parent)
     registerTheme(function(c) lsStroke.Color=c; listScroll.ScrollBarImageColor3=c end)
     local btnRow=Instance.new("Frame",parent)
     btnRow.Size=UDim2.new(1,0,0,TP_BTN_H)
-    btnRow.Position=UDim2.new(0,0,0,TP_ROW_H+TP_GAP+TP_LIST_H+TP_GAP)
+    btnRow.Position=UDim2.new(0,0,0,TP_ROW_H+TP_GAP+TP_SEARCH_H+TP_GAP+TP_LIST_H+TP_GAP)
     btnRow.BackgroundTransparency=1
     btnRow.ZIndex=8
     local btnLayout=Instance.new("UIListLayout",btnRow)
@@ -913,13 +1041,22 @@ if IS_PRISON then
         {tipo="switch",nome="AUTO RELOAD",key="prisonReloadSwitch"},
         {tipo="cycler",nome="RANGE",valor=60,key="prisonRangeBtn"},
         {tipo="cycler",nome="SPEED",valor="12/s",key="prisonSpeedBtn"},
-    })
-    gNum=gNum+1
+    }); gNum=gNum+1
 end
 
 criarGaveta(gNum,"PANIC",{
     {tipo="action",nome="PANIC MODE",key="panicBtn"},
 })
+
+drawerSearch:GetPropertyChangedSignal("Text"):Connect(function()
+    local q=drawerSearch.Text:lower():gsub("^%s+",""):gsub("%s+$","")
+    for _,g in ipairs(gavetas) do
+        if q=="" then g.drawer.Visible=true
+        else g.drawer.Visible=g.name:lower():find(q,1,true)~=nil end
+    end
+end)
+drawerSearch.Focused:Connect(function() TS:Create(dsStroke,smallTween,{Transparency=0}):Play() end)
+drawerSearch.FocusLost:Connect(function() TS:Create(dsStroke,smallTween,{Transparency=0.4}):Play() end)
 
 local function atualizarCanvas()
     container.CanvasSize=UDim2.new(0,0,0,layout.AbsoluteContentSize.Y+8)
@@ -957,7 +1094,6 @@ local camFovActive=false
 local priorityIndex=1
 local PRIORITY={"CLOSEST","LOW HP","HIGH HP","FARTHEST"}
 local friends={}
-
 local prisonClickMat=false
 local prisonArrest=false
 local prisonReload=false
@@ -965,13 +1101,7 @@ local prisonRange=60
 local prisonSpeed=0.08
 local reloadLastTime=0
 
-local colors={
-    Color3.fromRGB(0,0,0),Color3.fromRGB(255,255,255),Color3.fromRGB(170,0,255),
-    Color3.fromRGB(255,0,0),Color3.fromRGB(255,255,0),Color3.fromRGB(0,170,255),
-    Color3.fromRGB(0,255,0),Color3.fromRGB(255,0,170),Color3.fromRGB(120,120,120),
-    Color3.fromRGB(255,100,0),Color3.fromRGB(0,255,255),Color3.fromRGB(150,75,0),
-    Color3.fromRGB(128,0,128),Color3.fromRGB(0,100,0),Color3.fromRGB(255,180,180),
-}
+local colors={Color3.fromRGB(0,0,0),Color3.fromRGB(255,255,255),Color3.fromRGB(170,0,255),Color3.fromRGB(255,0,0),Color3.fromRGB(255,255,0),Color3.fromRGB(0,170,255),Color3.fromRGB(0,255,0),Color3.fromRGB(255,0,170),Color3.fromRGB(120,120,120),Color3.fromRGB(255,100,0),Color3.fromRGB(0,255,255),Color3.fromRGB(150,75,0),Color3.fromRGB(128,0,128),Color3.fromRGB(0,100,0),Color3.fromRGB(255,180,180)}
 local colorNames={"BLACK","WHITE","PURPLE","RED","YELLOW","BLUE","GREEN","PINK","GRAY","ORANGE","CYAN","BROWN","DARKPURPLE","DARKGREEN","SALMON","RAINBOW"}
 local colorIndex=2
 local lineColor=colors[colorIndex]
@@ -1164,16 +1294,11 @@ UI.noclipSwitch.onToggle(function(s) noclipEnabled=s end)
 if IS_PRISON then
     UI.prisonClickMatSwitch.onToggle(function(s) prisonClickMat=s end)
     UI.prisonArrestSwitch.onToggle(function(s) prisonArrest=s end)
-    UI.prisonReloadSwitch.onToggle(function(s)
-        prisonReload=s
-        reloadLastTime=tick()
-    end)
+    UI.prisonReloadSwitch.onToggle(function(s) prisonReload=s; reloadLastTime=tick() end)
 end
 
 PL.Idled:Connect(function()
-    if antiAfkEnabled then
-        pcall(function() VU:CaptureController(); VU:ClickButton2(Vector2.new()) end)
-    end
+    if antiAfkEnabled then pcall(function() VU:CaptureController(); VU:ClickButton2(Vector2.new()) end) end
 end)
 
 UI.colorBtn.clickBtn.MouseButton1Click:Connect(function()
@@ -1215,6 +1340,23 @@ local function refreshTeams()
     for _,t in pairs(game:GetService("Teams"):GetTeams()) do table.insert(teamList,t) end
     table.sort(teamList,function(a,b) return a.Name<b.Name end)
 end
+task.spawn(function()
+    while true do
+        task.wait(1.5)
+        refreshTeams()
+        if teamMiscEnabled and selectedTeam then
+            local stillExists=false
+            for _,t in ipairs(teamList) do
+                if t.Name==selectedTeam.Name then stillExists=true; break end
+            end
+            if not stillExists then
+                teamMiscEnabled=false
+                selectedTeam=nil
+                UI.teamMiscBtn.setValue("OFF")
+            end
+        end
+    end
+end)
 UI.teamMiscBtn.clickBtn.MouseButton1Click:Connect(function()
     refreshTeams()
     if #teamList==0 then UI.teamMiscBtn.setValue("NO TEAMS"); teamMiscEnabled=false; selectedTeam=nil; return end
@@ -1270,16 +1412,13 @@ local function uH()
     for _,r in pairs(PR) do
         if r.avatarStroke then r.avatarStroke.Color=RED end
         if r.player==silentAimTarget then
-            r.frame.BackgroundColor3=darken(RED,0.2)
-            r.stroke.Color=RED
-            r.stroke.Transparency=0
+            r.frame.BackgroundColor3=darken(RED,0.2); r.stroke.Color=RED; r.stroke.Transparency=0
             r.nameLabel.TextColor3=RED
             r.userLabel.TextColor3=RED:Lerp(Color3.new(1,1,1),0.4)
             if r.avatarStroke then r.avatarStroke.Transparency=0 end
         else
             r.frame.BackgroundColor3=Color3.fromRGB(9,9,11)
-            r.stroke.Color=Color3.fromRGB(100,100,105)
-            r.stroke.Transparency=0.6
+            r.stroke.Color=Color3.fromRGB(100,100,105); r.stroke.Transparency=0.6
             r.nameLabel.TextColor3=Color3.fromRGB(240,240,240)
             r.userLabel.TextColor3=Color3.fromRGB(170,170,175)
             if r.avatarStroke then r.avatarStroke.Transparency=0.5 end
@@ -1378,13 +1517,18 @@ local function rPL()
     for pl,r in pairs(PR) do if not cur[pl] then r.frame:Destroy(); PR[pl]=nil end end
     local o=0
     for _,p in pairs(PS:GetPlayers()) do
-        if p~=PL then
-            o+=1
-            if not PR[p] then cPR(p,o) else PR[p].frame.LayoutOrder=o end
-        end
+        if p~=PL then o+=1; if not PR[p] then cPR(p,o) else PR[p].frame.LayoutOrder=o end end
     end
     if silentAimTarget and not PR[silentAimTarget] then silentAimTarget=nil; cTHL() end
     uH()
+    if UI.playerSearchBox then
+        local q=UI.playerSearchBox.Text:lower():gsub("^%s+",""):gsub("%s+$","")
+        if q~="" then
+            for _,row in pairs(PR) do
+                row.frame.Visible=row.player.Name:lower():find(q,1,true)~=nil or row.player.DisplayName:lower():find(q,1,true)~=nil
+            end
+        end
+    end
 end
 rPL()
 registerTheme(function(c)
@@ -1397,15 +1541,11 @@ local FR={}
 local function uFH()
     for _,r in pairs(FR) do
         if friends[r.player.Name] then
-            r.frame.BackgroundColor3=darken(RED,0.2)
-            r.stroke.Color=RED
-            r.stroke.Transparency=0
-            r.label.TextColor3=RED
-            r.avatarStroke.Transparency=0
+            r.frame.BackgroundColor3=darken(RED,0.2); r.stroke.Color=RED; r.stroke.Transparency=0
+            r.label.TextColor3=RED; r.avatarStroke.Transparency=0
         else
             r.frame.BackgroundColor3=Color3.fromRGB(9,9,11)
-            r.stroke.Color=Color3.fromRGB(100,100,105)
-            r.stroke.Transparency=0.6
+            r.stroke.Color=Color3.fromRGB(100,100,105); r.stroke.Transparency=0.6
             r.label.TextColor3=Color3.fromRGB(220,220,220)
             r.avatarStroke.Transparency=0.5
         end
@@ -1460,12 +1600,17 @@ local function rFL()
     for pl,r in pairs(FR) do if not cur[pl] then r.frame:Destroy(); FR[pl]=nil end end
     local o=0
     for _,p in pairs(PS:GetPlayers()) do
-        if p~=PL then
-            o+=1
-            if not FR[p] then cFR(p,o) else FR[p].frame.LayoutOrder=o end
-        end
+        if p~=PL then o+=1; if not FR[p] then cFR(p,o) else FR[p].frame.LayoutOrder=o end end
     end
     uFH()
+    if UI.friendSearchBox then
+        local q=UI.friendSearchBox.Text:lower():gsub("^%s+",""):gsub("%s+$","")
+        if q~="" then
+            for _,row in pairs(FR) do
+                row.frame.Visible=row.player.Name:lower():find(q,1,true)~=nil or row.player.DisplayName:lower():find(q,1,true)~=nil
+            end
+        end
+    end
 end
 rFL()
 registerTheme(function(c)
@@ -1549,10 +1694,7 @@ RS.Heartbeat:Connect(function()
             end
         end
     end
-    if best then
-        pcall(function() tool:Activate() end)
-        clickMatLastClick=now
-    end
+    if best then pcall(function() tool:Activate() end); clickMatLastClick=now end
 end)
 
 if IS_PRISON then
@@ -1599,27 +1741,25 @@ if IS_PRISON then
         local tool=ch:FindFirstChildOfClass("Tool")
         local now=tick()
 
-        -- AUTO RELOAD a cada 7s (não trava analógico)
         if prisonReload then
             if now-reloadLastTime>=7 then
                 reloadLastTime=now
                 task.spawn(function()
                     pcall(function()
+                        if VU and VU.TypeKey then
+                            VU:TypeKey(Enum.KeyCode.R)
+                            return
+                        end
                         if keypress and keyrelease then
                             keypress(Enum.KeyCode.R)
-                            task.wait(0.08)
+                            task.wait(0.05)
                             keyrelease(Enum.KeyCode.R)
-                        elseif VIM then
-                            VIM:SendKeyEvent(true,Enum.KeyCode.R,false,game)
-                            task.wait(0.08)
-                            VIM:SendKeyEvent(false,Enum.KeyCode.R,false,game)
                         end
                     end)
                 end)
             end
         end
 
-        -- CLICK MAT (SHOOT via remote)
         if prisonClickMat and tool and ShootEvent then
             if now-prisonLastClick>=prisonSpeed then
                 local target,targetPart=getClosestPrisonTarget(prisonRange)
@@ -1633,9 +1773,7 @@ if IS_PRISON then
                     end
                     if origin then
                         pcall(function()
-                            ShootEvent:FireServer({
-                                {origin,targetPart.Position,targetPart}
-                            })
+                            ShootEvent:FireServer({{origin,targetPart.Position,targetPart}})
                         end)
                         prisonLastClick=now
                     end
@@ -1643,7 +1781,6 @@ if IS_PRISON then
             end
         end
 
-        -- ARREST (só com Tool)
         if prisonArrest and tool and ArrestRemote then
             if now-prisonLastArrest>=0.2 then
                 local target=getClosestPrisonTarget(15)
@@ -1743,7 +1880,6 @@ local function applyConfigToSwitches(c)
     infJumpEnabled=c.infJumpEnabled or false
     noclipEnabled=c.noclipEnabled or false
     clickMatEnabled=c.clickMatEnabled or false
-
     if IS_PRISON then
         prisonClickMat=c.prisonClickMat or false
         prisonArrest=c.prisonArrest or false
@@ -1755,7 +1891,6 @@ local function applyConfigToSwitches(c)
         UI.prisonReloadSwitch.setOn(prisonReload)
         UI.prisonRangeBtn.setValue(prisonRange)
     end
-
     footer.Visible=not hideFooterEnabled
     behindText.Visible=showBehindCount
     local h=PL.Character and PL.Character:FindFirstChildOfClass("Humanoid")
@@ -1799,9 +1934,7 @@ local function writeIndex(l) pcall(function() writefile(INDEX_FILE,HS:JSONEncode
 local function indexAdd(n)
     local l=readIndex()
     for _,x in ipairs(l) do if x==n then return end end
-    table.insert(l,n)
-    table.sort(l)
-    writeIndex(l)
+    table.insert(l,n); table.sort(l); writeIndex(l)
 end
 local function indexRemove(n)
     local l=readIndex()
@@ -1824,15 +1957,9 @@ local SS=nil
 local function uSH()
     for n,r in pairs(SR) do
         if n==SS then
-            r.frame.BackgroundColor3=darken(RED,0.2)
-            r.stroke.Color=RED
-            r.stroke.Transparency=0
-            r.label.TextColor3=RED
+            r.frame.BackgroundColor3=darken(RED,0.2); r.stroke.Color=RED; r.stroke.Transparency=0; r.label.TextColor3=RED
         else
-            r.frame.BackgroundColor3=Color3.fromRGB(9,9,11)
-            r.stroke.Color=Color3.fromRGB(100,100,105)
-            r.stroke.Transparency=0.6
-            r.label.TextColor3=Color3.fromRGB(220,220,220)
+            r.frame.BackgroundColor3=Color3.fromRGB(9,9,11); r.stroke.Color=Color3.fromRGB(100,100,105); r.stroke.Transparency=0.6; r.label.TextColor3=Color3.fromRGB(220,220,220)
         end
     end
 end
@@ -1851,24 +1978,22 @@ local function refreshSaveList()
         r.ZIndex=10
         Instance.new("UICorner",r).CornerRadius=UDim.new(0,6)
         local s=Instance.new("UIStroke",r)
-        s.Color=Color3.fromRGB(100,100,105)
-        s.Thickness=1
-        s.Transparency=0.6
+        s.Color=Color3.fromRGB(100,100,105); s.Thickness=1; s.Transparency=0.6
         local lb=Instance.new("TextLabel",r)
-        lb.Size=UDim2.new(1,-16,1,0)
-        lb.Position=UDim2.new(0,8,0,0)
-        lb.BackgroundTransparency=1
-        lb.Text=n
-        lb.Font=Enum.Font.GothamBold
-        lb.TextSize=10
-        lb.TextColor3=Color3.fromRGB(220,220,220)
-        lb.TextXAlignment=Enum.TextXAlignment.Left
+        lb.Size=UDim2.new(1,-16,1,0); lb.Position=UDim2.new(0,8,0,0)
+        lb.BackgroundTransparency=1; lb.Text=n
+        lb.Font=Enum.Font.GothamBold; lb.TextSize=10
+        lb.TextColor3=Color3.fromRGB(220,220,220); lb.TextXAlignment=Enum.TextXAlignment.Left
         lb.ZIndex=11
         r.MouseButton1Click:Connect(function() SS=n; uSH() end)
         SR[n]={frame=r,stroke=s,label=lb,name=n}
     end
     if SS and not SR[SS] then SS=nil end
     uSH()
+    if UI.saveSearchBox then
+        local q=UI.saveSearchBox.Text:lower():gsub("^%s+",""):gsub("%s+$","")
+        if q~="" then for name,row in pairs(SR) do row.frame.Visible=name:lower():find(q,1,true)~=nil end end
+    end
 end
 
 UI.saveBtn.MouseButton1Click:Connect(function()
@@ -1931,9 +2056,7 @@ local function wTPIX(l) pcall(function() writefile(TPIX,HS:JSONEncode(l)) end) e
 local function iTPAD(n)
     local l=rTPIX()
     for _,x in ipairs(l) do if x==n then return end end
-    table.insert(l,n)
-    table.sort(l)
-    wTPIX(l)
+    table.insert(l,n); table.sort(l); wTPIX(l)
 end
 local function iTPRM(n)
     local l=rTPIX()
@@ -1955,15 +2078,9 @@ local TPS=nil
 local function uTPH()
     for n,r in pairs(TPR) do
         if n==TPS then
-            r.frame.BackgroundColor3=darken(RED,0.2)
-            r.stroke.Color=RED
-            r.stroke.Transparency=0
-            r.label.TextColor3=RED
+            r.frame.BackgroundColor3=darken(RED,0.2); r.stroke.Color=RED; r.stroke.Transparency=0; r.label.TextColor3=RED
         else
-            r.frame.BackgroundColor3=Color3.fromRGB(9,9,11)
-            r.stroke.Color=Color3.fromRGB(100,100,105)
-            r.stroke.Transparency=0.6
-            r.label.TextColor3=Color3.fromRGB(220,220,220)
+            r.frame.BackgroundColor3=Color3.fromRGB(9,9,11); r.stroke.Color=Color3.fromRGB(100,100,105); r.stroke.Transparency=0.6; r.label.TextColor3=Color3.fromRGB(220,220,220)
         end
     end
 end
@@ -1982,26 +2099,23 @@ local function rTPL()
         r.ZIndex=10
         Instance.new("UICorner",r).CornerRadius=UDim.new(0,6)
         local s=Instance.new("UIStroke",r)
-        s.Color=Color3.fromRGB(100,100,105)
-        s.Thickness=1
-        s.Transparency=0.6
+        s.Color=Color3.fromRGB(100,100,105); s.Thickness=1; s.Transparency=0.6
         local lb=Instance.new("TextLabel",r)
-        lb.Size=UDim2.new(1,-16,1,0)
-        lb.Position=UDim2.new(0,8,0,0)
-        lb.BackgroundTransparency=1
-        lb.Text=n
-        lb.Font=Enum.Font.GothamBold
-        lb.TextSize=10
-        lb.TextColor3=Color3.fromRGB(220,220,220)
-        lb.TextXAlignment=Enum.TextXAlignment.Left
+        lb.Size=UDim2.new(1,-16,1,0); lb.Position=UDim2.new(0,8,0,0)
+        lb.BackgroundTransparency=1; lb.Text=n
+        lb.Font=Enum.Font.GothamBold; lb.TextSize=10
+        lb.TextColor3=Color3.fromRGB(220,220,220); lb.TextXAlignment=Enum.TextXAlignment.Left
         lb.ZIndex=11
         r.MouseButton1Click:Connect(function() TPS=n; uTPH() end)
         TPR[n]={frame=r,stroke=s,label=lb,name=n}
     end
     if TPS and not TPR[TPS] then TPS=nil end
     uTPH()
+    if UI.tpSearchBox then
+        local q=UI.tpSearchBox.Text:lower():gsub("^%s+",""):gsub("%s+$","")
+        if q~="" then for name,row in pairs(TPR) do row.frame.Visible=name:lower():find(q,1,true)~=nil end end
+    end
 end
-
 UI.tpSaveBtn.MouseButton1Click:Connect(function()
     local n=UI.tpNameInput.Text
     if not n or n:gsub("%s","")=="" then UI.tpSaveBtn.Text="VAZIO!"; task.delay(1.2,function() UI.tpSaveBtn.Text="SAVE" end); return end
@@ -2058,74 +2172,70 @@ end)
 rTPL()
 task.spawn(function() while true do task.wait(3); rTPL() end end)
 
+if UI.playerSearchBox then
+    UI.playerSearchBox:GetPropertyChangedSignal("Text"):Connect(function()
+        local q=UI.playerSearchBox.Text:lower():gsub("^%s+",""):gsub("%s+$","")
+        for _,row in pairs(PR) do
+            if q=="" then row.frame.Visible=true
+            else row.frame.Visible=row.player.Name:lower():find(q,1,true)~=nil or row.player.DisplayName:lower():find(q,1,true)~=nil end
+        end
+    end)
+end
+if UI.friendSearchBox then
+    UI.friendSearchBox:GetPropertyChangedSignal("Text"):Connect(function()
+        local q=UI.friendSearchBox.Text:lower():gsub("^%s+",""):gsub("%s+$","")
+        for _,row in pairs(FR) do
+            if q=="" then row.frame.Visible=true
+            else row.frame.Visible=row.player.Name:lower():find(q,1,true)~=nil or row.player.DisplayName:lower():find(q,1,true)~=nil end
+        end
+    end)
+end
+if UI.saveSearchBox then
+    UI.saveSearchBox:GetPropertyChangedSignal("Text"):Connect(function()
+        local q=UI.saveSearchBox.Text:lower():gsub("^%s+",""):gsub("%s+$","")
+        for name,row in pairs(SR) do
+            if q=="" then row.frame.Visible=true else row.frame.Visible=name:lower():find(q,1,true)~=nil end
+        end
+    end)
+end
+if UI.tpSearchBox then
+    UI.tpSearchBox:GetPropertyChangedSignal("Text"):Connect(function()
+        local q=UI.tpSearchBox.Text:lower():gsub("^%s+",""):gsub("%s+$","")
+        for name,row in pairs(TPR) do
+            if q=="" then row.frame.Visible=true else row.frame.Visible=name:lower():find(q,1,true)~=nil end
+        end
+    end)
+end
+
 local function executarPanic()
-    espEnabled=false
-    espNameEnabled=false
-    aimbotEnabled=false
-    aimbotNpcEnabled=false
-    teamCheck=false
-    wallCheck=false
-    showBehindCount=false
-    aimToolEnabled=false
-    teamMiscEnabled=false
-    selectedTeam=nil
-    silentAimEnabled=false
-    silentAimTarget=nil
-    silentAimNpcEnabled=false
-    fullBrightEnabled=false
-    spinBotEnabled=false
-    antiAfkEnabled=false
-    hideFooterEnabled=false
-    infJumpEnabled=false
-    noclipEnabled=false
-    clickMatEnabled=false
-    prisonClickMat=false
-    prisonArrest=false
-    prisonReload=false
-    FOV=120
-    camFOV=70
-    camFovActive=false
-    CAM.FieldOfView=camFOV
-    behindText.Visible=false
-    footer.Visible=true
-    UI.espSwitch.setOn(false)
-    UI.espNameSwitch.setOn(false)
-    UI.aimSwitch.setOn(false)
-    UI.aimNpcSwitch.setOn(false)
-    UI.aimToolSwitch.setOn(false)
-    UI.teamCheckSwitch.setOn(false)
-    UI.wallCheckSwitch.setOn(false)
-    UI.behindSwitch.setOn(false)
-    UI.saSwitch.setOn(false)
-    UI.saNpcSwitch.setOn(false)
-    UI.spinSwitch.setOn(false)
-    UI.fbSwitch.setOn(false)
-    UI.afkSwitch.setOn(false)
-    UI.hideFooterSwitch.setOn(false)
-    UI.infJumpSwitch.setOn(false)
-    UI.noclipSwitch.setOn(false)
-    UI.clickMatSwitch.setOn(false)
+    espEnabled=false; espNameEnabled=false; aimbotEnabled=false; aimbotNpcEnabled=false
+    teamCheck=false; wallCheck=false; showBehindCount=false; aimToolEnabled=false
+    teamMiscEnabled=false; selectedTeam=nil
+    silentAimEnabled=false; silentAimTarget=nil; silentAimNpcEnabled=false
+    fullBrightEnabled=false; spinBotEnabled=false; antiAfkEnabled=false
+    hideFooterEnabled=false; infJumpEnabled=false; noclipEnabled=false; clickMatEnabled=false
+    prisonClickMat=false; prisonArrest=false; prisonReload=false
+    FOV=120; camFOV=70; camFovActive=false; CAM.FieldOfView=camFOV
+    behindText.Visible=false; footer.Visible=true
+    UI.espSwitch.setOn(false); UI.espNameSwitch.setOn(false)
+    UI.aimSwitch.setOn(false); UI.aimNpcSwitch.setOn(false); UI.aimToolSwitch.setOn(false)
+    UI.teamCheckSwitch.setOn(false); UI.wallCheckSwitch.setOn(false); UI.behindSwitch.setOn(false)
+    UI.saSwitch.setOn(false); UI.saNpcSwitch.setOn(false); UI.spinSwitch.setOn(false)
+    UI.fbSwitch.setOn(false); UI.afkSwitch.setOn(false); UI.hideFooterSwitch.setOn(false)
+    UI.infJumpSwitch.setOn(false); UI.noclipSwitch.setOn(false); UI.clickMatSwitch.setOn(false)
     if IS_PRISON then
         UI.prisonClickMatSwitch.setOn(false)
         UI.prisonArrestSwitch.setOn(false)
         UI.prisonReloadSwitch.setOn(false)
     end
-    UI.partBtn.setValue("HEAD")
-    UI.fovBtn.setValue(120)
-    UI.camFovBtn.setValue(70)
-    UI.teamMiscBtn.setValue("OFF")
-    UI.priorityBtn.setValue("CLOSEST")
-    UI.speedBox.setValue(16)
-    UI.jumpBox.setValue(50)
-    UI.gravityBox.setValue(196.2)
-    aimPart="Head"
-    priorityIndex=1
+    UI.partBtn.setValue("HEAD"); UI.fovBtn.setValue(120); UI.camFovBtn.setValue(70)
+    UI.teamMiscBtn.setValue("OFF"); UI.priorityBtn.setValue("CLOSEST")
+    UI.speedBox.setValue(16); UI.jumpBox.setValue(50); UI.gravityBox.setValue(196.2)
+    aimPart="Head"; priorityIndex=1
     local h=PL.Character and PL.Character:FindFirstChildOfClass("Humanoid")
     if h then h.WalkSpeed=16; h.UseJumpPower=true; h.JumpPower=50; h.AutoRotate=true end
     workspace.Gravity=originalGravity
-    rL()
-    cTHL()
-    uH()
+    rL(); cTHL(); uH()
 end
 UI.panicBtn.clickBtn.MouseButton1Click:Connect(executarPanic)
 
@@ -2172,19 +2282,11 @@ RS.RenderStepped:Connect(function()
             local ps,v=CAM:WorldToViewportPoint(hr.Position)
             if v then
                 local sz=60/ps.Z
-                e[1].Size=Vector2.new(sz*2,sz*3)
-                e[1].Position=Vector2.new(ps.X-sz,ps.Y-sz)
-                e[1].Color=lineColor
-                e[1].Visible=true
-                e[2].From=Vector2.new(CAM.ViewportSize.X/2,CAM.ViewportSize.Y)
-                e[2].To=Vector2.new(ps.X,ps.Y)
-                e[2].Color=lineColor
-                e[2].Visible=true
+                e[1].Size=Vector2.new(sz*2,sz*3); e[1].Position=Vector2.new(ps.X-sz,ps.Y-sz); e[1].Color=lineColor; e[1].Visible=true
+                e[2].From=Vector2.new(CAM.ViewportSize.X/2,CAM.ViewportSize.Y); e[2].To=Vector2.new(ps.X,ps.Y); e[2].Color=lineColor; e[2].Visible=true
                 local ht="["..math.floor(h.Health).."]"
                 if espNameEnabled then e[3].Text=pl.Name.." "..ht else e[3].Text=ht end
-                e[3].Position=Vector2.new(ps.X,ps.Y-sz*1.8)
-                e[3].Color=lineColor
-                e[3].Visible=true
+                e[3].Position=Vector2.new(ps.X,ps.Y-sz*1.8); e[3].Color=lineColor; e[3].Visible=true
             else for _,v in pairs(e) do v.Visible=false end end
         else for _,v in pairs(e) do v.Visible=false end end
     end
@@ -2192,10 +2294,7 @@ end)
 
 local function getTarget()
     local best=nil
-    local bestDist=FOV
-    local bestHP=math.huge
-    local worstHP=-math.huge
-    local farDist=0
+    local bestDist=FOV; local bestHP=math.huge; local worstHP=-math.huge; local farDist=0
     local pri=PRIORITY[priorityIndex]
     if aimToolEnabled then
         local t=PL.Character and PL.Character:FindFirstChildOfClass("Tool")
@@ -2258,8 +2357,7 @@ RS.RenderStepped:Connect(function()
         if tc then
             local tp=tc:FindFirstChild("Head") or tc:FindFirstChild("HumanoidRootPart")
             if tp then
-                local mp=mh.Position
-                local tpp=tp.Position
+                local mp=mh.Position; local tpp=tp.Position
                 local d=Vector3.new(tpp.X-mp.X,0,tpp.Z-mp.Z)
                 if d.Magnitude>0.1 then mh.CFrame=CFrame.lookAt(mp,mp+d) end
             end
@@ -2271,8 +2369,7 @@ RS.RenderStepped:Connect(function()
         if n then
             local tp=n:FindFirstChild("Head") or n:FindFirstChild("HumanoidRootPart")
             if tp then
-                local mp=mh.Position
-                local tpp=tp.Position
+                local mp=mh.Position; local tpp=tp.Position
                 local d=Vector3.new(tpp.X-mp.X,0,tpp.Z-mp.Z)
                 if d.Magnitude>0.1 then mh.CFrame=CFrame.lookAt(mp,mp+d) end
             end
