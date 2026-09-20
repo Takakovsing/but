@@ -1218,7 +1218,7 @@ criarGaveta(6, "CONFIG", {}, SAVE_CUSTOM_H, function(parent)
 end)
 
 --==================================================
--- GAVETA 7: MISC (com ANTI-AFK)
+-- GAVETA 7: MISC
 --==================================================
 
 criarGaveta(7, "MISC", {
@@ -1226,6 +1226,7 @@ criarGaveta(7, "MISC", {
     {tipo="cycler", nome="FOV CAMERA",   valor=70, key="camFovBtn"},
     {tipo="switch", nome="FULL BRIGHT",  key="fbSwitch"},
     {tipo="switch", nome="ANTI-AFK",     key="afkSwitch"},
+    {tipo="switch", nome="HIDE FOOTER",  key="hideFooterSwitch"},
 })
 
 --==================================================
@@ -1267,6 +1268,7 @@ local silentAimNpcEnabled = false
 local fullBrightEnabled = false
 local spinBotEnabled = false
 local antiAfkEnabled = false
+local hideFooterEnabled = false
 
 local infJumpEnabled = false
 local noclipEnabled = false
@@ -1562,6 +1564,11 @@ end)
 
 UI.afkSwitch.onToggle(function(s)
     antiAfkEnabled = s
+end)
+
+UI.hideFooterSwitch.onToggle(function(s)
+    hideFooterEnabled = s
+    footer.Visible = not s
 end)
 
 UI.saSwitch.onToggle(function(s) silentAimEnabled = s end)
@@ -1982,6 +1989,7 @@ local function collectConfig()
         fullBrightEnabled = fullBrightEnabled,
         spinBotEnabled = spinBotEnabled,
         antiAfkEnabled = antiAfkEnabled,
+        hideFooterEnabled = hideFooterEnabled,
         infJumpEnabled = infJumpEnabled,
         noclipEnabled = noclipEnabled,
         aimPart = aimPart,
@@ -2011,6 +2019,7 @@ local function applyConfigToSwitches(cfg)
     UI.fbSwitch.setOn(cfg.fullBrightEnabled or false)
     UI.spinSwitch.setOn(cfg.spinBotEnabled or false)
     UI.afkSwitch.setOn(cfg.antiAfkEnabled or false)
+    UI.hideFooterSwitch.setOn(cfg.hideFooterEnabled or false)
     UI.infJumpSwitch.setOn(cfg.infJumpEnabled or false)
     UI.noclipSwitch.setOn(cfg.noclipEnabled or false)
 
@@ -2027,9 +2036,11 @@ local function applyConfigToSwitches(cfg)
     fullBrightEnabled = cfg.fullBrightEnabled or false
     spinBotEnabled = cfg.spinBotEnabled or false
     antiAfkEnabled = cfg.antiAfkEnabled or false
+    hideFooterEnabled = cfg.hideFooterEnabled or false
     infJumpEnabled = cfg.infJumpEnabled or false
     noclipEnabled = cfg.noclipEnabled or false
 
+    footer.Visible = not hideFooterEnabled
     behindText.Visible = showBehindCount
     local hum = Player.Character and Player.Character:FindFirstChildOfClass("Humanoid")
     if hum then hum.AutoRotate = not spinBotEnabled end
@@ -2338,6 +2349,7 @@ local function executarPanic()
     fullBrightEnabled = false
     spinBotEnabled = false
     antiAfkEnabled = false
+    hideFooterEnabled = false
     infJumpEnabled = false
     noclipEnabled = false
 
@@ -2346,6 +2358,7 @@ local function executarPanic()
     camFovActive = false
     Camera.FieldOfView = camFOV
     behindText.Visible = false
+    footer.Visible = true
 
     UI.espSwitch.setOn(false)
     UI.espNameSwitch.setOn(true)
@@ -2360,6 +2373,7 @@ local function executarPanic()
     UI.spinSwitch.setOn(false)
     UI.fbSwitch.setOn(false)
     UI.afkSwitch.setOn(false)
+    UI.hideFooterSwitch.setOn(false)
     UI.infJumpSwitch.setOn(false)
     UI.noclipSwitch.setOn(false)
 
@@ -2604,11 +2618,25 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
+--==================================================
+-- SPIN BOT
+--==================================================
+
 RunService:BindToRenderStep("PortugaSpinBot", Enum.RenderPriority.Camera.Value + 1, function()
     if not spinBotEnabled then return end
+
     local myChar = Player.Character
     local myHRP = myChar and myChar:FindFirstChild("HumanoidRootPart")
     if not myHRP then return end
+
+    if aimToolEnabled then
+        local tool = myChar:FindFirstChildOfClass("Tool")
+        if not tool then
+            local hum = myChar:FindFirstChildOfClass("Humanoid")
+            if hum and hum.AutoRotate then hum.AutoRotate = false end
+            return
+        end
+    end
 
     local hum = myChar:FindFirstChildOfClass("Humanoid")
     if hum and hum.AutoRotate then hum.AutoRotate = false end
