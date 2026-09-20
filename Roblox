@@ -2494,4 +2494,95 @@ local function getTarget()
             if teamMiscEnabled and selectedTeam then if p.Team~=selectedTeam then continue end end
             local ps,v=CAM:WorldToViewportPoint(pt.Position)
             if v then
-                local d=(Vector2.new(ps.X,ps.Y)-Vector2.new(CAM.ViewportSize
+                local d=(Vector2.new(ps.X,ps.Y)-Vector2.new(CAM.ViewportSize.X/2,CAM.ViewportSize.Y/2)).Magnitude
+                if d<FOV then
+                    if wallCheck then
+                        local rp=RaycastParams.new()
+                        rp.FilterType=Enum.RaycastFilterType.Blacklist
+                        rp.FilterDescendantsInstances={PL.Character}
+                        local r=workspace:Raycast(CAM.CFrame.Position,(pt.Position-CAM.CFrame.Position).Unit*5000,rp)
+                        if r and not r.Instance:IsDescendantOf(ch) then continue end
+                    end
+                    if pri=="CLOSEST" then if d<bestDist then bestDist=d; best=p end
+                    elseif pri=="LOW HP" then if h.Health<bestHP then bestHP=h.Health; best=p end
+                    elseif pri=="HIGH HP" then if h.Health>worstHP then worstHP=h.Health; best=p end
+                    elseif pri=="FARTHEST" then if d>farDist then farDist=d; best=p end end
+                end
+            end
+        end
+    end
+    return best
+end
+
+RS.RenderStepped:Connect(function()
+    if silentAimEnabled or silentAimNpcEnabled then return end
+    if aimbotEnabled then
+        local t=getTarget()
+        if t and t.Character then
+            local p=t.Character:FindFirstChild(aimPart)
+            if p then CAM.CFrame=CFrame.new(CAM.CFrame.Position,p.Position) end
+        end
+    end
+    if aimbotNpcEnabled then
+        local n=gNN(aimPart)
+        if n then
+            local p=n:FindFirstChild(aimPart) or n:FindFirstChild("HumanoidRootPart") or n:FindFirstChild("Head")
+            if p then CAM.CFrame=CFrame.new(CAM.CFrame.Position,p.Position) end
+        end
+    end
+end)
+
+RS.RenderStepped:Connect(function()
+    local mc=PL.Character
+    local mh=mc and mc:FindFirstChild("HumanoidRootPart")
+    if silentAimEnabled and silentAimTarget and mh then
+        local tc=silentAimTarget.Character
+        if tc then
+            local tp=tc:FindFirstChild("Head") or tc:FindFirstChild("HumanoidRootPart")
+            if tp then
+                local mp=mh.Position; local tpp=tp.Position
+                local d=Vector3.new(tpp.X-mp.X,0,tpp.Z-mp.Z)
+                if d.Magnitude>0.1 then mh.CFrame=CFrame.lookAt(mp,mp+d) end
+            end
+        end
+        return
+    end
+    if silentAimNpcEnabled and mh then
+        local n=gNN("Head") or gNN("HumanoidRootPart")
+        if n then
+            local tp=n:FindFirstChild("Head") or n:FindFirstChild("HumanoidRootPart")
+            if tp then
+                local mp=mh.Position; local tpp=tp.Position
+                local d=Vector3.new(tpp.X-mp.X,0,tpp.Z-mp.Z)
+                if d.Magnitude>0.1 then mh.CFrame=CFrame.lookAt(mp,mp+d) end
+            end
+        end
+    end
+end)
+
+RS:BindToRenderStep("PortugaSpinBot",Enum.RenderPriority.Camera.Value+1,function()
+    if not spinBotEnabled then
+        local mc=PL.Character
+        local h=mc and mc:FindFirstChildOfClass("Humanoid")
+        if h and not h.AutoRotate then h.AutoRotate=true end
+        return
+    end
+    local mc=PL.Character
+    local mh=mc and mc:FindFirstChild("HumanoidRootPart")
+    if not mh then return end
+    if aimToolEnabled then
+        local tool=mc:FindFirstChildOfClass("Tool")
+        if not tool then
+            local h=mc:FindFirstChildOfClass("Humanoid")
+            if h and not h.AutoRotate then h.AutoRotate=true end
+            return
+        end
+    end
+    local h=mc:FindFirstChildOfClass("Humanoid")
+    if h and h.AutoRotate then h.AutoRotate=false end
+    local a=(tick()*720)%360
+    local p=mh.Position
+    mh.CFrame=CFrame.new(p)*CFrame.Angles(0,math.rad(a),0)
+end)
+
+print("[Portuga HUB] Carregado"..(IS_PRISON and " — MODO PRISON LIFE ATIVO!" or ""))
