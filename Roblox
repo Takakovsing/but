@@ -1409,17 +1409,21 @@ end)
 local PR={}
 local function uH()
     for _,r in pairs(PR) do
+        if r.userLabel and r.player then
+            local teamName=(r.player.Team and r.player.Team.Name) or "Sem Time"
+            local teamColor=(r.player.Team and r.player.Team.TeamColor.Color) or Color3.fromRGB(120,120,120)
+            r.userLabel.Text="@"..r.player.Name.."  •  "..teamName
+            r.userLabel.TextColor3=teamColor
+        end
         if r.avatarStroke then r.avatarStroke.Color=RED end
         if r.player==silentAimTarget then
             r.frame.BackgroundColor3=darken(RED,0.2); r.stroke.Color=RED; r.stroke.Transparency=0
             r.nameLabel.TextColor3=RED
-            r.userLabel.TextColor3=RED:Lerp(Color3.new(1,1,1),0.4)
             if r.avatarStroke then r.avatarStroke.Transparency=0 end
         else
             r.frame.BackgroundColor3=Color3.fromRGB(9,9,11)
             r.stroke.Color=Color3.fromRGB(100,100,105); r.stroke.Transparency=0.6
             r.nameLabel.TextColor3=Color3.fromRGB(240,240,240)
-            r.userLabel.TextColor3=Color3.fromRGB(170,170,175)
             if r.avatarStroke then r.avatarStroke.Transparency=0.5 end
         end
     end
@@ -1534,7 +1538,7 @@ registerTheme(function(c)
     for _,r in pairs(PR) do if r and r.avatarStroke then r.avatarStroke.Color=c end end
     pcall(uH)
 end)
-task.spawn(function() while true do task.wait(2.5); rPL() end end)
+task.spawn(function() while true do task.wait(1.5); rPL() end end)
 
 local FR={}
 local function uFH()
@@ -1616,7 +1620,7 @@ registerTheme(function(c)
     for _,r in pairs(FR) do if r and r.avatarStroke then r.avatarStroke.Color=c end end
     pcall(uFH)
 end)
-task.spawn(function() while true do task.wait(2.5); rFL() end end)
+task.spawn(function() while true do task.wait(1.5); rFL() end end)
 
 task.spawn(function()
     while true do
@@ -1740,7 +1744,6 @@ if IS_PRISON then
         local tool=ch:FindFirstChildOfClass("Tool")
         local now=tick()
 
-        -- AUTO RELOAD a cada 3 segundos
         if prisonReload then
             if now-reloadLastTime>=3 then
                 reloadLastTime=now
