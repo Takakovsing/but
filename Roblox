@@ -6,7 +6,6 @@ local UIS=game:GetService("UserInputService")
 local LG=game:GetService("Lighting")
 local HS=game:GetService("HttpService")
 local VU=game:GetService("VirtualUser")
-local VIM=game:GetService("VirtualInputManager")
 local CAM=workspace.CurrentCamera
 local PL=PS.LocalPlayer
 
@@ -911,8 +910,7 @@ if IS_PRISON then
     criarGaveta(gNum,"PRISON LIFE",{
         {tipo="switch",nome="CLICK MAT (SHOOT)",key="prisonClickMatSwitch"},
         {tipo="switch",nome="ARREST",key="prisonArrestSwitch"},
-        {tipo="switch",nome="ARREST ALL",key="prisonArrestAllSwitch"},
-        {tipo="switch",nome="AUTO RELOAD (R)",key="prisonReloadSwitch"},
+        {tipo="switch",nome="AUTO RELOAD",key="prisonReloadSwitch"},
         {tipo="cycler",nome="RANGE",valor=60,key="prisonRangeBtn"},
         {tipo="cycler",nome="SPEED",valor="12/s",key="prisonSpeedBtn"},
     })
@@ -929,7 +927,6 @@ end
 layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(atualizarCanvas)
 atualizarCanvas()
 
--- ESTADO
 local espEnabled=false
 local espNameEnabled=false
 local aimbotEnabled=false
@@ -961,15 +958,11 @@ local priorityIndex=1
 local PRIORITY={"CLOSEST","LOW HP","HIGH HP","FARTHEST"}
 local friends={}
 
--- PRISON LIFE
 local prisonClickMat=false
 local prisonArrest=false
-local prisonArrestAll=false
 local prisonReload=false
 local prisonRange=60
 local prisonSpeed=0.08
-local arrestAllIndex=0
-local arrestAllLastTime=0
 local reloadLastTime=0
 
 local colors={
@@ -1171,8 +1164,10 @@ UI.noclipSwitch.onToggle(function(s) noclipEnabled=s end)
 if IS_PRISON then
     UI.prisonClickMatSwitch.onToggle(function(s) prisonClickMat=s end)
     UI.prisonArrestSwitch.onToggle(function(s) prisonArrest=s end)
-    UI.prisonArrestAllSwitch.onToggle(function(s) prisonArrestAll=s; arrestAllIndex=0 end)
-    UI.prisonReloadSwitch.onToggle(function(s) prisonReload=s; reloadLastTime=tick() end)
+    UI.prisonReloadSwitch.onToggle(function(s)
+        prisonReload=s
+        reloadLastTime=tick()
+    end)
 end
 
 PL.Idled:Connect(function()
@@ -1270,7 +1265,6 @@ UI.gravityBox.onSubmit(function(v)
     workspace.Gravity=v
 end)
 
--- PLAYER SELECT (com TEAM)
 local PR={}
 local function uH()
     for _,r in pairs(PR) do
@@ -1329,15 +1323,16 @@ local function cPR(p,o)
     nl.TextXAlignment=Enum.TextXAlignment.Left
     nl.TextTruncate=Enum.TextTruncate.AtEnd
     nl.ZIndex=11
-    local teamName = (p.Team and p.Team.Name) or "Sem Time"
+    local teamName=(p.Team and p.Team.Name) or "Sem Time"
+    local teamColor=(p.Team and p.Team.TeamColor.Color) or Color3.fromRGB(120,120,120)
     local ul=Instance.new("TextLabel",r)
     ul.Size=UDim2.new(1,-90,0,14)
     ul.Position=UDim2.new(0,48,0,24)
     ul.BackgroundTransparency=1
-    ul.Text="@"..p.Name.." • "..teamName
+    ul.Text="@"..p.Name.."  •  "..teamName
     ul.Font=Enum.Font.Gotham
     ul.TextSize=10
-    ul.TextColor3=Color3.fromRGB(170,170,175)
+    ul.TextColor3=teamColor
     ul.TextXAlignment=Enum.TextXAlignment.Left
     ul.TextTruncate=Enum.TextTruncate.AtEnd
     ul.ZIndex=11
@@ -1398,7 +1393,6 @@ registerTheme(function(c)
 end)
 task.spawn(function() while true do task.wait(2.5); rPL() end end)
 
--- FRIEND LIST
 local FR={}
 local function uFH()
     for _,r in pairs(FR) do
@@ -1517,7 +1511,6 @@ RS.Stepped:Connect(function()
     end
 end)
 
--- CLICK MAT padrão
 local clickMatLastClick=0
 local clickMatInterval=0.05
 RS.Heartbeat:Connect(function()
@@ -1562,7 +1555,6 @@ RS.Heartbeat:Connect(function()
     end
 end)
 
--- PRISON LIFE LOGIC
 if IS_PRISON then
     local prisonLastClick=0
     local prisonLastArrest=0
@@ -1607,26 +1599,27 @@ if IS_PRISON then
         local tool=ch:FindFirstChildOfClass("Tool")
         local now=tick()
 
-        -- AUTO RELOAD: aperta R a cada 7 segundos
+        -- AUTO RELOAD a cada 7s (não trava analógico)
         if prisonReload then
             if now-reloadLastTime>=7 then
-                pcall(function()
-                    VIM:SendKeyEvent(true,Enum.KeyCode.R,false,game)
-                    task.wait(0.05)
-                    VIM:SendKeyEvent(false,Enum.KeyCode.R,false,game)
-                end)
-                if keypress and keyrelease then
-                    pcall(function()
-                        keypress(Enum.KeyCode.R)
-                        task.wait(0.05)
-                        keyrelease(Enum.KeyCode.R)
-                    end)
-                end
                 reloadLastTime=now
+                task.spawn(function()
+                    pcall(function()
+                        if keypress and keyrelease then
+                            keypress(Enum.KeyCode.R)
+                            task.wait(0.08)
+                            keyrelease(Enum.KeyCode.R)
+                        elseif VIM then
+                            VIM:SendKeyEvent(true,Enum.KeyCode.R,false,game)
+                            task.wait(0.08)
+                            VIM:SendKeyEvent(false,Enum.KeyCode.R,false,game)
+                        end
+                    end)
+                end)
             end
         end
 
-        -- CLICK MAT (SHOOT)
+        -- CLICK MAT (SHOOT via remote)
         if prisonClickMat and tool and ShootEvent then
             if now-prisonLastClick>=prisonSpeed then
                 local target,targetPart=getClosestPrisonTarget(prisonRange)
@@ -1660,34 +1653,6 @@ if IS_PRISON then
                 end
             end
         end
-
-        -- ARREST ALL: teleporta + prende Criminals a cada 2s
-        if prisonArrestAll and ArrestRemote then
-            if now-arrestAllLastTime>=2 then
-                local criminals={}
-                for _,p in pairs(PS:GetPlayers()) do
-                    if p~=PL and p.Team and p.Team.Name=="Criminals" and p.Character then
-                        local tHum=p.Character:FindFirstChild("Humanoid")
-                        if tHum and tHum.Health>0 then
-                            table.insert(criminals,p)
-                        end
-                    end
-                end
-                if #criminals>0 then
-                    arrestAllIndex=arrestAllIndex+1
-                    if arrestAllIndex>#criminals then arrestAllIndex=1 end
-                    local target=criminals[arrestAllIndex]
-                    local hr=ch:FindFirstChild("HumanoidRootPart")
-                    local tHr=target.Character and target.Character:FindFirstChild("HumanoidRootPart")
-                    if hr and tHr then
-                        hr.CFrame=CFrame.new(tHr.Position+Vector3.new(0,3,0))
-                        task.wait(0.15)
-                        pcall(function() ArrestRemote:InvokeServer(target,1) end)
-                    end
-                end
-                arrestAllLastTime=now
-            end
-        end
     end)
 end
 
@@ -1714,7 +1679,6 @@ end)
 
 task.spawn(function() while true do task.wait(0.5); if fullBrightEnabled then pcall(aFB) end end end)
 
--- SAVE SYSTEM
 local SAVE_PREFIX="portuga_save_"
 local SAVE_EXT=".json"
 local INDEX_FILE="portuga_index.json"
@@ -1737,7 +1701,6 @@ local function collectConfig()
     if IS_PRISON then
         cfg.prisonClickMat=prisonClickMat
         cfg.prisonArrest=prisonArrest
-        cfg.prisonArrestAll=prisonArrestAll
         cfg.prisonReload=prisonReload
         cfg.prisonRange=prisonRange
         cfg.prisonSpeed=prisonSpeed
@@ -1784,13 +1747,11 @@ local function applyConfigToSwitches(c)
     if IS_PRISON then
         prisonClickMat=c.prisonClickMat or false
         prisonArrest=c.prisonArrest or false
-        prisonArrestAll=c.prisonArrestAll or false
         prisonReload=c.prisonReload or false
         prisonRange=c.prisonRange or 60
         prisonSpeed=c.prisonSpeed or 0.08
         UI.prisonClickMatSwitch.setOn(prisonClickMat)
         UI.prisonArrestSwitch.setOn(prisonArrest)
-        UI.prisonArrestAllSwitch.setOn(prisonArrestAll)
         UI.prisonReloadSwitch.setOn(prisonReload)
         UI.prisonRangeBtn.setValue(prisonRange)
     end
@@ -1957,7 +1918,6 @@ end)
 refreshSaveList()
 task.spawn(function() while true do task.wait(3); refreshSaveList() end end)
 
--- TP SYSTEM
 local TPPF="portuga_tp_"
 local TPE=".json"
 local TPIX="portuga_tp_index.json"
@@ -2098,7 +2058,6 @@ end)
 rTPL()
 task.spawn(function() while true do task.wait(3); rTPL() end end)
 
--- PANIC
 local function executarPanic()
     espEnabled=false
     espNameEnabled=false
@@ -2122,7 +2081,6 @@ local function executarPanic()
     clickMatEnabled=false
     prisonClickMat=false
     prisonArrest=false
-    prisonArrestAll=false
     prisonReload=false
     FOV=120
     camFOV=70
@@ -2150,7 +2108,6 @@ local function executarPanic()
     if IS_PRISON then
         UI.prisonClickMatSwitch.setOn(false)
         UI.prisonArrestSwitch.setOn(false)
-        UI.prisonArrestAllSwitch.setOn(false)
         UI.prisonReloadSwitch.setOn(false)
     end
     UI.partBtn.setValue("HEAD")
@@ -2181,7 +2138,6 @@ UIS.InputBegan:Connect(function(i,g)
     if i.KeyCode==Enum.KeyCode.Home then executarPanic() end
 end)
 
--- LOOPS FINAIS
 RS.RenderStepped:Connect(function()
     if rainbow then hue+=0.01; if hue>1 then hue=0 end; lineColor=Color3.fromHSV(hue,1,1); fovColor=lineColor end
     circle.Position=Vector2.new(CAM.ViewportSize.X/2,CAM.ViewportSize.Y/2)
