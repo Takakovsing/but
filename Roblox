@@ -1,6 +1,3 @@
---==================================================
--- PORTUGA HUB — Completo em 1 Parte
---==================================================
 pcall(function() game.CoreGui:FindFirstChild("Portuga HUB"):Destroy() end)
 local TS=game:GetService("TweenService")
 local PS=game:GetService("Players")
@@ -30,7 +27,7 @@ gui.ZIndexBehavior=Enum.ZIndexBehavior.Sibling
 gui.Enabled=false
 gui.Parent=game.CoreGui
 
-local main=Instance.new("Frame")
+local main=Instance.new("Frame",gui)
 main.Size=UDim2.new(0,300,0,300)
 main.Position=UDim2.new(0.5,-150,0.5,-150)
 main.BackgroundColor3=BLACK
@@ -39,7 +36,6 @@ main.BorderSizePixel=0
 main.Active=true
 main.Draggable=true
 main.ZIndex=2
-main.Parent=gui
 Instance.new("UICorner",main).CornerRadius=UDim.new(0,15)
 local mainStroke=Instance.new("UIStroke",main)
 mainStroke.Color=RED
@@ -137,132 +133,6 @@ greeting.TextXAlignment=Enum.TextXAlignment.Left
 greeting.TextTruncate=Enum.TextTruncate.AtEnd
 greeting.ZIndex=6
 
--- TP WINDOW
-local tpWin=Instance.new("Frame",gui)
-tpWin.Size=UDim2.new(0,260,0,340)
-tpWin.Position=UDim2.new(0.5,-130,0.5,-170)
-tpWin.BackgroundColor3=BLACK
-tpWin.BackgroundTransparency=0.08
-tpWin.BorderSizePixel=0
-tpWin.Active=true
-tpWin.Draggable=true
-tpWin.Visible=false
-tpWin.ZIndex=100
-Instance.new("UICorner",tpWin).CornerRadius=UDim.new(0,15)
-local tpWinStroke=Instance.new("UIStroke",tpWin)
-tpWinStroke.Color=RED
-tpWinStroke.Thickness=1.5
-tpWinStroke.Transparency=0.32
-local tpWinTitle=Instance.new("TextLabel",tpWin)
-tpWinTitle.Size=UDim2.new(1,-40,0,30)
-tpWinTitle.Position=UDim2.new(0,10,0,5)
-tpWinTitle.BackgroundTransparency=1
-tpWinTitle.Text="💾 SAVE POSITION"
-tpWinTitle.Font=Enum.Font.GothamBold
-tpWinTitle.TextSize=13
-tpWinTitle.TextColor3=Color3.fromRGB(255,255,255)
-tpWinTitle.TextXAlignment=Enum.TextXAlignment.Left
-tpWinTitle.ZIndex=101
-local tpWinClose=Instance.new("TextButton",tpWin)
-tpWinClose.Size=UDim2.new(0,24,0,24)
-tpWinClose.Position=UDim2.new(1,-30,0,8)
-tpWinClose.BackgroundColor3=Color3.fromRGB(60,0,0)
-tpWinClose.BorderSizePixel=0
-tpWinClose.Text="X"
-tpWinClose.Font=Enum.Font.GothamBold
-tpWinClose.TextSize=12
-tpWinClose.TextColor3=Color3.fromRGB(255,255,255)
-tpWinClose.AutoButtonColor=false
-tpWinClose.ZIndex=102
-Instance.new("UICorner",tpWinClose).CornerRadius=UDim.new(0,6)
-local tpWinLine=Instance.new("Frame",tpWin)
-tpWinLine.Size=UDim2.new(0.9,0,0,1)
-tpWinLine.Position=UDim2.new(0.05,0,0,40)
-tpWinLine.BackgroundColor3=RED
-tpWinLine.BorderSizePixel=0
-tpWinLine.ZIndex=101
-local tpNameBox=Instance.new("TextBox",tpWin)
-tpNameBox.Size=UDim2.new(1,-20,0,30)
-tpNameBox.Position=UDim2.new(0,10,0,48)
-tpNameBox.BackgroundColor3=Color3.fromRGB(20,20,23)
-tpNameBox.BorderSizePixel=0
-tpNameBox.Text=""
-tpNameBox.PlaceholderText="Nome da posição..."
-tpNameBox.PlaceholderColor3=Color3.fromRGB(120,120,125)
-tpNameBox.Font=Enum.Font.GothamBold
-tpNameBox.TextSize=11
-tpNameBox.TextColor3=Color3.fromRGB(240,240,240)
-tpNameBox.TextXAlignment=Enum.TextXAlignment.Center
-tpNameBox.ClearTextOnFocus=false
-tpNameBox.ZIndex=101
-Instance.new("UICorner",tpNameBox).CornerRadius=UDim.new(0,8)
-local tpNameStroke=Instance.new("UIStroke",tpNameBox)
-tpNameStroke.Color=Color3.fromRGB(100,100,105)
-tpNameStroke.Thickness=1.2
-tpNameStroke.Transparency=0.25
-local tpList=Instance.new("ScrollingFrame",tpWin)
-tpList.Size=UDim2.new(1,-20,0,170)
-tpList.Position=UDim2.new(0,10,0,86)
-tpList.BackgroundColor3=Color3.fromRGB(9,9,11)
-tpList.BackgroundTransparency=0.5
-tpList.BorderSizePixel=0
-tpList.ScrollBarThickness=2
-tpList.ScrollBarImageColor3=RED
-tpList.CanvasSize=UDim2.new(0,0,0,0)
-tpList.ZIndex=101
-Instance.new("UICorner",tpList).CornerRadius=UDim.new(0,8)
-local tpListStroke=Instance.new("UIStroke",tpList)
-tpListStroke.Color=RED
-tpListStroke.Thickness=1
-tpListStroke.Transparency=0.7
-local tpListLayout=Instance.new("UIListLayout",tpList)
-tpListLayout.Padding=UDim.new(0,3)
-tpListLayout.HorizontalAlignment=Enum.HorizontalAlignment.Center
-tpListLayout.SortOrder=Enum.SortOrder.LayoutOrder
-local tpListPad=Instance.new("UIPadding",tpList)
-tpListPad.PaddingTop=UDim.new(0,5)
-tpListPad.PaddingBottom=UDim.new(0,5)
-tpListLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function() tpList.CanvasSize=UDim2.new(0,0,0,tpListLayout.AbsoluteContentSize.Y+10) end)
-local tpBtnRow=Instance.new("Frame",tpWin)
-tpBtnRow.Size=UDim2.new(1,-20,0,34)
-tpBtnRow.Position=UDim2.new(0,10,1,-44)
-tpBtnRow.BackgroundTransparency=1
-tpBtnRow.ZIndex=101
-local tpBtnLayout=Instance.new("UIListLayout",tpBtnRow)
-tpBtnLayout.FillDirection=Enum.FillDirection.Horizontal
-tpBtnLayout.Padding=UDim.new(0,6)
-tpBtnLayout.HorizontalAlignment=Enum.HorizontalAlignment.Center
-tpBtnLayout.VerticalAlignment=Enum.VerticalAlignment.Center
-
-local function makeTpBtn(txt)
-    local b=Instance.new("TextButton",tpBtnRow)
-    b.Size=UDim2.new(0.31,0,1,0)
-    b.BackgroundColor3=Color3.fromRGB(9,9,11)
-    b.BorderSizePixel=0
-    b.Text=txt
-    b.Font=Enum.Font.Arcade
-    b.TextSize=10
-    b.TextColor3=Color3.fromRGB(235,235,235)
-    b.AutoButtonColor=false
-    b.ZIndex=102
-    Instance.new("UICorner",b).CornerRadius=UDim.new(0,8)
-    local bs=Instance.new("UIStroke",b)
-    bs.Color=RED
-    bs.Thickness=1
-    bs.Transparency=0.58
-    registerTheme(function(c) bs.Color=c end)
-    b.MouseEnter:Connect(function() TS:Create(b,smallTween,{BackgroundColor3=darken(RED,0.2)}):Play(); TS:Create(bs,smallTween,{Transparency=0.1}):Play() end)
-    b.MouseLeave:Connect(function() TS:Create(b,smallTween,{BackgroundColor3=Color3.fromRGB(9,9,11)}):Play(); TS:Create(bs,smallTween,{Transparency=0.58}):Play() end)
-    return b
-end
-
-UI.tpSaveBtn=makeTpBtn("SAVE")
-UI.tpLoadBtn=makeTpBtn("LOAD")
-UI.tpDelBtn=makeTpBtn("DELETE")
-UI.tpWin=tpWin
-UI.tpNameBox=tpNameBox
-UI.tpList=tpList
-
 registerTheme(function(c)
     mainStroke.Color=c
     subtitle.TextColor3=c
@@ -270,14 +140,7 @@ registerTheme(function(c)
     container.ScrollBarImageColor3=c
     footerStroke.Color=c
     footerAvatarStroke.Color=c
-    tpWinStroke.Color=c
-    tpWinLine.BackgroundColor3=c
-    tpNameStroke.Color=c
-    tpListStroke.Color=c
-    tpList.ScrollBarImageColor3=c
 end)
-
-tpWinClose.MouseButton1Click:Connect(function() tpWin.Visible=false end)
 
 -- SWITCH
 local function criarSwitch(parent)
@@ -507,7 +370,6 @@ local function fecharGaveta(data)
         TS:Create(data.drawer,drawerTween,{Size=UDim2.new(1,0,0,HEADER_HEIGHT)}):Play()
     end)
 end
-
 local function abrirGaveta(data)
     if data.aberta then return end
     data.aberta=true
@@ -602,7 +464,7 @@ local function criarGaveta(numero,nome,botoes,customHeight,customFill,afterCreat
     return data
 end
 
--- GAVETA 1: VISUAL
+-- GAVETA 1
 criarGaveta(1,"VISUAL",{
     {tipo="switch",nome="ESP",key="espSwitch"},
     {tipo="switch",nome="ESP NAME",key="espNameSwitch"},
@@ -610,7 +472,7 @@ criarGaveta(1,"VISUAL",{
     {tipo="cycler",nome="GUI COLOR",valor="RED",key="guiColorBtn"},
 })
 
--- GAVETA 2: COMBATE
+-- GAVETA 2
 criarGaveta(2,"COMBATE",{
     {tipo="switch",nome="AIMBOT",key="aimSwitch"},
     {tipo="switch",nome="AIMBOT NPC",key="aimNpcSwitch"},
@@ -620,7 +482,7 @@ criarGaveta(2,"COMBATE",{
     {tipo="switch",nome="AIM TOOL",key="aimToolSwitch"},
 })
 
--- GAVETA 3: SILENT BETA
+-- GAVETA 3
 local SWITCHES_H=(BUTTON_HEIGHT*3)+(BUTTON_GAP*2)
 local SUB_HEADER_H=36
 local SUB_LIST_H=200
@@ -742,14 +604,14 @@ criarGaveta(3,"SILENT BETA",{},SWITCHES_H+BUTTON_GAP+SUB_HEADER_H,function(paren
     subHeader.MouseLeave:Connect(function() TS:Create(subHeader,smallTween,{BackgroundColor3=Color3.fromRGB(9,9,11)}):Play(); if subBeta.subOpen then TS:Create(shStroke,smallTween,{Transparency=0.08}):Play() else TS:Create(shStroke,smallTween,{Transparency=0.5}):Play() end end)
 end,function(data) subBeta.data=data end)
 
--- GAVETA 4: FILTROS
+-- GAVETA 4
 criarGaveta(4,"FILTROS",{
     {tipo="switch",nome="TEAM CHECK",key="teamCheckSwitch"},
     {tipo="switch",nome="WALL CHECK",key="wallCheckSwitch"},
     {tipo="cycler",nome="TEAM MISC",valor="OFF",key="teamMiscBtn"},
 })
 
--- GAVETA 5: FRIEND LIST
+-- GAVETA 5
 local FL_H=200
 local FL_CH=FL_H+5
 criarGaveta(5,"FRIEND LIST",{},FL_CH,function(parent)
@@ -779,7 +641,7 @@ criarGaveta(5,"FRIEND LIST",{},FL_CH,function(parent)
     UI.friendListScroll=fs
 end)
 
--- GAVETA 6: PLAYER SETTINGS
+-- GAVETA 6
 criarGaveta(6,"PLAYER SETTINGS",{
     {tipo="textbox",nome="SPEED",valor="16",key="speedBox"},
     {tipo="textbox",nome="JUMP BOOST",valor="50",key="jumpBox"},
@@ -913,18 +775,141 @@ criarGaveta(7,"CONFIG",{},SAVE_CUSTOM_H,function(parent)
     UI.delBtn=makeBtn("DELETE")
 end)
 
--- GAVETA 8: MISC
-criarGaveta(8,"MISC",{
+-- GAVETA 8: TP (mesmo estilo do CONFIG)
+local TP_ROW_H=30
+local TP_LIST_H=130
+local TP_BTN_H=32
+local TP_GAP=6
+local TP_CUSTOM_H=TP_ROW_H+TP_GAP+TP_LIST_H+TP_GAP+TP_BTN_H
+criarGaveta(8,"TP",{},TP_CUSTOM_H,function(parent)
+    local nameRow=Instance.new("Frame",parent)
+    nameRow.Size=UDim2.new(1,0,0,TP_ROW_H)
+    nameRow.BackgroundColor3=Color3.fromRGB(9,9,11)
+    nameRow.BackgroundTransparency=0.05
+    nameRow.BorderSizePixel=0
+    nameRow.ZIndex=8
+    Instance.new("UICorner",nameRow).CornerRadius=UDim.new(0,8)
+    local nrStroke=Instance.new("UIStroke",nameRow)
+    nrStroke.Color=RED
+    nrStroke.Thickness=1
+    nrStroke.Transparency=0.58
+    local nrAccent=Instance.new("Frame",nameRow)
+    nrAccent.Size=UDim2.new(0,3,0.5,0)
+    nrAccent.Position=UDim2.new(0,8,0.25,0)
+    nrAccent.BackgroundColor3=RED
+    nrAccent.BorderSizePixel=0
+    nrAccent.ZIndex=9
+    Instance.new("UICorner",nrAccent).CornerRadius=UDim.new(0,2)
+    local nrLabel=Instance.new("TextLabel",nameRow)
+    nrLabel.Size=UDim2.new(0.5,-20,1,0)
+    nrLabel.Position=UDim2.new(0,20,0,0)
+    nrLabel.BackgroundTransparency=1
+    nrLabel.Text="TP NAME"
+    nrLabel.Font=Enum.Font.Arcade
+    nrLabel.TextSize=10
+    nrLabel.TextColor3=Color3.fromRGB(235,235,235)
+    nrLabel.TextXAlignment=Enum.TextXAlignment.Left
+    nrLabel.ZIndex=9
+    local nameInputBox=Instance.new("TextButton",nameRow)
+    nameInputBox.Size=UDim2.new(0,120,0,22)
+    nameInputBox.Position=UDim2.new(1,-128,0.5,-11)
+    nameInputBox.BackgroundColor3=Color3.fromRGB(20,20,23)
+    nameInputBox.BorderSizePixel=0
+    nameInputBox.Text=""
+    nameInputBox.AutoButtonColor=false
+    nameInputBox.ZIndex=9
+    Instance.new("UICorner",nameInputBox).CornerRadius=UDim.new(0,6)
+    local nIB_Stroke=Instance.new("UIStroke",nameInputBox)
+    nIB_Stroke.Color=Color3.fromRGB(100,100,105)
+    nIB_Stroke.Thickness=1.2
+    nIB_Stroke.Transparency=0.25
+    local nameInput=Instance.new("TextBox",nameInputBox)
+    nameInput.Size=UDim2.new(1,-8,1,0)
+    nameInput.Position=UDim2.new(0,4,0,0)
+    nameInput.BackgroundTransparency=1
+    nameInput.Text=""
+    nameInput.PlaceholderText="Nome..."
+    nameInput.PlaceholderColor3=Color3.fromRGB(120,120,125)
+    nameInput.Font=Enum.Font.GothamBold
+    nameInput.TextSize=10
+    nameInput.TextColor3=Color3.fromRGB(240,240,240)
+    nameInput.TextXAlignment=Enum.TextXAlignment.Center
+    nameInput.ClearTextOnFocus=false
+    nameInput.ZIndex=10
+    registerTheme(function(c) nrStroke.Color=c; nrAccent.BackgroundColor3=c; nIB_Stroke.Color=c end)
+    local listScroll=Instance.new("ScrollingFrame",parent)
+    listScroll.Size=UDim2.new(1,0,0,TP_LIST_H)
+    listScroll.Position=UDim2.new(0,0,0,TP_ROW_H+TP_GAP)
+    listScroll.BackgroundColor3=Color3.fromRGB(9,9,11)
+    listScroll.BackgroundTransparency=0.5
+    listScroll.BorderSizePixel=0
+    listScroll.ScrollBarThickness=2
+    listScroll.ScrollBarImageColor3=RED
+    listScroll.CanvasSize=UDim2.new(0,0,0,0)
+    listScroll.ZIndex=8
+    Instance.new("UICorner",listScroll).CornerRadius=UDim.new(0,8)
+    local lsStroke=Instance.new("UIStroke",listScroll)
+    lsStroke.Color=RED
+    lsStroke.Thickness=1
+    lsStroke.Transparency=0.7
+    local lsLayout=Instance.new("UIListLayout",listScroll)
+    lsLayout.Padding=UDim.new(0,3)
+    lsLayout.HorizontalAlignment=Enum.HorizontalAlignment.Center
+    lsLayout.SortOrder=Enum.SortOrder.LayoutOrder
+    local lsPad=Instance.new("UIPadding",listScroll)
+    lsPad.PaddingTop=UDim.new(0,5)
+    lsPad.PaddingBottom=UDim.new(0,5)
+    lsLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function() listScroll.CanvasSize=UDim2.new(0,0,0,lsLayout.AbsoluteContentSize.Y+10) end)
+    registerTheme(function(c) lsStroke.Color=c; listScroll.ScrollBarImageColor3=c end)
+    local btnRow=Instance.new("Frame",parent)
+    btnRow.Size=UDim2.new(1,0,0,TP_BTN_H)
+    btnRow.Position=UDim2.new(0,0,0,TP_ROW_H+TP_GAP+TP_LIST_H+TP_GAP)
+    btnRow.BackgroundTransparency=1
+    btnRow.ZIndex=8
+    local btnLayout=Instance.new("UIListLayout",btnRow)
+    btnLayout.FillDirection=Enum.FillDirection.Horizontal
+    btnLayout.Padding=UDim.new(0,6)
+    btnLayout.HorizontalAlignment=Enum.HorizontalAlignment.Center
+    btnLayout.VerticalAlignment=Enum.VerticalAlignment.Center
+    local function makeBtn(txt)
+        local b=Instance.new("TextButton",btnRow)
+        b.Size=UDim2.new(0.31,0,1,0)
+        b.BackgroundColor3=Color3.fromRGB(9,9,11)
+        b.BorderSizePixel=0
+        b.Text=txt
+        b.Font=Enum.Font.Arcade
+        b.TextSize=10
+        b.TextColor3=Color3.fromRGB(235,235,235)
+        b.AutoButtonColor=false
+        b.ZIndex=9
+        Instance.new("UICorner",b).CornerRadius=UDim.new(0,8)
+        local s=Instance.new("UIStroke",b)
+        s.Color=RED
+        s.Thickness=1
+        s.Transparency=0.58
+        registerTheme(function(col) s.Color=col end)
+        b.MouseEnter:Connect(function() TS:Create(b,smallTween,{BackgroundColor3=darken(RED,0.2)}):Play(); TS:Create(s,smallTween,{Transparency=0.1}):Play() end)
+        b.MouseLeave:Connect(function() TS:Create(b,smallTween,{BackgroundColor3=Color3.fromRGB(9,9,11)}):Play(); TS:Create(s,smallTween,{Transparency=0.58}):Play() end)
+        return b
+    end
+    UI.tpNameInput=nameInput
+    UI.tpListScroll=listScroll
+    UI.tpSaveBtn=makeBtn("SAVE")
+    UI.tpGoBtn=makeBtn("TP")
+    UI.tpDelBtn=makeBtn("DELETE")
+end)
+
+-- GAVETA 9: MISC
+criarGaveta(9,"MISC",{
     {tipo="switch",nome="BEHIND COUNT",key="behindSwitch"},
     {tipo="cycler",nome="FOV CAMERA",valor=70,key="camFovBtn"},
     {tipo="switch",nome="FULL BRIGHT",key="fbSwitch"},
     {tipo="switch",nome="ANTI-AFK",key="afkSwitch"},
     {tipo="switch",nome="HIDE FOOTER",key="hideFooterSwitch"},
-    {tipo="action",nome="SAVE POSITION",key="savePosBtn"},
 })
 
--- GAVETA 9: PANIC
-criarGaveta(9,"PANIC",{
+-- GAVETA 10: PANIC
+criarGaveta(10,"PANIC",{
     {tipo="action",nome="PANIC MODE",key="panicBtn"},
 })
 
@@ -938,7 +923,7 @@ atualizarCanvas()
 -- ESTADO
 --==================================================
 local espEnabled=false
-local espNameEnabled=true
+local espNameEnabled=false
 local aimbotEnabled=false
 local aimbotNpcEnabled=false
 local teamCheck=false
@@ -1244,9 +1229,7 @@ UI.gravityBox.onSubmit(function(v)
     workspace.Gravity=v
 end)
 
---==================================================
 -- PLAYER SELECT (com TP)
---==================================================
 local PR={}
 local function uH()
     for _,r in pairs(PR) do
@@ -1340,9 +1323,7 @@ local function cPR(p,o)
         local hr=ch and ch:FindFirstChild("HumanoidRootPart")
         local myCh=PL.Character
         local myHr=myCh and myCh:FindFirstChild("HumanoidRootPart")
-        if hr and myHr then
-            myHr.CFrame=CFrame.new(hr.Position+Vector3.new(0,3,0))
-        end
+        if hr and myHr then myHr.CFrame=CFrame.new(hr.Position+Vector3.new(0,3,0)) end
     end)
     r.MouseEnter:Connect(function() if p~=silentAimTarget then TS:Create(r,smallTween,{BackgroundColor3=darken(RED,0.25)}):Play(); TS:Create(rs,smallTween,{Transparency=0.2}):Play() end end)
     r.MouseLeave:Connect(function() if p~=silentAimTarget then TS:Create(r,smallTween,{BackgroundColor3=Color3.fromRGB(9,9,11)}):Play(); TS:Create(rs,smallTween,{Transparency=0.6}):Play() end end)
@@ -1357,9 +1338,7 @@ end
 local function rPL()
     local cur={}
     for _,p in pairs(PS:GetPlayers()) do if p~=PL then cur[p]=true end end
-    for pl,r in pairs(PR) do
-        if not cur[pl] then r.frame:Destroy(); PR[pl]=nil end
-    end
+    for pl,r in pairs(PR) do if not cur[pl] then r.frame:Destroy(); PR[pl]=nil end end
     local o=0
     for _,p in pairs(PS:GetPlayers()) do
         if p~=PL then
@@ -1377,9 +1356,7 @@ registerTheme(function(c)
 end)
 task.spawn(function() while true do task.wait(2.5); rPL() end end)
 
---==================================================
 -- FRIEND LIST
---==================================================
 local FR={}
 local function uFH()
     for _,r in pairs(FR) do
@@ -1436,8 +1413,7 @@ local function cFR(p,o)
     l.TextTruncate=Enum.TextTruncate.AtEnd
     l.ZIndex=11
     r.MouseButton1Click:Connect(function()
-        if friends[p.Name] then friends[p.Name]=nil
-        else friends[p.Name]=true end
+        if friends[p.Name] then friends[p.Name]=nil else friends[p.Name]=true end
         uFH()
     end)
     FR[p]={frame=r,stroke=rs,label=l,avatarStroke=as,player=p}
@@ -1445,9 +1421,7 @@ end
 local function rFL()
     local cur={}
     for _,p in pairs(PS:GetPlayers()) do if p~=PL then cur[p]=true end end
-    for pl,r in pairs(FR) do
-        if not cur[pl] then r.frame:Destroy(); FR[pl]=nil end
-    end
+    for pl,r in pairs(FR) do if not cur[pl] then r.frame:Destroy(); FR[pl]=nil end end
     local o=0
     for _,p in pairs(PS:GetPlayers()) do
         if p~=PL then
@@ -1482,9 +1456,7 @@ task.spawn(function()
     end
 end)
 
---==================================================
 -- INF JUMP + NOCLIP + WALL CLIMB
---==================================================
 UIS.JumpRequest:Connect(function()
     if not infJumpEnabled then return end
     local ch=PL.Character
@@ -1573,7 +1545,7 @@ end
 
 local function applyConfigToSwitches(c)
     UI.espSwitch.setOn(c.espEnabled or false)
-    UI.espNameSwitch.setOn(c.espNameEnabled~=false)
+    UI.espNameSwitch.setOn(c.espNameEnabled==true)
     UI.aimSwitch.setOn(c.aimbotEnabled or false)
     UI.aimNpcSwitch.setOn(c.aimbotNpcEnabled or false)
     UI.teamCheckSwitch.setOn(c.teamCheck or false)
@@ -1590,7 +1562,7 @@ local function applyConfigToSwitches(c)
     UI.noclipSwitch.setOn(c.noclipEnabled or false)
     UI.wallClimbSwitch.setOn(c.wallClimbEnabled or false)
     espEnabled=c.espEnabled or false
-    espNameEnabled=c.espNameEnabled~=false
+    espNameEnabled=c.espNameEnabled==true
     aimbotEnabled=c.aimbotEnabled or false
     aimbotNpcEnabled=c.aimbotNpcEnabled or false
     teamCheck=c.teamCheck or false
@@ -1769,11 +1741,12 @@ refreshSaveList()
 task.spawn(function() while true do task.wait(3); refreshSaveList() end end)
 
 --==================================================
--- SAVE TP SYSTEM
+-- TP SYSTEM (gaveta)
 --==================================================
 local TPPF="portuga_tp_"
 local TPE=".json"
 local TPIX="portuga_tp_index.json"
+
 local function rTPIX()
     if not isfile(TPIX) then return{} end
     local o,d=pcall(function() return HS:JSONDecode(readfile(TPIX)) end)
@@ -1803,6 +1776,7 @@ local function gTPL()
     if #v~=#l then wTPIX(v) end
     return v
 end
+
 local TPR={}
 local TPS=nil
 local function uTPH()
@@ -1825,38 +1799,38 @@ local function rTPL()
     TPR={}
     local l=gTPL()
     for i,n in ipairs(l) do
-        local r=Instance.new("TextButton",UI.tpList)
-        r.Size=UDim2.new(1,-10,0,24)
+        local r=Instance.new("TextButton",UI.tpListScroll)
+        r.Size=UDim2.new(1,-10,0,26)
         r.BackgroundColor3=Color3.fromRGB(9,9,11)
         r.BorderSizePixel=0
         r.Text=""
         r.AutoButtonColor=false
         r.LayoutOrder=i
-        r.ZIndex=102
+        r.ZIndex=10
         Instance.new("UICorner",r).CornerRadius=UDim.new(0,6)
         local s=Instance.new("UIStroke",r)
         s.Color=Color3.fromRGB(100,100,105)
         s.Thickness=1
         s.Transparency=0.6
-        local l2=Instance.new("TextLabel",r)
-        l2.Size=UDim2.new(1,-16,1,0)
-        l2.Position=UDim2.new(0,8,0,0)
-        l2.BackgroundTransparency=1
-        l2.Text=n
-        l2.Font=Enum.Font.GothamBold
-        l2.TextSize=10
-        l2.TextColor3=Color3.fromRGB(220,220,220)
-        l2.TextXAlignment=Enum.TextXAlignment.Left
-        l2.ZIndex=103
+        local lb=Instance.new("TextLabel",r)
+        lb.Size=UDim2.new(1,-16,1,0)
+        lb.Position=UDim2.new(0,8,0,0)
+        lb.BackgroundTransparency=1
+        lb.Text=n
+        lb.Font=Enum.Font.GothamBold
+        lb.TextSize=10
+        lb.TextColor3=Color3.fromRGB(220,220,220)
+        lb.TextXAlignment=Enum.TextXAlignment.Left
+        lb.ZIndex=11
         r.MouseButton1Click:Connect(function() TPS=n; uTPH() end)
-        TPR[n]={frame=r,stroke=s,label=l2,name=n}
+        TPR[n]={frame=r,stroke=s,label=lb,name=n}
     end
     if TPS and not TPR[TPS] then TPS=nil end
     uTPH()
 end
 
 UI.tpSaveBtn.MouseButton1Click:Connect(function()
-    local n=UI.tpNameBox.Text
+    local n=UI.tpNameInput.Text
     if not n or n:gsub("%s","")=="" then UI.tpSaveBtn.Text="VAZIO!"; task.delay(1.2,function() UI.tpSaveBtn.Text="SAVE" end); return end
     n=n:gsub("[^%w_%- ]","")
     local ch=PL.Character
@@ -1876,21 +1850,21 @@ UI.tpSaveBtn.MouseButton1Click:Connect(function()
         task.delay(1.2,function() UI.tpSaveBtn.Text="SAVE" end)
     end
 end)
-UI.tpLoadBtn.MouseButton1Click:Connect(function()
-    if not TPS then UI.tpLoadBtn.Text="SELECIONE"; task.delay(1.2,function() UI.tpLoadBtn.Text="LOAD" end); return end
+UI.tpGoBtn.MouseButton1Click:Connect(function()
+    if not TPS then UI.tpGoBtn.Text="SELECIONE"; task.delay(1.2,function() UI.tpGoBtn.Text="TP" end); return end
     local p=TPPF..TPS..TPE
-    if not isfile(p) then UI.tpLoadBtn.Text="N EXISTE"; task.delay(1.2,function() UI.tpLoadBtn.Text="LOAD" end); rTPL(); return end
+    if not isfile(p) then UI.tpGoBtn.Text="N EXISTE"; task.delay(1.2,function() UI.tpGoBtn.Text="TP" end); rTPL(); return end
     local o,d=pcall(function() return HS:JSONDecode(readfile(p)) end)
-    if not o or type(d)~="table" then UI.tpLoadBtn.Text="CORROMPIDO"; task.delay(1.2,function() UI.tpLoadBtn.Text="LOAD" end); return end
+    if not o or type(d)~="table" then UI.tpGoBtn.Text="CORROMPIDO"; task.delay(1.2,function() UI.tpGoBtn.Text="TP" end); return end
     local ch=PL.Character
     local hr=ch and ch:FindFirstChild("HumanoidRootPart")
     if hr then
         hr.CFrame=CFrame.new(d.x,d.y,d.z)
-        UI.tpLoadBtn.Text="OK!"
-        task.delay(1.2,function() UI.tpLoadBtn.Text="LOAD" end)
+        UI.tpGoBtn.Text="OK!"
+        task.delay(1.2,function() UI.tpGoBtn.Text="TP" end)
     else
-        UI.tpLoadBtn.Text="SEM CHR!"
-        task.delay(1.2,function() UI.tpLoadBtn.Text="LOAD" end)
+        UI.tpGoBtn.Text="SEM CHR!"
+        task.delay(1.2,function() UI.tpGoBtn.Text="TP" end)
     end
 end)
 UI.tpDelBtn.MouseButton1Click:Connect(function()
@@ -1909,18 +1883,14 @@ UI.tpDelBtn.MouseButton1Click:Connect(function()
     end
 end)
 rTPL()
-
-UI.savePosBtn.clickBtn.MouseButton1Click:Connect(function()
-    UI.tpWin.Visible=not UI.tpWin.Visible
-    rTPL()
-end)
+task.spawn(function() while true do task.wait(3); rTPL() end end)
 
 --==================================================
 -- PANIC
 --==================================================
 local function executarPanic()
     espEnabled=false
-    espNameEnabled=true
+    espNameEnabled=false
     aimbotEnabled=false
     aimbotNpcEnabled=false
     teamCheck=false
@@ -1946,7 +1916,7 @@ local function executarPanic()
     behindText.Visible=false
     footer.Visible=true
     UI.espSwitch.setOn(false)
-    UI.espNameSwitch.setOn(true)
+    UI.espNameSwitch.setOn(false)
     UI.aimSwitch.setOn(false)
     UI.aimNpcSwitch.setOn(false)
     UI.aimToolSwitch.setOn(false)
@@ -1981,7 +1951,6 @@ local function executarPanic()
 end
 UI.panicBtn.clickBtn.MouseButton1Click:Connect(executarPanic)
 
--- ATALHOS
 UIS.TouchTap:Connect(function(t) if #t>=4 then gui.Enabled=not gui.Enabled end end)
 UIS.InputBegan:Connect(function(i,g)
     if g then return end
@@ -2053,12 +2022,10 @@ local function getTarget()
     local worstHP=-math.huge
     local farDist=0
     local pri=PRIORITY[priorityIndex]
-
     if aimToolEnabled then
         local t=PL.Character and PL.Character:FindFirstChildOfClass("Tool")
         if not t then return nil end
     end
-
     for _,p in pairs(PS:GetPlayers()) do
         if p~=PL and p.Character then
             local ch=p.Character
