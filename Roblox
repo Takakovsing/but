@@ -9,6 +9,22 @@ local VU=game:GetService("VirtualUser")
 local CAM=workspace.CurrentCamera
 local PL=PS.LocalPlayer
 
+--==================================================
+-- PRISON LIFE DETECÇÃO
+--==================================================
+local IS_PRISON = (game.PlaceId == 155615604)
+
+local RepStorage = game:GetService("ReplicatedStorage")
+local ShootEvent, ReloadFunc, ArrestRemote
+if IS_PRISON then
+    local GunRemotes = RepStorage:FindFirstChild("GunRemotes")
+    ShootEvent = GunRemotes and GunRemotes:FindFirstChild("ShootEvent")
+    ReloadFunc = GunRemotes and GunRemotes:FindFirstChild("FuncReload")
+    local RemotesFolder = RepStorage:FindFirstChild("Remotes")
+    ArrestRemote = RemotesFolder and RemotesFolder:FindFirstChild("ArrestPlayer")
+end
+
+-- THEME
 local THEME_PRESETS={RED=Color3.fromRGB(255,0,0),BLUE=Color3.fromRGB(0,120,255),GREEN=Color3.fromRGB(0,220,80),PURPLE=Color3.fromRGB(170,0,255),YELLOW=Color3.fromRGB(255,200,0),PINK=Color3.fromRGB(255,0,170),CYAN=Color3.fromRGB(0,220,255),ORANGE=Color3.fromRGB(255,100,0),WHITE=Color3.fromRGB(240,240,240)}
 local THEME_ORDER={"RED","BLUE","GREEN","PURPLE","YELLOW","PINK","CYAN","ORANGE","WHITE"}
 local themeIndex=1
@@ -19,6 +35,7 @@ local themeRegistry={}
 local function registerTheme(fn) table.insert(themeRegistry,fn); pcall(fn,RED) end
 local function applyTheme(c) RED=c; for _,fn in ipairs(themeRegistry) do pcall(fn,c) end end
 
+-- GUI BASE
 local gui=Instance.new("ScreenGui")
 gui.Name="Portuga HUB"
 gui.ResetOnSpawn=false
@@ -55,7 +72,7 @@ local subtitle=Instance.new("TextLabel",main)
 subtitle.Size=UDim2.new(1,0,0,15)
 subtitle.Position=UDim2.new(0,0,0,30)
 subtitle.BackgroundTransparency=1
-subtitle.Text="H U B"
+subtitle.Text = IS_PRISON and "H U B • PRISON LIFE" or "H U B"
 subtitle.Font=Enum.Font.GothamBold
 subtitle.TextSize=9
 subtitle.TextColor3=RED
@@ -94,6 +111,7 @@ local CHILDREN_OFFSET=5
 local gavetas={}
 local UI={}
 
+-- FOOTER
 local footer=Instance.new("Frame",main)
 footer.Size=UDim2.new(1,-24,0,42)
 footer.Position=UDim2.new(0,12,1,-50)
@@ -140,6 +158,7 @@ registerTheme(function(c)
     footerAvatarStroke.Color=c
 end)
 
+-- SWITCH
 local function criarSwitch(parent)
     local switch=Instance.new("TextButton",parent)
     switch.Size=UDim2.new(0,56,0,28)
@@ -226,6 +245,7 @@ local function criarSwitch(parent)
     return api
 end
 
+-- TEXTBOX
 local function criarTextBox(parent,valorInicial)
     local box=Instance.new("TextButton",parent)
     box.Size=UDim2.new(0,70,0,28)
@@ -268,6 +288,7 @@ local function criarTextBox(parent,valorInicial)
     return api
 end
 
+-- LINHA BASE
 local function criarLinhaBotao(parent,nome,ordem)
     local button=Instance.new("Frame",parent)
     button.Size=UDim2.new(1,0,0,BUTTON_HEIGHT)
@@ -351,6 +372,7 @@ local function criarTextBoxButton(parent,nome,valorInicial,ordem)
     return{frame=frame,label=label,stroke=stroke,textbox=tb,setValue=tb.setValue,getValue=tb.getValue,onSubmit=tb.onSubmit,type="textbox"}
 end
 
+-- GAVETA SYSTEM
 local function fecharGaveta(data)
     if not data.aberta then return end
     data.aberta=false
@@ -458,30 +480,33 @@ local function criarGaveta(numero,nome,botoes,customHeight,customFill,afterCreat
     return data
 end
 
--- GAVETA 1
-criarGaveta(1,"VISUAL",{
+--==================================================
+-- GAVETAS (com numeração dinâmica)
+--==================================================
+local gNum = 1
+
+criarGaveta(gNum,"VISUAL",{
     {tipo="switch",nome="ESP",key="espSwitch"},
     {tipo="switch",nome="ESP NAME",key="espNameSwitch"},
     {tipo="cycler",nome="COLOR",valor="WHITE",key="colorBtn"},
     {tipo="cycler",nome="GUI COLOR",valor="RED",key="guiColorBtn"},
-})
+}); gNum = gNum + 1
 
--- GAVETA 2
-criarGaveta(2,"COMBATE",{
+criarGaveta(gNum,"COMBATE",{
     {tipo="switch",nome="AIMBOT",key="aimSwitch"},
     {tipo="switch",nome="AIMBOT NPC",key="aimNpcSwitch"},
     {tipo="cycler",nome="AIM PART",valor="HEAD",key="partBtn"},
     {tipo="cycler",nome="FOV AIM",valor=120,key="fovBtn"},
     {tipo="cycler",nome="PRIORITY",valor="CLOSEST",key="priorityBtn"},
     {tipo="switch",nome="AIM TOOL",key="aimToolSwitch"},
-})
+}); gNum = gNum + 1
 
--- GAVETA 3
+-- SILENT BETA
 local SWITCHES_H=(BUTTON_HEIGHT*3)+(BUTTON_GAP*2)
 local SUB_HEADER_H=36
 local SUB_LIST_H=200
 local subBeta={data=nil,subOpen=false}
-criarGaveta(3,"SILENT BETA",{},SWITCHES_H+BUTTON_GAP+SUB_HEADER_H,function(parent)
+criarGaveta(gNum,"SILENT BETA",{},SWITCHES_H+BUTTON_GAP+SUB_HEADER_H,function(parent)
     local innerLayout=Instance.new("UIListLayout",parent)
     innerLayout.Padding=UDim.new(0,BUTTON_GAP)
     innerLayout.HorizontalAlignment=Enum.HorizontalAlignment.Center
@@ -596,19 +621,18 @@ criarGaveta(3,"SILENT BETA",{},SWITCHES_H+BUTTON_GAP+SUB_HEADER_H,function(paren
     end)
     subHeader.MouseEnter:Connect(function() TS:Create(subHeader,smallTween,{BackgroundColor3=darken(RED,0.2)}):Play(); TS:Create(shStroke,smallTween,{Transparency=0.1}):Play() end)
     subHeader.MouseLeave:Connect(function() TS:Create(subHeader,smallTween,{BackgroundColor3=Color3.fromRGB(9,9,11)}):Play(); if subBeta.subOpen then TS:Create(shStroke,smallTween,{Transparency=0.08}):Play() else TS:Create(shStroke,smallTween,{Transparency=0.5}):Play() end end)
-end,function(data) subBeta.data=data end)
+end,function(data) subBeta.data=data end); gNum = gNum + 1
 
--- GAVETA 4
-criarGaveta(4,"FILTROS",{
+criarGaveta(gNum,"FILTROS",{
     {tipo="switch",nome="TEAM CHECK",key="teamCheckSwitch"},
     {tipo="switch",nome="WALL CHECK",key="wallCheckSwitch"},
     {tipo="cycler",nome="TEAM MISC",valor="OFF",key="teamMiscBtn"},
-})
+}); gNum = gNum + 1
 
--- GAVETA 5
+-- FRIEND LIST
 local FL_H=200
 local FL_CH=FL_H+5
-criarGaveta(5,"FRIEND LIST",{},FL_CH,function(parent)
+criarGaveta(gNum,"FRIEND LIST",{},FL_CH,function(parent)
     local fs=Instance.new("ScrollingFrame",parent)
     fs.Size=UDim2.new(1,0,0,FL_H)
     fs.BackgroundColor3=Color3.fromRGB(9,9,11)
@@ -633,25 +657,23 @@ criarGaveta(5,"FRIEND LIST",{},FL_CH,function(parent)
     fp.PaddingBottom=UDim.new(0,6)
     fl:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function() fs.CanvasSize=UDim2.new(0,0,0,fl.AbsoluteContentSize.Y+12) end)
     UI.friendListScroll=fs
-end)
+end); gNum = gNum + 1
 
--- GAVETA 6
-criarGaveta(6,"PLAYER SETTINGS",{
+criarGaveta(gNum,"PLAYER SETTINGS",{
     {tipo="textbox",nome="SPEED",valor="16",key="speedBox"},
     {tipo="textbox",nome="JUMP BOOST",valor="50",key="jumpBox"},
     {tipo="textbox",nome="GRAVITY",valor="196.2",key="gravityBox"},
     {tipo="switch",nome="INF JUMP",key="infJumpSwitch"},
     {tipo="switch",nome="NOCLIP",key="noclipSwitch"},
-    {tipo="switch",nome="WALL CLIMB",key="wallClimbSwitch"},
-})
+}); gNum = gNum + 1
 
--- GAVETA 7
+-- CONFIG
 local SAVE_ROW_H=30
 local SAVE_LIST_H=130
 local SAVE_BTN_H=32
 local SAVE_GAP=6
 local SAVE_CUSTOM_H=SAVE_ROW_H+SAVE_GAP+SAVE_LIST_H+SAVE_GAP+SAVE_BTN_H
-criarGaveta(7,"CONFIG",{},SAVE_CUSTOM_H,function(parent)
+criarGaveta(gNum,"CONFIG",{},SAVE_CUSTOM_H,function(parent)
     local nameRow=Instance.new("Frame",parent)
     nameRow.Size=UDim2.new(1,0,0,SAVE_ROW_H)
     nameRow.BackgroundColor3=Color3.fromRGB(9,9,11)
@@ -767,15 +789,15 @@ criarGaveta(7,"CONFIG",{},SAVE_CUSTOM_H,function(parent)
     UI.saveBtn=makeBtn("SAVE")
     UI.loadBtn=makeBtn("LOAD")
     UI.delBtn=makeBtn("DELETE")
-end)
+end); gNum = gNum + 1
 
--- GAVETA 8: TP
+-- TP
 local TP_ROW_H=30
 local TP_LIST_H=130
 local TP_BTN_H=32
 local TP_GAP=6
 local TP_CUSTOM_H=TP_ROW_H+TP_GAP+TP_LIST_H+TP_GAP+TP_BTN_H
-criarGaveta(8,"TP",{},TP_CUSTOM_H,function(parent)
+criarGaveta(gNum,"TP",{},TP_CUSTOM_H,function(parent)
     local nameRow=Instance.new("Frame",parent)
     nameRow.Size=UDim2.new(1,0,0,TP_ROW_H)
     nameRow.BackgroundColor3=Color3.fromRGB(9,9,11)
@@ -891,20 +913,32 @@ criarGaveta(8,"TP",{},TP_CUSTOM_H,function(parent)
     UI.tpSaveBtn=makeBtn("SAVE")
     UI.tpGoBtn=makeBtn("TP")
     UI.tpDelBtn=makeBtn("DELETE")
-end)
+end); gNum = gNum + 1
 
--- GAVETA 9: MISC (com CLICK MAT)
-criarGaveta(9,"MISC",{
+criarGaveta(gNum,"MISC",{
     {tipo="switch",nome="BEHIND COUNT",key="behindSwitch"},
     {tipo="cycler",nome="FOV CAMERA",valor=70,key="camFovBtn"},
     {tipo="switch",nome="FULL BRIGHT",key="fbSwitch"},
     {tipo="switch",nome="ANTI-AFK",key="afkSwitch"},
     {tipo="switch",nome="HIDE FOOTER",key="hideFooterSwitch"},
     {tipo="switch",nome="CLICK MAT",key="clickMatSwitch"},
-})
+}); gNum = gNum + 1
 
--- GAVETA 10: PANIC
-criarGaveta(10,"PANIC",{
+--==================================================
+-- PRISON LIFE (só aparece no jogo correto)
+--==================================================
+if IS_PRISON then
+    criarGaveta(gNum,"🚔 PRISON LIFE",{
+        {tipo="switch",nome="CLICK MAT (SHOOT)",key="prisonClickMatSwitch"},
+        {tipo="switch",nome="ARREST",key="prisonArrestSwitch"},
+        {tipo="switch",nome="AUTO RELOAD",key="prisonReloadSwitch"},
+        {tipo="cycler",nome="RANGE",valor=60,key="prisonRangeBtn"},
+        {tipo="cycler",nome="SPEED",valor="12/s",key="prisonSpeedBtn"},
+    })
+    gNum = gNum + 1
+end
+
+criarGaveta(gNum,"PANIC",{
     {tipo="action",nome="PANIC MODE",key="panicBtn"},
 })
 
@@ -938,7 +972,6 @@ local antiAfkEnabled=false
 local hideFooterEnabled=false
 local infJumpEnabled=false
 local noclipEnabled=false
-local wallClimbEnabled=false
 local clickMatEnabled=false
 local originalGravity=workspace.Gravity
 local aimPart="Head"
@@ -948,6 +981,14 @@ local camFovActive=false
 local priorityIndex=1
 local PRIORITY={"CLOSEST","LOW HP","HIGH HP","FARTHEST"}
 local friends={}
+
+-- PRISON LIFE
+local prisonClickMat=false
+local prisonArrest=false
+local prisonReload=false
+local prisonRange=60
+local prisonSpeed=0.08
+
 local colors={
     Color3.fromRGB(0,0,0),Color3.fromRGB(255,255,255),Color3.fromRGB(170,0,255),
     Color3.fromRGB(255,0,0),Color3.fromRGB(255,255,0),Color3.fromRGB(0,170,255),
@@ -962,9 +1003,7 @@ local fovColor=lineColor
 local rainbow=false
 local hue=0
 
---==================================================
 -- DRAWINGS
---==================================================
 local behindText=Drawing.new("Text")
 behindText.Size=18
 behindText.Position=Vector2.new(20,50)
@@ -1129,9 +1168,7 @@ PL.CharacterAdded:Connect(function()
 end)
 if PL.Character then hLD() end
 
---==================================================
 -- CONEXÕES
---==================================================
 UI.espSwitch.onToggle(function(s) espEnabled=s end)
 UI.espNameSwitch.onToggle(function(s) espNameEnabled=s end)
 UI.aimSwitch.onToggle(function(s) aimbotEnabled=s end)
@@ -1149,7 +1186,12 @@ UI.saNpcSwitch.onToggle(function(s) silentAimNpcEnabled=s end)
 UI.spinSwitch.onToggle(function(s) spinBotEnabled=s; local h=PL.Character and PL.Character:FindFirstChildOfClass("Humanoid"); if h then h.AutoRotate=not s end end)
 UI.infJumpSwitch.onToggle(function(s) infJumpEnabled=s end)
 UI.noclipSwitch.onToggle(function(s) noclipEnabled=s end)
-UI.wallClimbSwitch.onToggle(function(s) wallClimbEnabled=s end)
+
+if IS_PRISON then
+    UI.prisonClickMatSwitch.onToggle(function(s) prisonClickMat=s end)
+    UI.prisonArrestSwitch.onToggle(function(s) prisonArrest=s end)
+    UI.prisonReloadSwitch.onToggle(function(s) prisonReload=s end)
+end
 
 PL.Idled:Connect(function()
     if antiAfkEnabled then
@@ -1210,6 +1252,29 @@ UI.teamMiscBtn.clickBtn.MouseButton1Click:Connect(function()
         UI.teamMiscBtn.setValue("OFF")
     end
 end)
+
+-- PRISON LIFE CYCLERS
+if IS_PRISON then
+    local PRISON_RANGES={30,60,100,150,200}
+    local prIdx=2
+    UI.prisonRangeBtn.clickBtn.MouseButton1Click:Connect(function()
+        prIdx+=1
+        if prIdx>#PRISON_RANGES then prIdx=1 end
+        prisonRange=PRISON_RANGES[prIdx]
+        UI.prisonRangeBtn.setValue(prisonRange)
+    end)
+
+    local PRISON_SPEEDS={0.2,0.15,0.1,0.08,0.05,0.03}
+    local PRISON_LABELS={"5/s","7/s","10/s","12/s","20/s","33/s"}
+    local psIdx=4
+    UI.prisonSpeedBtn.clickBtn.MouseButton1Click:Connect(function()
+        psIdx+=1
+        if psIdx>#PRISON_SPEEDS then psIdx=1 end
+        prisonSpeed=PRISON_SPEEDS[psIdx]
+        UI.prisonSpeedBtn.setValue(PRISON_LABELS[psIdx])
+    end)
+end
+
 UI.speedBox.onSubmit(function(v)
     if not v or v<=0 then v=16; UI.speedBox.setValue(16) end
     local h=PL.Character and PL.Character:FindFirstChildOfClass("Humanoid")
@@ -1225,9 +1290,7 @@ UI.gravityBox.onSubmit(function(v)
     workspace.Gravity=v
 end)
 
---==================================================
--- PLAYER SELECT (com TP)
---==================================================
+-- PLAYER SELECT
 local PR={}
 local function uH()
     for _,r in pairs(PR) do
@@ -1454,9 +1517,7 @@ task.spawn(function()
     end
 end)
 
---==================================================
 -- INF JUMP + NOCLIP
---==================================================
 UIS.JumpRequest:Connect(function()
     if not infJumpEnabled then return end
     local ch=PL.Character
@@ -1477,70 +1538,38 @@ RS.Stepped:Connect(function()
     end
 end)
 
---==================================================
--- WALL CLIMB (CORRIGIDO)
---==================================================
-RS.Heartbeat:Connect(function()
-    if not wallClimbEnabled then return end
-    local ch=PL.Character
-    if not ch then return end
-    local hr=ch:FindFirstChild("HumanoidRootPart")
-    local hum=ch:FindFirstChildOfClass("Humanoid")
-    if not hr or not hum then return end
-
-    if UIS:IsKeyDown(Enum.KeyCode.Space) then
-        local rp=RaycastParams.new()
-        rp.FilterType=Enum.RaycastFilterType.Blacklist
-        rp.FilterDescendantsInstances={ch}
-        local dirs={hr.CFrame.LookVector,-hr.CFrame.RightVector,hr.CFrame.RightVector}
-        local wallFound=false
-        for _,dir in ipairs(dirs) do
-            local ray=workspace:Raycast(hr.Position,dir*4,rp)
-            if ray then wallFound=true; break end
-        end
-        if wallFound then
-            local vel=hr.Velocity
-            hr.Velocity=Vector3.new(vel.X*0.5,40,vel.Z*0.5)
-            pcall(function() hum:ChangeState(Enum.HumanoidStateType.GettingUp) end)
-        end
-    end
-end)
-
---==================================================
--- CLICK MAT
---==================================================
+-- CLICK MAT (HUB padrão)
 local clickMatLastClick=0
 local clickMatInterval=0.05
-
 RS.Heartbeat:Connect(function()
     if not clickMatEnabled then return end
     local ch=PL.Character
     if not ch then return end
     local tool=ch:FindFirstChildOfClass("Tool")
     if not tool then return end
-
     local now=tick()
     if now-clickMatLastClick<clickMatInterval then return end
-
+    local hr=ch:FindFirstChild("HumanoidRootPart")
+    if not hr then return end
     local best=nil
     local bestDist=60
     for _,p in pairs(PS:GetPlayers()) do
         if p~=PL and p.Character then
-            local targetChar=p.Character
-            local targetHum=targetChar:FindFirstChild("Humanoid")
-            local targetPart=targetChar:FindFirstChild("HumanoidRootPart")
-            if targetHum and targetPart and targetHum.Health>0 then
+            local tChar=p.Character
+            local tHum=tChar:FindFirstChild("Humanoid")
+            local tPart=tChar:FindFirstChild("HumanoidRootPart")
+            if tHum and tPart and tHum.Health>0 then
                 if teamCheck and p.Team==PL.Team then continue end
                 if friends[p.Name] then continue end
                 if teamMiscEnabled and selectedTeam then if p.Team~=selectedTeam then continue end end
-                local dist=(targetPart.Position-ch.HumanoidRootPart.Position).Magnitude
+                local dist=(tPart.Position-hr.Position).Magnitude
                 if dist<bestDist then
                     if wallCheck then
                         local rp=RaycastParams.new()
                         rp.FilterType=Enum.RaycastFilterType.Blacklist
                         rp.FilterDescendantsInstances={ch}
-                        local ray=workspace:Raycast(ch.HumanoidRootPart.Position,(targetPart.Position-ch.HumanoidRootPart.Position).Unit*dist,rp)
-                        if ray and not ray.Instance:IsDescendantOf(targetChar) then continue end
+                        local ray=workspace:Raycast(hr.Position,(tPart.Position-hr.Position).Unit*dist,rp)
+                        if ray and not ray.Instance:IsDescendantOf(tChar) then continue end
                     end
                     bestDist=dist
                     best=p
@@ -1555,8 +1584,107 @@ RS.Heartbeat:Connect(function()
 end)
 
 --==================================================
--- REAPLICAÇÃO
+-- PRISON LIFE LOGIC
 --==================================================
+if IS_PRISON then
+    local prisonLastClick = 0
+    local prisonLastArrest = 0
+
+    local function getClosestPrisonTarget(maxDist)
+        local ch = PL.Character
+        if not ch then return nil, nil, 0 end
+        local hr = ch:FindFirstChild("HumanoidRootPart")
+        if not hr then return nil, nil, 0 end
+
+        local best, bestPart, bestDist = nil, nil, maxDist
+
+        for _, p in pairs(PS:GetPlayers()) do
+            if p ~= PL and p.Character then
+                local tChar = p.Character
+                local tHum = tChar:FindFirstChild("Humanoid")
+                local tPart = tChar:FindFirstChild("Head") or tChar:FindFirstChild("HumanoidRootPart")
+                if tHum and tPart and tHum.Health > 0 then
+                    if teamCheck and p.Team == PL.Team then continue end
+                    if friends[p.Name] then continue end
+                    if teamMiscEnabled and selectedTeam then
+                        if p.Team ~= selectedTeam then continue end
+                    end
+                    local dist = (tPart.Position - hr.Position).Magnitude
+                    if dist < bestDist then
+                        if wallCheck then
+                            local rp = RaycastParams.new()
+                            rp.FilterType = Enum.RaycastFilterType.Blacklist
+                            rp.FilterDescendantsInstances = {ch}
+                            local ray = workspace:Raycast(hr.Position, (tPart.Position - hr.Position).Unit * dist, rp)
+                            if ray and not ray.Instance:IsDescendantOf(tChar) then continue end
+                        end
+                        bestDist = dist
+                        best = p
+                        bestPart = tPart
+                    end
+                end
+            end
+        end
+
+        return best, bestPart, bestDist
+    end
+
+    RS.Heartbeat:Connect(function()
+        local ch = PL.Character
+        if not ch then return end
+        local tool = ch:FindFirstChildOfClass("Tool")
+
+        -- AUTO RELOAD
+        if prisonReload and not tool and ReloadFunc then
+            pcall(function() ReloadFunc:InvokeServer() end)
+        end
+
+        -- CLICK MAT (SHOOT via remote)
+        if prisonClickMat and tool then
+            local now = tick()
+            if now - prisonLastClick >= prisonSpeed then
+                local target, targetPart = getClosestPrisonTarget(prisonRange)
+                if target and targetPart and ShootEvent then
+                    local origin = nil
+                    local handle = tool:FindFirstChild("Handle")
+                    if handle then origin = handle.Position end
+                    if not origin then
+                        local head = ch:FindFirstChild("Head")
+                        if head then origin = head.Position end
+                    end
+                    if origin then
+                        pcall(function()
+                            ShootEvent:FireServer({
+                                {
+                                    origin,
+                                    targetPart.Position,
+                                    targetPart
+                                }
+                            })
+                        end)
+                        prisonLastClick = now
+                    end
+                end
+            end
+        end
+
+        -- ARREST (só com Tool na mão)
+        if prisonArrest and tool and ArrestRemote then
+            local now = tick()
+            if now - prisonLastArrest >= 0.2 then
+                local target = getClosestPrisonTarget(15)
+                if target then
+                    pcall(function()
+                        ArrestRemote:InvokeServer(target, 1)
+                    end)
+                    prisonLastArrest = now
+                end
+            end
+        end
+    end)
+end
+
+-- REAPLICAÇÃO
 RS.Heartbeat:Connect(function()
     local h=PL.Character and PL.Character:FindFirstChildOfClass("Humanoid")
     if h then
@@ -1588,20 +1716,28 @@ local SAVE_EXT=".json"
 local INDEX_FILE="portuga_index.json"
 
 local function collectConfig()
-    return {
+    local cfg = {
         espEnabled=espEnabled,espNameEnabled=espNameEnabled,
         aimbotEnabled=aimbotEnabled,aimbotNpcEnabled=aimbotNpcEnabled,
         teamCheck=teamCheck,wallCheck=wallCheck,showBehindCount=showBehindCount,
         aimToolEnabled=aimToolEnabled,silentAimEnabled=silentAimEnabled,silentAimNpcEnabled=silentAimNpcEnabled,
         fullBrightEnabled=fullBrightEnabled,spinBotEnabled=spinBotEnabled,antiAfkEnabled=antiAfkEnabled,
         hideFooterEnabled=hideFooterEnabled,infJumpEnabled=infJumpEnabled,noclipEnabled=noclipEnabled,
-        wallClimbEnabled=wallClimbEnabled,clickMatEnabled=clickMatEnabled,
+        clickMatEnabled=clickMatEnabled,
         aimPart=aimPart,FOV=FOV,camFOV=camFOV,colorIndex=colorIndex,themeIndex=themeIndex,
         priorityIndex=priorityIndex,
         teamMiscEnabled=teamMiscEnabled,selectedTeamName=selectedTeam and selectedTeam.Name or nil,
         friends=friends,
         speed=UI.speedBox.getValue(),jump=UI.jumpBox.getValue(),gravity=UI.gravityBox.getValue(),
     }
+    if IS_PRISON then
+        cfg.prisonClickMat=prisonClickMat
+        cfg.prisonArrest=prisonArrest
+        cfg.prisonReload=prisonReload
+        cfg.prisonRange=prisonRange
+        cfg.prisonSpeed=prisonSpeed
+    end
+    return cfg
 end
 
 local function applyConfigToSwitches(c)
@@ -1621,7 +1757,6 @@ local function applyConfigToSwitches(c)
     UI.hideFooterSwitch.setOn(c.hideFooterEnabled or false)
     UI.infJumpSwitch.setOn(c.infJumpEnabled or false)
     UI.noclipSwitch.setOn(c.noclipEnabled or false)
-    UI.wallClimbSwitch.setOn(c.wallClimbEnabled or false)
     UI.clickMatSwitch.setOn(c.clickMatEnabled or false)
     espEnabled=c.espEnabled or false
     espNameEnabled=c.espNameEnabled==true
@@ -1639,8 +1774,20 @@ local function applyConfigToSwitches(c)
     hideFooterEnabled=c.hideFooterEnabled or false
     infJumpEnabled=c.infJumpEnabled or false
     noclipEnabled=c.noclipEnabled or false
-    wallClimbEnabled=c.wallClimbEnabled or false
     clickMatEnabled=c.clickMatEnabled or false
+
+    if IS_PRISON then
+        prisonClickMat=c.prisonClickMat or false
+        prisonArrest=c.prisonArrest or false
+        prisonReload=c.prisonReload or false
+        prisonRange=c.prisonRange or 60
+        prisonSpeed=c.prisonSpeed or 0.08
+        UI.prisonClickMatSwitch.setOn(prisonClickMat)
+        UI.prisonArrestSwitch.setOn(prisonArrest)
+        UI.prisonReloadSwitch.setOn(prisonReload)
+        UI.prisonRangeBtn.setValue(prisonRange)
+    end
+
     footer.Visible=not hideFooterEnabled
     behindText.Visible=showBehindCount
     local h=PL.Character and PL.Character:FindFirstChildOfClass("Humanoid")
@@ -1971,8 +2118,10 @@ local function executarPanic()
     hideFooterEnabled=false
     infJumpEnabled=false
     noclipEnabled=false
-    wallClimbEnabled=false
     clickMatEnabled=false
+    prisonClickMat=false
+    prisonArrest=false
+    prisonReload=false
     FOV=120
     camFOV=70
     camFovActive=false
@@ -1995,8 +2144,12 @@ local function executarPanic()
     UI.hideFooterSwitch.setOn(false)
     UI.infJumpSwitch.setOn(false)
     UI.noclipSwitch.setOn(false)
-    UI.wallClimbSwitch.setOn(false)
     UI.clickMatSwitch.setOn(false)
+    if IS_PRISON then
+        UI.prisonClickMatSwitch.setOn(false)
+        UI.prisonArrestSwitch.setOn(false)
+        UI.prisonReloadSwitch.setOn(false)
+    end
     UI.partBtn.setValue("HEAD")
     UI.fovBtn.setValue(120)
     UI.camFovBtn.setValue(70)
@@ -2195,4 +2348,4 @@ RS:BindToRenderStep("PortugaSpinBot",Enum.RenderPriority.Camera.Value+1,function
     mh.CFrame=CFrame.new(p)*CFrame.Angles(0,math.rad(a),0)
 end)
 
-print("[Portuga HUB] Carregado com sucesso!")
+print("[Portuga HUB] Carregado" .. (IS_PRISON and " — MODO PRISON LIFE ATIVO!" or ""))
