@@ -1065,6 +1065,7 @@ end
 layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(atualizarCanvas)
 atualizarCanvas()
 
+-- ===== STATE =====
 local espEnabled=false
 local espNameEnabled=false
 local aimbotEnabled=false
@@ -1100,8 +1101,6 @@ local rgbHighlight=nil
 local rgbHue=0
 local baconEnabled=false
 local BACON_PART_NAME="PortugaBacon"
-local BACON_MESH="rbxassetid://125750702"
-local BACON_TEXTURE="rbxassetid://125751086"
 local originalGravity=workspace.Gravity
 local aimPart="Head"
 local FOV=120
@@ -1275,13 +1274,83 @@ local function rL()
     end
 end
 
+-- ===== RGB GLOW (parte do Streamer Mode) =====
+local function setRGBGlow(enabled)
+    if rgbHighlight then pcall(function() rgbHighlight:Destroy() end); rgbHighlight=nil end
+    if not enabled then return end
+    local ch=PL.Character
+    if not ch then return end
+    local hl=Instance.new("Highlight")
+    hl.FillColor=Color3.fromRGB(255,0,0)
+    hl.OutlineColor=Color3.fromRGB(255,0,0)
+    hl.FillTransparency=0.5
+    hl.OutlineTransparency=0
+    hl.DepthMode=Enum.HighlightDepthMode.AlwaysOnTop
+    hl.Adornee=ch
+    hl.Parent=ch
+    rgbHighlight=hl
+end
+RS.RenderStepped:Connect(function(dt)
+    if not streamerModeEnabled or not rgbHighlight then return end
+    rgbHue=(rgbHue+dt*0.4)%1
+    local c=Color3.fromHSV(rgbHue,1,1)
+    rgbHighlight.FillColor=c
+    rgbHighlight.OutlineColor=c
+end)
+
+-- ===== BACON (client-side) =====
+local function addBacon(char)
+    if not char then return end
+    local head=char:FindFirstChild("Head")
+    if not head then return end
+    if head:FindFirstChild(BACON_PART_NAME) then return end
+    local b=Instance.new("Part")
+    b.Name=BACON_PART_NAME
+    b.Size=Vector3.new(1,1,1)
+    b.Transparency=0
+    b.CanCollide=false
+    b.Massless=true
+    b.CanQuery=false
+    b.CanTouch=false
+    b.CastShadow=false
+    local m=Instance.new("SpecialMesh",b)
+    m.MeshType=Enum.MeshType.FileMesh
+    m.MeshId="rbxassetid://125750702"
+    m.TextureId="rbxassetid://125751086"
+    m.Scale=Vector3.new(1.3,1.3,1.3)
+    b.CFrame=head.CFrame*CFrame.new(0,0.85,0)
+    b.Parent=head
+    local w=Instance.new("WeldConstraint",b)
+    w.Part0=b
+    w.Part1=head
+end
+local function removeBacon(char)
+    if not char then return end
+    local head=char:FindFirstChild("Head")
+    if not head then return end
+    local b=head:FindFirstChild(BACON_PART_NAME)
+    if b then pcall(function() b:Destroy() end) end
+end
+local function applyBaconAll()
+    for _,p in pairs(PS:GetPlayers()) do
+        if p.Character then pcall(addBacon,p.Character) end
+    end
+    if PL.Character then pcall(addBacon,PL.Character) end
+end
+local function clearBaconAll()
+    for _,p in pairs(PS:GetPlayers()) do
+        if p.Character then pcall(removeBacon,p.Character) end
+    end
+    if PL.Character then pcall(removeBacon,PL.Character) end
+end
+
 local function hLD()
     local ch=PL.Character
     if not ch then return end
     local h=ch:FindFirstChildOfClass("Humanoid")
     if h then h.Died:Connect(function() if camFovActive then task.spawn(function() task.wait(1); if camFovActive then CAM.FieldOfView=camFOV end end) end end) end
 end
-PL.CharacterAdded:Connect(function()
+PL.CharacterAdded:Connect(function(ch)
     task.wait(1)
     if camFovActive then CAM.FieldOfView=camFOV end
     task.wait(0.5)
@@ -1296,12 +1365,21 @@ PL.CharacterAdded:Connect(function()
     lastSafeCFrame=nil
     lastSafeVelocity=Vector3.new(0,0,0)
     task.wait(0.5)
-    local ch=PL.Character
-    local hrp=ch and ch:FindFirstChild("HumanoidRootPart")
+    local ch2=PL.Character
+    local hrp=ch2 and ch2:FindFirstChild("HumanoidRootPart")
     if hrp then lastSafeCFrame=hrp.CFrame; lastSafeVelocity=hrp.AssemblyLinearVelocity end
+    if streamerModeEnabled then setRGBGlow(true) end
+    if baconEnabled then pcall(addBacon,ch) end
+end)
+PS.PlayerAdded:Connect(function(p)
+    p.CharacterAdded:Connect(function(ch)
+        task.wait(1)
+        if baconEnabled then pcall(addBacon,ch) end
+    end)
 end)
 if PL.Character then hLD() end
 
+-- ===== UI TOGGLES =====
 UI.espSwitch.onToggle(function(s) espEnabled=s end)
 UI.espNameSwitch.onToggle(function(s) espNameEnabled=s end)
 UI.aimSwitch.onToggle(function(s) aimbotEnabled=s end)
@@ -1446,6 +1524,7 @@ UI.gravityBox.onSubmit(function(v)
     workspace.Gravity=v
 end)
 
+-- ===== PLAYER LIST =====
 local PR={}
 local function uH()
     for _,r in pairs(PR) do
@@ -1495,11 +1574,11 @@ local function cPR(p,o)
     as.Color=RED
     as.Thickness=1
     as.Transparency=0.5
+    local sDN,sNM=sfName(p)
     local nl=Instance.new("TextLabel",r)
     nl.Size=UDim2.new(1,-90,0,18)
     nl.Position=UDim2.new(0,48,0,6)
     nl.BackgroundTransparency=1
-    local sDN,sNM=sfName(p)
     nl.Text=sDN
     nl.Font=Enum.Font.GothamBold
     nl.TextSize=11
@@ -1557,6 +1636,7 @@ local function cPR(p,o)
     PR[p]={frame=r,stroke=rs,nameLabel=nl,userLabel=ul,avatar=av,avatarStroke=as,player=p}
 end
 local function rPL()
+    if not UI.playerListScroll then return end
     local cur={}
     for _,p in pairs(PS:GetPlayers()) do if p~=PL then cur[p]=true end end
     for pl,r in pairs(PR) do if not cur[pl] then r.frame:Destroy(); PR[pl]=nil end end
@@ -1582,6 +1662,7 @@ registerTheme(function(c)
 end)
 task.spawn(function() while true do task.wait(1.5); rPL() end end)
 
+-- ===== FRIEND LIST =====
 local FR={}
 local function uFH()
     for _,r in pairs(FR) do
@@ -1622,11 +1703,11 @@ local function cFR(p,o)
     as.Color=RED
     as.Thickness=1
     as.Transparency=0.5
+    local sDN,sNM=sfName(p)
     local l=Instance.new("TextLabel",r)
     l.Size=UDim2.new(1,-46,1,0)
     l.Position=UDim2.new(0,42,0,0)
     l.BackgroundTransparency=1
-    local sDN,sNM=sfName(p)
     l.Text=sDN.." (@"..sNM..")"
     l.Font=Enum.Font.GothamBold
     l.TextSize=10
@@ -1641,6 +1722,7 @@ local function cFR(p,o)
     FR[p]={frame=r,stroke=rs,label=l,avatarStroke=as,avatar=av,player=p}
 end
 local function rFL()
+    if not UI.friendListScroll then return end
     local cur={}
     for _,p in pairs(PS:GetPlayers()) do if p~=PL then cur[p]=true end end
     for pl,r in pairs(FR) do if not cur[pl] then r.frame:Destroy(); FR[pl]=nil end end
@@ -1665,6 +1747,29 @@ registerTheme(function(c)
 end)
 task.spawn(function() while true do task.wait(1.5); rFL() end end)
 
+-- ===== STREAMER MODE (agora que PR/FR/rPL/rFL existem) =====
+UI.streamerSwitch.onToggle(function(s)
+    streamerModeEnabled=s
+    streamerNameMap={}
+    streamerIdCounter=0
+    title.Text=s and "HUB" or "PORTUGA"
+    subtitle.Text=s and "UTIL" or (IS_PRISON and "H U B • PRISON LIFE" or "H U B")
+    setRGBGlow(s)
+    for _,r in pairs(PR) do r.frame:Destroy() end
+    PR={}
+    for _,r in pairs(FR) do r.frame:Destroy() end
+    FR={}
+    pcall(rPL)
+    pcall(rFL)
+    pcall(uH)
+    pcall(uFH)
+end)
+UI.baconSwitch.onToggle(function(s)
+    baconEnabled=s
+    if s then applyBaconAll() else clearBaconAll() end
+end)
+
+-- ===== LOOPS =====
 task.spawn(function()
     while true do
         task.wait(0.5)
@@ -1816,6 +1921,7 @@ if IS_PRISON then
         if not ch then return end
         local tool=ch:FindFirstChildOfClass("Tool")
         local now=tick()
+
         if prisonClickMat and tool and ShootEvent then
             if now-prisonLastClick>=prisonSpeed then
                 local target,targetPart=getClosestPrisonTarget(prisonRange)
@@ -1836,6 +1942,7 @@ if IS_PRISON then
                 end
             end
         end
+
         if prisonArrest and tool and ArrestRemote then
             if now-prisonLastArrest>=0 then
                 local target=getClosestPrisonTarget(15)
@@ -1871,6 +1978,7 @@ end)
 
 task.spawn(function() while true do task.wait(0.5); if fullBrightEnabled then pcall(aFB) end end end)
 
+-- ===== SAVE / LOAD =====
 local SAVE_PREFIX="portuga_save_"
 local SAVE_EXT=".json"
 local INDEX_FILE="portuga_index.json"
@@ -1988,111 +2096,6 @@ local function applyFullConfig(c)
     if c.jump then UI.jumpBox.setValue(c.jump); local h=PL.Character and PL.Character:FindFirstChildOfClass("Humanoid"); if h then h.UseJumpPower=true; h.JumpPower=c.jump end end
     if c.gravity then UI.gravityBox.setValue(c.gravity); workspace.Gravity=c.gravity end
 end
-
--- === RGB GLOW (parte do Streamer Mode) ===
-function setRGBGlow(enabled)
-    if rgbHighlight then pcall(function() rgbHighlight:Destroy() end); rgbHighlight=nil end
-    if enabled then
-        local ch=PL.Character
-        if not ch then return end
-        local hl=Instance.new("Highlight")
-        hl.FillColor=Color3.fromRGB(255,0,0)
-        hl.OutlineColor=Color3.fromRGB(255,0,0)
-        hl.FillTransparency=0.5
-        hl.OutlineTransparency=0
-        hl.DepthMode=Enum.HighlightDepthMode.AlwaysOnTop
-        hl.Adornee=ch
-        hl.Parent=ch
-        rgbHighlight=hl
-    end
-end
-RS.RenderStepped:Connect(function(dt)
-    if not streamerModeEnabled or not rgbHighlight then return end
-    rgbHue=(rgbHue+dt*0.4)%1
-    local c=Color3.fromHSV(rgbHue,1,1)
-    rgbHighlight.FillColor=c
-    rgbHighlight.OutlineColor=c
-end)
-
--- === BACON HAIR (client-side) ===
-function addBacon(char)
-    if not char then return end
-    local head=char:FindFirstChild("Head")
-    if not head then return end
-    if head:FindFirstChild(BACON_PART_NAME) then return end
-    local bacon=Instance.new("Part")
-    bacon.Name=BACON_PART_NAME
-    bacon.Size=Vector3.new(1,1,1)
-    bacon.Transparency=0
-    bacon.CanCollide=false
-    bacon.Massless=true
-    bacon.CanQuery=false
-    bacon.CanTouch=false
-    bacon.CastShadow=false
-    local mesh=Instance.new("SpecialMesh",bacon)
-    mesh.MeshType=Enum.MeshType.FileMesh
-    mesh.MeshId=BACON_MESH
-    mesh.TextureId=BACON_TEXTURE
-    mesh.Scale=Vector3.new(1.3,1.3,1.3)
-    bacon.CFrame=head.CFrame*CFrame.new(0,0.85,0)
-    bacon.Parent=head
-    local weld=Instance.new("WeldConstraint",bacon)
-    weld.Part0=bacon
-    weld.Part1=head
-end
-function removeBacon(char)
-    if not char then return end
-    local head=char:FindFirstChild("Head")
-    if not head then return end
-    local b=head:FindFirstChild(BACON_PART_NAME)
-    if b then pcall(function() b:Destroy() end) end
-end
-function applyBaconAll()
-    for _,p in pairs(PS:GetPlayers()) do
-        if p.Character then pcall(addBacon,p.Character) end
-    end
-    if PL.Character then pcall(addBacon,PL.Character) end
-end
-function clearBaconAll()
-    for _,p in pairs(PS:GetPlayers()) do
-        if p.Character then pcall(removeBacon,p.Character) end
-    end
-    if PL.Character then pcall(removeBacon,PL.Character) end
-end
-
-PS.PlayerAdded:Connect(function(p)
-    p.CharacterAdded:Connect(function(ch)
-        task.wait(0.8)
-        if baconEnabled then pcall(addBacon,ch) end
-    end)
-    if baconEnabled and p.Character then task.wait(1); pcall(addBacon,p.Character) end
-end)
-PL.CharacterAdded:Connect(function(ch)
-    task.wait(1)
-    if streamerModeEnabled then setRGBGlow(true) end
-    if baconEnabled then pcall(addBacon,ch) end
-end)
-
-UI.streamerSwitch.onToggle(function(s)
-    streamerModeEnabled=s
-    streamerNameMap={}
-    streamerIdCounter=0
-    title.Text=s and "HUB" or "PORTUGA"
-    subtitle.Text=s and "UTIL" or (IS_PRISON and "H U B • PRISON LIFE" or "H U B")
-    setRGBGlow(s)
-    for _,r in pairs(PR) do r.frame:Destroy() end
-    PR={}
-    for _,r in pairs(FR) do r.frame:Destroy() end
-    FR={}
-    pcall(rPL)
-    pcall(rFL)
-    pcall(uH)
-    pcall(uFH)
-end)
-UI.baconSwitch.onToggle(function(s)
-    baconEnabled=s
-    if s then applyBaconAll() else clearBaconAll() end
-end)
 
 local function readIndex()
     if not isfile(INDEX_FILE) then return{} end
@@ -2377,6 +2380,7 @@ if UI.tpSearchBox then
     end)
 end
 
+-- ===== PANIC =====
 local function executarPanic()
     espEnabled=false; espNameEnabled=false; aimbotEnabled=false; aimbotNpcEnabled=false
     teamCheck=false; wallCheck=false; showBehindCount=false; aimToolEnabled=false
@@ -2427,6 +2431,7 @@ UIS.InputBegan:Connect(function(i,g)
     if i.KeyCode==Enum.KeyCode.Home then executarPanic() end
 end)
 
+-- ===== RENDER =====
 RS.RenderStepped:Connect(function()
     if rainbow then hue+=0.01; if hue>1 then hue=0 end; lineColor=Color3.fromHSV(hue,1,1); fovColor=lineColor end
     circle.Position=Vector2.new(CAM.ViewportSize.X/2,CAM.ViewportSize.Y/2)
