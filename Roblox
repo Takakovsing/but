@@ -1030,10 +1030,8 @@ criarGaveta(gNum,"MISC",{
     {tipo="switch",nome="FULL BRIGHT",key="fbSwitch"},
     {tipo="switch",nome="ANTI-AFK",key="afkSwitch"},
     {tipo="switch",nome="HIDE FOOTER",key="hideFooterSwitch"},
-    {tipo="switch",nome="CLICK MAT",key="clickMatSwitch"},
     {tipo="switch",nome="ANTI FLING",key="antiFlingSwitch"},
     {tipo="switch",nome="STREAMER MODE",key="streamerSwitch"},
-    {tipo="switch",nome="BACON MODE",key="baconSwitch"},
 }); gNum=gNum+1
 
 if IS_PRISON then
@@ -1087,20 +1085,16 @@ local antiAfkEnabled=false
 local hideFooterEnabled=false
 local infJumpEnabled=false
 local noclipEnabled=false
-local clickMatEnabled=false
 local antiFlingEnabled=false
 local ANTI_FLING_THRESHOLD=500
 local ANTI_FLING_ROT_THRESHOLD=200
 local lastSafeCFrame=nil
 local lastSafeVelocity=Vector3.new(0,0,0)
 local streamerModeEnabled=false
-local streamerNameMap={}
-local streamerIdCounter=0
-local STREAMER_NAME_PREFIX="Player"
 local rgbHighlight=nil
 local rgbHue=0
-local baconEnabled=false
-local BACON_PART_NAME="PortugaBacon"
+local skinHidden=false
+local savedSkinState=nil
 local originalGravity=workspace.Gravity
 local aimPart="Head"
 local FOV=120
@@ -1114,14 +1108,7 @@ local prisonArrest=false
 local prisonRange=60
 local prisonSpeed=0.08
 
-local function sfName(player)
-    if not streamerModeEnabled then return player.DisplayName,player.Name end
-    if not streamerNameMap[player.UserId] then
-        streamerIdCounter+=1
-        streamerNameMap[player.UserId]=STREAMER_NAME_PREFIX.." "..streamerIdCounter
-    end
-    return streamerNameMap[player.UserId],streamerNameMap[player.UserId]
-end
+local function sfName(player) return player.DisplayName,player.Name end
 
 local colors={Color3.fromRGB(0,0,0),Color3.fromRGB(255,255,255),Color3.fromRGB(170,0,255),Color3.fromRGB(255,0,0),Color3.fromRGB(255,255,0),Color3.fromRGB(0,170,255),Color3.fromRGB(0,255,0),Color3.fromRGB(255,0,170),Color3.fromRGB(120,120,120),Color3.fromRGB(255,100,0),Color3.fromRGB(0,255,255),Color3.fromRGB(150,75,0),Color3.fromRGB(128,0,128),Color3.fromRGB(0,100,0),Color3.fromRGB(255,180,180)}
 local colorNames={"BLACK","WHITE","PURPLE","RED","YELLOW","BLUE","GREEN","PINK","GRAY","ORANGE","CYAN","BROWN","DARKPURPLE","DARKGREEN","SALMON","RAINBOW"}
@@ -1274,7 +1261,7 @@ local function rL()
     end
 end
 
--- ===== RGB GLOW (parte do Streamer Mode) =====
+-- ===== RGB GLOW =====
 local function setRGBGlow(enabled)
     if rgbHighlight then pcall(function() rgbHighlight:Destroy() end); rgbHighlight=nil end
     if not enabled then return end
@@ -1298,50 +1285,45 @@ RS.RenderStepped:Connect(function(dt)
     rgbHighlight.OutlineColor=c
 end)
 
--- ===== BACON (client-side) =====
-local function addBacon(char)
-    if not char then return end
-    local head=char:FindFirstChild("Head")
-    if not head then return end
-    if head:FindFirstChild(BACON_PART_NAME) then return end
-    local b=Instance.new("Part")
-    b.Name=BACON_PART_NAME
-    b.Size=Vector3.new(1,1,1)
-    b.Transparency=0
-    b.CanCollide=false
-    b.Massless=true
-    b.CanQuery=false
-    b.CanTouch=false
-    b.CastShadow=false
-    local m=Instance.new("SpecialMesh",b)
-    m.MeshType=Enum.MeshType.FileMesh
-    m.MeshId="rbxassetid://125750702"
-    m.TextureId="rbxassetid://125751086"
-    m.Scale=Vector3.new(1.3,1.3,1.3)
-    b.CFrame=head.CFrame*CFrame.new(0,0.85,0)
-    b.Parent=head
-    local w=Instance.new("WeldConstraint",b)
-    w.Part0=b
-    w.Part1=head
-end
-local function removeBacon(char)
-    if not char then return end
-    local head=char:FindFirstChild("Head")
-    if not head then return end
-    local b=head:FindFirstChild(BACON_PART_NAME)
-    if b then pcall(function() b:Destroy() end) end
-end
-local function applyBaconAll()
-    for _,p in pairs(PS:GetPlayers()) do
-        if p.Character then pcall(addBacon,p.Character) end
+-- ===== SKIN HIDE =====
+local function hideSkin()
+    local ch=PL.Character
+    if not ch then return end
+    skinHidden=true
+    savedSkinState={}
+    for _,obj in pairs(ch:GetChildren()) do
+        if obj:IsA("Shirt") or obj:IsA("Pants") or obj:IsA("ShirtGraphic") then
+            savedSkinState[obj]={Transparency=obj.Transparency}
+            obj.Transparency=1
+        elseif obj:IsA("Accessory") then
+            local handle=obj:FindFirstChild("Handle")
+            if handle then
+                savedSkinState[handle]={Transparency=handle.Transparency}
+                handle.Transparency=1
+            end
+        end
     end
-    if PL.Character then pcall(addBacon,PL.Character) end
-end
-local function clearBaconAll()
-    for _,p in pairs(PS:GetPlayers()) do
-        if p.Character then pcall(removeBacon,p.Character) end
+    for _,part in pairs(ch:GetDescendants()) do
+        if part:IsA("BasePart") and not part:FindFirstAncestorOfClass("Tool") then
+            savedSkinState[part]={Color=part.Color}
+            part.Color=Color3.fromRGB(80,80,80)
+        end
     end
-    if PL.Character then pcall(removeBacon,PL.Character) end
+end
+local function showSkin()
+    if not skinHidden then return end
+    skinHidden=false
+    if savedSkinState then
+        for obj,state in pairs(savedSkinState) do
+            pcall(function()
+                if obj and obj.Parent then
+                    if state.Transparency~=nil then obj.Transparency=state.Transparency end
+                    if state.Color~=nil then obj.Color=state.Color end
+                end
+            end)
+        end
+        savedSkinState=nil
+    end
 end
 
 local function hLD()
@@ -1368,14 +1350,13 @@ PL.CharacterAdded:Connect(function(ch)
     local ch2=PL.Character
     local hrp=ch2 and ch2:FindFirstChild("HumanoidRootPart")
     if hrp then lastSafeCFrame=hrp.CFrame; lastSafeVelocity=hrp.AssemblyLinearVelocity end
-    if streamerModeEnabled then setRGBGlow(true) end
-    if baconEnabled then pcall(addBacon,ch) end
-end)
-PS.PlayerAdded:Connect(function(p)
-    p.CharacterAdded:Connect(function(ch)
-        task.wait(1)
-        if baconEnabled then pcall(addBacon,ch) end
-    end)
+    if streamerModeEnabled then
+        skinHidden=false
+        savedSkinState=nil
+        setRGBGlow(true)
+        task.wait(0.3)
+        hideSkin()
+    end
 end)
 if PL.Character then hLD() end
 
@@ -1391,7 +1372,6 @@ UI.behindSwitch.onToggle(function(s) showBehindCount=s; behindText.Visible=s end
 UI.fbSwitch.onToggle(function(s) fullBrightEnabled=s; if s then aFB() else rL() end end)
 UI.afkSwitch.onToggle(function(s) antiAfkEnabled=s end)
 UI.hideFooterSwitch.onToggle(function(s) hideFooterEnabled=s; footer.Visible=not s end)
-UI.clickMatSwitch.onToggle(function(s) clickMatEnabled=s end)
 UI.saSwitch.onToggle(function(s) silentAimEnabled=s end)
 UI.saNpcSwitch.onToggle(function(s) silentAimNpcEnabled=s end)
 UI.spinSwitch.onToggle(function(s) spinBotEnabled=s; local h=PL.Character and PL.Character:FindFirstChildOfClass("Humanoid"); if h then h.AutoRotate=not s end end)
@@ -1406,6 +1386,16 @@ UI.antiFlingSwitch.onToggle(function(s)
     else
         lastSafeCFrame=nil
         lastSafeVelocity=Vector3.new(0,0,0)
+    end
+end)
+UI.streamerSwitch.onToggle(function(s)
+    streamerModeEnabled=s
+    if s then
+        setRGBGlow(true)
+        hideSkin()
+    else
+        setRGBGlow(false)
+        showSkin()
     end
 end)
 
@@ -1531,8 +1521,7 @@ local function uH()
         if r.userLabel and r.player then
             local teamName=(r.player.Team and r.player.Team.Name) or "Sem Time"
             local teamColor=(r.player.Team and r.player.Team.TeamColor.Color) or Color3.fromRGB(120,120,120)
-            local _,sNM=sfName(r.player)
-            r.userLabel.Text="@"..sNM.."  •  "..teamName
+            r.userLabel.Text="@"..r.player.Name.."  •  "..teamName
             r.userLabel.TextColor3=teamColor
         end
         if r.avatarStroke then r.avatarStroke.Color=RED end
@@ -1567,19 +1556,18 @@ local function cPR(p,o)
     av.Position=UDim2.new(0,6,0.5,-18)
     av.BackgroundColor3=Color3.fromRGB(20,20,23)
     av.BorderSizePixel=0
-    av.Image=streamerModeEnabled and "" or ("rbxthumb://type=AvatarHeadShot&id="..p.UserId.."&w=48&h=48")
+    av.Image="rbxthumb://type=AvatarHeadShot&id="..p.UserId.."&w=48&h=48"
     av.ZIndex=11
     Instance.new("UICorner",av).CornerRadius=UDim.new(0,6)
     local as=Instance.new("UIStroke",av)
     as.Color=RED
     as.Thickness=1
     as.Transparency=0.5
-    local sDN,sNM=sfName(p)
     local nl=Instance.new("TextLabel",r)
     nl.Size=UDim2.new(1,-90,0,18)
     nl.Position=UDim2.new(0,48,0,6)
     nl.BackgroundTransparency=1
-    nl.Text=sDN
+    nl.Text=p.DisplayName
     nl.Font=Enum.Font.GothamBold
     nl.TextSize=11
     nl.TextColor3=Color3.fromRGB(240,240,240)
@@ -1592,7 +1580,7 @@ local function cPR(p,o)
     ul.Size=UDim2.new(1,-90,0,14)
     ul.Position=UDim2.new(0,48,0,24)
     ul.BackgroundTransparency=1
-    ul.Text="@"..sNM.."  •  "..teamName
+    ul.Text="@"..p.Name.."  •  "..teamName
     ul.Font=Enum.Font.Gotham
     ul.TextSize=10
     ul.TextColor3=teamColor
@@ -1696,19 +1684,18 @@ local function cFR(p,o)
     av.Position=UDim2.new(0,5,0.5,-15)
     av.BackgroundColor3=Color3.fromRGB(20,20,23)
     av.BorderSizePixel=0
-    av.Image=streamerModeEnabled and "" or ("rbxthumb://type=AvatarHeadShot&id="..p.UserId.."&w=48&h=48")
+    av.Image="rbxthumb://type=AvatarHeadShot&id="..p.UserId.."&w=48&h=48"
     av.ZIndex=11
     Instance.new("UICorner",av).CornerRadius=UDim.new(0,15)
     local as=Instance.new("UIStroke",av)
     as.Color=RED
     as.Thickness=1
     as.Transparency=0.5
-    local sDN,sNM=sfName(p)
     local l=Instance.new("TextLabel",r)
     l.Size=UDim2.new(1,-46,1,0)
     l.Position=UDim2.new(0,42,0,0)
     l.BackgroundTransparency=1
-    l.Text=sDN.." (@"..sNM..")"
+    l.Text=p.DisplayName.." (@"..p.Name..")"
     l.Font=Enum.Font.GothamBold
     l.TextSize=10
     l.TextColor3=Color3.fromRGB(220,220,220)
@@ -1746,28 +1733,6 @@ registerTheme(function(c)
     pcall(uFH)
 end)
 task.spawn(function() while true do task.wait(1.5); rFL() end end)
-
--- ===== STREAMER MODE (agora que PR/FR/rPL/rFL existem) =====
-UI.streamerSwitch.onToggle(function(s)
-    streamerModeEnabled=s
-    streamerNameMap={}
-    streamerIdCounter=0
-    title.Text=s and "HUB" or "PORTUGA"
-    subtitle.Text=s and "UTIL" or (IS_PRISON and "H U B • PRISON LIFE" or "H U B")
-    setRGBGlow(s)
-    for _,r in pairs(PR) do r.frame:Destroy() end
-    PR={}
-    for _,r in pairs(FR) do r.frame:Destroy() end
-    FR={}
-    pcall(rPL)
-    pcall(rFL)
-    pcall(uH)
-    pcall(uFH)
-end)
-UI.baconSwitch.onToggle(function(s)
-    baconEnabled=s
-    if s then applyBaconAll() else clearBaconAll() end
-end)
 
 -- ===== LOOPS =====
 task.spawn(function()
@@ -1835,47 +1800,6 @@ RS.Heartbeat:Connect(function()
             lastSafeCFrame=hrp.CFrame
         end
     end
-end)
-
-local clickMatLastClick=0
-local clickMatInterval=0.05
-RS.Heartbeat:Connect(function()
-    if not clickMatEnabled then return end
-    local ch=PL.Character
-    if not ch then return end
-    local tool=ch:FindFirstChildOfClass("Tool")
-    if not tool then return end
-    local now=tick()
-    if now-clickMatLastClick<clickMatInterval then return end
-    local hr=ch:FindFirstChild("HumanoidRootPart")
-    if not hr then return end
-    local best=nil
-    local bestDist=60
-    for _,p in pairs(PS:GetPlayers()) do
-        if p~=PL and p.Character then
-            local tChar=p.Character
-            local tHum=tChar:FindFirstChild("Humanoid")
-            local tPart=tChar:FindFirstChild("HumanoidRootPart")
-            if tHum and tPart and tHum.Health>0 then
-                if teamCheck and p.Team==PL.Team then continue end
-                if friends[p.Name] then continue end
-                if teamMiscEnabled and selectedTeam then if p.Team~=selectedTeam then continue end end
-                local dist=(tPart.Position-hr.Position).Magnitude
-                if dist<bestDist then
-                    if wallCheck then
-                        local rp=RaycastParams.new()
-                        rp.FilterType=Enum.RaycastFilterType.Blacklist
-                        rp.FilterDescendantsInstances={ch}
-                        local ray=workspace:Raycast(hr.Position,(tPart.Position-hr.Position).Unit*dist,rp)
-                        if ray and not ray.Instance:IsDescendantOf(tChar) then continue end
-                    end
-                    bestDist=dist
-                    best=p
-                end
-            end
-        end
-    end
-    if best then pcall(function() tool:Activate() end); clickMatLastClick=now end
 end)
 
 if IS_PRISON then
@@ -1991,8 +1915,7 @@ local function collectConfig()
         aimToolEnabled=aimToolEnabled,silentAimEnabled=silentAimEnabled,silentAimNpcEnabled=silentAimNpcEnabled,
         fullBrightEnabled=fullBrightEnabled,spinBotEnabled=spinBotEnabled,antiAfkEnabled=antiAfkEnabled,
         hideFooterEnabled=hideFooterEnabled,infJumpEnabled=infJumpEnabled,noclipEnabled=noclipEnabled,
-        clickMatEnabled=clickMatEnabled,antiFlingEnabled=antiFlingEnabled,
-        streamerModeEnabled=streamerModeEnabled,baconEnabled=baconEnabled,
+        antiFlingEnabled=antiFlingEnabled,streamerModeEnabled=streamerModeEnabled,
         aimPart=aimPart,FOV=FOV,camFOV=camFOV,colorIndex=colorIndex,themeIndex=themeIndex,
         priorityIndex=priorityIndex,
         teamMiscEnabled=teamMiscEnabled,selectedTeamName=selectedTeam and selectedTeam.Name or nil,
@@ -2025,10 +1948,8 @@ local function applyConfigToSwitches(c)
     UI.hideFooterSwitch.setOn(c.hideFooterEnabled or false)
     UI.infJumpSwitch.setOn(c.infJumpEnabled or false)
     UI.noclipSwitch.setOn(c.noclipEnabled or false)
-    UI.clickMatSwitch.setOn(c.clickMatEnabled or false)
     UI.antiFlingSwitch.setOn(c.antiFlingEnabled or false)
     UI.streamerSwitch.setOn(c.streamerModeEnabled or false)
-    UI.baconSwitch.setOn(c.baconEnabled or false)
     espEnabled=c.espEnabled or false
     espNameEnabled=c.espNameEnabled==true
     aimbotEnabled=c.aimbotEnabled or false
@@ -2045,16 +1966,15 @@ local function applyConfigToSwitches(c)
     hideFooterEnabled=c.hideFooterEnabled or false
     infJumpEnabled=c.infJumpEnabled or false
     noclipEnabled=c.noclipEnabled or false
-    clickMatEnabled=c.clickMatEnabled or false
     antiFlingEnabled=c.antiFlingEnabled or false
     streamerModeEnabled=c.streamerModeEnabled or false
-    streamerNameMap={}
-    streamerIdCounter=0
-    title.Text=streamerModeEnabled and "HUB" or "PORTUGA"
-    subtitle.Text=streamerModeEnabled and "UTIL" or (IS_PRISON and "H U B • PRISON LIFE" or "H U B")
-    setRGBGlow(streamerModeEnabled)
-    baconEnabled=c.baconEnabled or false
-    if baconEnabled then applyBaconAll() else clearBaconAll() end
+    if streamerModeEnabled then
+        setRGBGlow(true)
+        hideSkin()
+    else
+        setRGBGlow(false)
+        showSkin()
+    end
     if IS_PRISON then
         prisonClickMat=c.prisonClickMat or false
         prisonArrest=c.prisonArrest or false
@@ -2387,14 +2307,11 @@ local function executarPanic()
     teamMiscEnabled=false; selectedTeam=nil
     silentAimEnabled=false; silentAimTarget=nil; silentAimNpcEnabled=false
     fullBrightEnabled=false; spinBotEnabled=false; antiAfkEnabled=false
-    hideFooterEnabled=false; infJumpEnabled=false; noclipEnabled=false; clickMatEnabled=false
+    hideFooterEnabled=false; infJumpEnabled=false; noclipEnabled=false
     antiFlingEnabled=false; lastSafeCFrame=nil; lastSafeVelocity=Vector3.new(0,0,0)
-    streamerModeEnabled=false; streamerNameMap={}; streamerIdCounter=0
-    title.Text="PORTUGA"
-    subtitle.Text=IS_PRISON and "H U B • PRISON LIFE" or "H U B"
+    streamerModeEnabled=false
     if rgbHighlight then pcall(function() rgbHighlight:Destroy() end); rgbHighlight=nil end
-    baconEnabled=false
-    clearBaconAll()
+    showSkin()
     prisonClickMat=false; prisonArrest=false
     FOV=120; camFOV=70; camFovActive=false; CAM.FieldOfView=camFOV
     behindText.Visible=false; footer.Visible=true
@@ -2403,10 +2320,9 @@ local function executarPanic()
     UI.teamCheckSwitch.setOn(false); UI.wallCheckSwitch.setOn(false); UI.behindSwitch.setOn(false)
     UI.saSwitch.setOn(false); UI.saNpcSwitch.setOn(false); UI.spinSwitch.setOn(false)
     UI.fbSwitch.setOn(false); UI.afkSwitch.setOn(false); UI.hideFooterSwitch.setOn(false)
-    UI.infJumpSwitch.setOn(false); UI.noclipSwitch.setOn(false); UI.clickMatSwitch.setOn(false)
+    UI.infJumpSwitch.setOn(false); UI.noclipSwitch.setOn(false)
     UI.antiFlingSwitch.setOn(false)
     UI.streamerSwitch.setOn(false)
-    UI.baconSwitch.setOn(false)
     if IS_PRISON then
         UI.prisonClickMatSwitch.setOn(false)
         UI.prisonArrestSwitch.setOn(false)
@@ -2469,10 +2385,7 @@ RS.RenderStepped:Connect(function()
                 e[1].Size=Vector2.new(sz*2,sz*3); e[1].Position=Vector2.new(ps.X-sz,ps.Y-sz); e[1].Color=lineColor; e[1].Visible=true
                 e[2].From=Vector2.new(CAM.ViewportSize.X/2,CAM.ViewportSize.Y); e[2].To=Vector2.new(ps.X,ps.Y); e[2].Color=lineColor; e[2].Visible=true
                 local ht="["..math.floor(h.Health).."]"
-                if espNameEnabled then
-                    local sDN=sfName(pl)
-                    e[3].Text=sDN.." "..ht
-                else e[3].Text=ht end
+                if espNameEnabled then e[3].Text=pl.Name.." "..ht else e[3].Text=ht end
                 e[3].Position=Vector2.new(ps.X,ps.Y-sz*1.8); e[3].Color=lineColor; e[3].Visible=true
             else for _,v in pairs(e) do v.Visible=false end end
         else for _,v in pairs(e) do v.Visible=false end end
