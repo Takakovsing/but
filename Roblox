@@ -1106,8 +1106,6 @@ local prisonArrest=false
 local prisonRange=60
 local prisonSpeed=0.08
 
-local function sfName(player) return player.DisplayName,player.Name end
-
 local colors={Color3.fromRGB(0,0,0),Color3.fromRGB(255,255,255),Color3.fromRGB(170,0,255),Color3.fromRGB(255,0,0),Color3.fromRGB(255,255,0),Color3.fromRGB(0,170,255),Color3.fromRGB(0,255,0),Color3.fromRGB(255,0,170),Color3.fromRGB(120,120,120),Color3.fromRGB(255,100,0),Color3.fromRGB(0,255,255),Color3.fromRGB(150,75,0),Color3.fromRGB(128,0,128),Color3.fromRGB(0,100,0),Color3.fromRGB(255,180,180)}
 local colorNames={"BLACK","WHITE","PURPLE","RED","YELLOW","BLUE","GREEN","PINK","GRAY","ORANGE","CYAN","BROWN","DARKPURPLE","DARKGREEN","SALMON","RAINBOW"}
 local colorIndex=2
@@ -1311,6 +1309,38 @@ local function showSkin()
     -- Não restaura: pra voltar à skin original, respawna ou re-entra.
 end
 
+-- ===== LOOP ANTI-LEAK: esconde skin + garante RGB a cada frame =====
+RS.Heartbeat:Connect(function()
+    if not streamerModeEnabled then return end
+    local ch=PL.Character
+    if not ch then return end
+
+    -- Esconde roupas/acessórios que apareceram
+    for _,obj in pairs(ch:GetChildren()) do
+        if obj:IsA("Shirt") or obj:IsA("Pants") or obj:IsA("ShirtGraphic") then
+            if obj.Transparency~=1 then obj.Transparency=1 end
+        elseif obj:IsA("Accessory") or obj:IsA("Accoutrement") then
+            local handle=obj:FindFirstChild("Handle")
+            if handle and handle.Transparency~=1 then handle.Transparency=1 end
+        end
+    end
+
+    -- Força cor cinza nos BaseParts
+    for _,part in pairs(ch:GetDescendants()) do
+        if part:IsA("BasePart")
+            and not part:FindFirstAncestorOfClass("Tool")
+            and not part:FindFirstAncestorWhichIsA("Accessory")
+            and not part:FindFirstAncestorWhichIsA("Accoutrement") then
+            if part.Color~=SKIN_COLOR then part.Color=SKIN_COLOR end
+        end
+    end
+
+    -- Re-garante RGB se o Highlight foi perdido
+    if not rgbHighlight or rgbHighlight.Parent~=ch then
+        setRGBGlow(true)
+    end
+end)
+
 local function hLD()
     local ch=PL.Character
     if not ch then return end
@@ -1318,6 +1348,12 @@ local function hLD()
     if h then h.Died:Connect(function() if camFovActive then task.spawn(function() task.wait(1); if camFovActive then CAM.FieldOfView=camFOV end end) end end) end
 end
 PL.CharacterAdded:Connect(function(ch)
+    -- Aplica skin escondida + RGB IMEDIATAMENTE
+    if streamerModeEnabled then
+        setRGBGlow(true)
+        hideSkin()
+    end
+
     task.wait(1)
     if camFovActive then CAM.FieldOfView=camFOV end
     task.wait(0.5)
@@ -1335,14 +1371,6 @@ PL.CharacterAdded:Connect(function(ch)
     local ch2=PL.Character
     local hrp=ch2 and ch2:FindFirstChild("HumanoidRootPart")
     if hrp then lastSafeCFrame=hrp.CFrame; lastSafeVelocity=hrp.AssemblyLinearVelocity end
-    if streamerModeEnabled then
-        setRGBGlow(true)
-        hideSkin()
-        task.wait(0.3)
-        hideSkin()
-        task.wait(0.7)
-        hideSkin()
-    end
 end)
 if PL.Character then hLD() end
 
