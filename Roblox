@@ -1093,8 +1093,6 @@ local lastSafeVelocity=Vector3.new(0,0,0)
 local streamerModeEnabled=false
 local rgbHighlight=nil
 local rgbHue=0
-local skinHidden=false
-local savedSkinState=nil
 local originalGravity=workspace.Gravity
 local aimPart="Head"
 local FOV=120
@@ -1288,12 +1286,8 @@ end)
 -- ===== SKIN HIDE =====
 local SKIN_COLOR=Color3.fromRGB(80,80,80)
 
-local function isAccessoryPart(part)
-    return part:FindFirstAncestorWhichIsA("Accessory")
-        or part:FindFirstAncestorWhichIsA("Accoutrement")
-end
-
-local function applyHideAppearance(ch)
+local function hideSkin()
+    local ch=PL.Character
     if not ch then return end
     for _,obj in pairs(ch:GetChildren()) do
         if obj:IsA("Shirt") or obj:IsA("Pants") or obj:IsA("ShirtGraphic") then
@@ -1306,80 +1300,15 @@ local function applyHideAppearance(ch)
     for _,part in pairs(ch:GetDescendants()) do
         if part:IsA("BasePart")
             and not part:FindFirstAncestorOfClass("Tool")
-            and not isAccessoryPart(part) then
+            and not part:FindFirstAncestorWhichIsA("Accessory")
+            and not part:FindFirstAncestorWhichIsA("Accoutrement") then
             part.Color=SKIN_COLOR
         end
     end
 end
 
-local function captureAppearance(ch)
-    if not ch then return {} end
-    local data={}
-    for _,obj in pairs(ch:GetChildren()) do
-        if obj:IsA("Shirt") or obj:IsA("Pants") or obj:IsA("ShirtGraphic") then
-            data["cloth:"..obj.ClassName..":"..obj.Name]={
-                kind="cloth",name=obj.Name,class=obj.ClassName,
-                transparency=obj.Transparency,
-            }
-        elseif obj:IsA("Accessory") or obj:IsA("Accoutrement") then
-            local handle=obj:FindFirstChild("Handle")
-            if handle then
-                data["acc:"..obj.Name]={
-                    kind="acc",parentName=obj.Name,
-                    transparency=handle.Transparency,
-                }
-            end
-        end
-    end
-    for _,part in pairs(ch:GetDescendants()) do
-        if part:IsA("BasePart")
-            and not part:FindFirstAncestorOfClass("Tool")
-            and not isAccessoryPart(part) then
-            data["part:"..part.Name]={kind="part",name=part.Name,color=part.Color}
-        end
-    end
-    return data
-end
-
-local function restoreAppearance()
-    if not savedSkinState then return end
-    local ch=PL.Character
-    if not ch then return end
-    for _,state in pairs(savedSkinState) do
-        if state.kind=="part" then
-            local part=ch:FindFirstChild(state.name,true)
-            if part and part:IsA("BasePart") then part.Color=state.color end
-        elseif state.kind=="acc" then
-            local acc=ch:FindFirstChild(state.parentName)
-            if acc then
-                local h=acc:FindFirstChild("Handle")
-                if h then h.Transparency=state.transparency end
-            end
-        else
-            for _,obj in pairs(ch:GetChildren()) do
-                if obj.ClassName==state.class and obj.Name==state.name then
-                    obj.Transparency=state.transparency
-                end
-            end
-        end
-    end
-end
-
-local function hideSkin()
-    local ch=PL.Character
-    if not ch then return end
-    if not skinHidden then
-        savedSkinState=captureAppearance(ch)
-        skinHidden=true
-    end
-    applyHideAppearance(ch)
-end
-
 local function showSkin()
-    if not skinHidden then return end
-    restoreAppearance()
-    savedSkinState=nil
-    skinHidden=false
+    -- Não restaura: pra voltar à skin original, respawna ou re-entra.
 end
 
 local function hLD()
@@ -1408,15 +1337,11 @@ PL.CharacterAdded:Connect(function(ch)
     if hrp then lastSafeCFrame=hrp.CFrame; lastSafeVelocity=hrp.AssemblyLinearVelocity end
     if streamerModeEnabled then
         setRGBGlow(true)
-        if not skinHidden then
-            skinHidden=true
-            savedSkinState=savedSkinState or {}
-        end
-        applyHideAppearance(PL.Character)
+        hideSkin()
         task.wait(0.3)
-        applyHideAppearance(PL.Character)
+        hideSkin()
         task.wait(0.7)
-        applyHideAppearance(PL.Character)
+        hideSkin()
     end
 end)
 if PL.Character then hLD() end
@@ -1452,8 +1377,6 @@ end)
 UI.streamerSwitch.onToggle(function(s)
     streamerModeEnabled=s
     if s then
-        skinHidden=false
-        savedSkinState=nil
         setRGBGlow(true)
         hideSkin()
     else
@@ -2032,10 +1955,6 @@ local function applyConfigToSwitches(c)
     antiFlingEnabled=c.antiFlingEnabled or false
     streamerModeEnabled=c.streamerModeEnabled or false
     if streamerModeEnabled then
-        if not skinHidden then
-            skinHidden=false
-            savedSkinState=nil
-        end
         setRGBGlow(true)
         hideSkin()
     else
@@ -2379,8 +2298,6 @@ local function executarPanic()
     streamerModeEnabled=false
     if rgbHighlight then pcall(function() rgbHighlight:Destroy() end); rgbHighlight=nil end
     showSkin()
-    skinHidden=false
-    savedSkinState=nil
     prisonClickMat=false; prisonArrest=false
     FOV=120; camFOV=70; camFovActive=false; CAM.FieldOfView=camFOV
     behindText.Visible=false; footer.Visible=true
