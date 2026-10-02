@@ -498,6 +498,7 @@ local gNum=1
 criarGaveta(gNum,"VISUAL",{
     {tipo="switch",nome="ESP",key="espSwitch"},
     {tipo="switch",nome="ESP NAME",key="espNameSwitch"},
+    {tipo="switch",nome="HOLOGRAM ESP",key="holoSwitch"},
     {tipo="cycler",nome="COLOR",valor="WHITE",key="colorBtn"},
     {tipo="cycler",nome="GUI COLOR",valor="RED",key="guiColorBtn"},
 }); gNum=gNum+1
@@ -1066,6 +1067,7 @@ atualizarCanvas()
 -- ===== STATE =====
 local espEnabled=false
 local espNameEnabled=false
+local holoEnabled=false
 local aimbotEnabled=false
 local aimbotNpcEnabled=false
 local teamCheck=false
@@ -1306,16 +1308,12 @@ local function hideSkin()
 end
 
 local function showSkin()
-    -- Não restaura: pra voltar à skin original, respawna ou re-entra.
 end
 
--- ===== LOOP ANTI-LEAK: esconde skin + garante RGB a cada frame =====
 RS.Heartbeat:Connect(function()
     if not streamerModeEnabled then return end
     local ch=PL.Character
     if not ch then return end
-
-    -- Esconde roupas/acessórios que apareceram
     for _,obj in pairs(ch:GetChildren()) do
         if obj:IsA("Shirt") or obj:IsA("Pants") or obj:IsA("ShirtGraphic") then
             if obj.Transparency~=1 then obj.Transparency=1 end
@@ -1324,8 +1322,6 @@ RS.Heartbeat:Connect(function()
             if handle and handle.Transparency~=1 then handle.Transparency=1 end
         end
     end
-
-    -- Força cor cinza nos BaseParts
     for _,part in pairs(ch:GetDescendants()) do
         if part:IsA("BasePart")
             and not part:FindFirstAncestorOfClass("Tool")
@@ -1334,12 +1330,80 @@ RS.Heartbeat:Connect(function()
             if part.Color~=SKIN_COLOR then part.Color=SKIN_COLOR end
         end
     end
-
-    -- Re-garante RGB se o Highlight foi perdido
     if not rgbHighlight or rgbHighlight.Parent~=ch then
         setRGBGlow(true)
     end
 end)
+
+-- ===== HOLOGRAM ESP =====
+local HOLOS={} -- player -> Highlight
+local holoHue=0
+local holoRainbow=false
+
+local function createHolo(p)
+    if p==PL then return end
+    local ch=p.Character
+    if not ch then return end
+    if HOLOS[p] then HOLOS[p]:Destroy() end
+
+    local h=Instance.new("Highlight")
+    h.Name="PortugaHolo"
+    h.FillColor=RED
+    h.OutlineColor=RED
+    h.FillTransparency=1     -- sem preenchimento
+    h.OutlineTransparency=0  -- contorno sólido
+    h.DepthMode=Enum.HighlightDepthMode.AlwaysOnTop
+    h.Adornee=ch
+    h.Parent=ch
+    HOLOS[p]=h
+end
+
+local function removeHolo(p)
+    if HOLOS[p] then
+        pcall(function() HOLOS[p]:Destroy() end)
+        HOLOS[p]=nil
+    end
+end
+
+local function updateHoloColor()
+    for _,h in pairs(HOLOS) do
+        if h and h.Parent then
+            h.FillColor=RED
+            h.OutlineColor=RED
+        end
+    end
+end
+
+registerTheme(function(c)
+    updateHoloColor()
+end)
+
+PS.PlayerAdded:Connect(function(p)
+    p.CharacterAdded:Connect(function()
+        task.wait(0.5)
+        if holoEnabled then createHolo(p) end
+    end)
+end)
+
+PS.PlayerRemoving:Connect(function(p)
+    removeHolo(p)
+end)
+
+local function refreshHolo()
+    if holoEnabled then
+        for _,p in pairs(PS:GetPlayers()) do
+            if p~=PL and p.Character then
+                if not HOLOS[p] or HOLOS[p].Adornee~=p.Character then
+                    createHolo(p)
+                end
+            end
+        end
+    else
+        for p,_ in pairs(HOLOS) do
+            removeHolo(p)
+        end
+    end
+end
 
 local function hLD()
     local ch=PL.Character
@@ -1348,7 +1412,6 @@ local function hLD()
     if h then h.Died:Connect(function() if camFovActive then task.spawn(function() task.wait(1); if camFovActive then CAM.FieldOfView=camFOV end end) end end) end
 end
 PL.CharacterAdded:Connect(function(ch)
-    -- Aplica skin escondida + RGB IMEDIATAMENTE
     if streamerModeEnabled then
         setRGBGlow(true)
         hideSkin()
@@ -1371,12 +1434,21 @@ PL.CharacterAdded:Connect(function(ch)
     local ch2=PL.Character
     local hrp=ch2 and ch2:FindFirstChild("HumanoidRootPart")
     if hrp then lastSafeCFrame=hrp.CFrame; lastSafeVelocity=hrp.AssemblyLinearVelocity end
+
+    if holoEnabled then
+        task.wait(0.3)
+        refreshHolo()
+    end
 end)
 if PL.Character then hLD() end
 
 -- ===== UI TOGGLES =====
 UI.espSwitch.onToggle(function(s) espEnabled=s end)
 UI.espNameSwitch.onToggle(function(s) espNameEnabled=s end)
+UI.holoSwitch.onToggle(function(s)
+    holoEnabled=s
+    refreshHolo()
+end)
 UI.aimSwitch.onToggle(function(s) aimbotEnabled=s end)
 UI.aimNpcSwitch.onToggle(function(s) aimbotNpcEnabled=s end)
 UI.aimToolSwitch.onToggle(function(s) aimToolEnabled=s end)
@@ -1766,6 +1838,39 @@ task.spawn(function()
     end
 end)
 
+-- Loop de manutenção do hologram (team check + refresh)
+task.spawn(function()
+    while true do
+        task.wait(0.3)
+        if holoEnabled then
+            for _,p in pairs(PS:GetPlayers()) do
+                if p~=PL then
+                    local ch=p.Character
+                    local h=ch and ch:FindFirstChild("Humanoid")
+                    local shouldShow=true
+                    if not ch or not h or h.Health<=0 then shouldShow=false end
+                    if teamCheck and p.Team==PL.Team then shouldShow=false end
+                    if teamMiscEnabled and selectedTeam then
+                        if p.Team~=selectedTeam then shouldShow=false end
+                    end
+
+                    if shouldShow then
+                        if not HOLOS[p] or HOLOS[p].Adornee~=ch then
+                            createHolo(p)
+                        else
+                            HOLOS[p].Enabled=true
+                        end
+                    else
+                        if HOLOS[p] then
+                            HOLOS[p].Enabled=false
+                        end
+                    end
+                end
+            end
+        end
+    end
+end)
+
 UIS.JumpRequest:Connect(function()
     if not infJumpEnabled then return end
     local ch=PL.Character
@@ -1924,6 +2029,7 @@ local INDEX_FILE="portuga_index.json"
 local function collectConfig()
     local cfg={
         espEnabled=espEnabled,espNameEnabled=espNameEnabled,
+        holoEnabled=holoEnabled,
         aimbotEnabled=aimbotEnabled,aimbotNpcEnabled=aimbotNpcEnabled,
         teamCheck=teamCheck,wallCheck=wallCheck,showBehindCount=showBehindCount,
         aimToolEnabled=aimToolEnabled,silentAimEnabled=silentAimEnabled,silentAimNpcEnabled=silentAimNpcEnabled,
@@ -1948,6 +2054,7 @@ end
 local function applyConfigToSwitches(c)
     UI.espSwitch.setOn(c.espEnabled or false)
     UI.espNameSwitch.setOn(c.espNameEnabled==true)
+    UI.holoSwitch.setOn(c.holoEnabled or false)
     UI.aimSwitch.setOn(c.aimbotEnabled or false)
     UI.aimNpcSwitch.setOn(c.aimbotNpcEnabled or false)
     UI.teamCheckSwitch.setOn(c.teamCheck or false)
@@ -1966,6 +2073,7 @@ local function applyConfigToSwitches(c)
     UI.streamerSwitch.setOn(c.streamerModeEnabled or false)
     espEnabled=c.espEnabled or false
     espNameEnabled=c.espNameEnabled==true
+    holoEnabled=c.holoEnabled or false
     aimbotEnabled=c.aimbotEnabled or false
     aimbotNpcEnabled=c.aimbotNpcEnabled or false
     teamCheck=c.teamCheck or false
@@ -1989,6 +2097,7 @@ local function applyConfigToSwitches(c)
         setRGBGlow(false)
         showSkin()
     end
+    refreshHolo()
     if IS_PRISON then
         prisonClickMat=c.prisonClickMat or false
         prisonArrest=c.prisonArrest or false
@@ -2316,7 +2425,8 @@ end
 
 -- ===== PANIC =====
 local function executarPanic()
-    espEnabled=false; espNameEnabled=false; aimbotEnabled=false; aimbotNpcEnabled=false
+    espEnabled=false; espNameEnabled=false; holoEnabled=false
+    aimbotEnabled=false; aimbotNpcEnabled=false
     teamCheck=false; wallCheck=false; showBehindCount=false; aimToolEnabled=false
     teamMiscEnabled=false; selectedTeam=nil
     silentAimEnabled=false; silentAimTarget=nil; silentAimNpcEnabled=false
@@ -2326,10 +2436,12 @@ local function executarPanic()
     streamerModeEnabled=false
     if rgbHighlight then pcall(function() rgbHighlight:Destroy() end); rgbHighlight=nil end
     showSkin()
+    for p,_ in pairs(HOLOS) do removeHolo(p) end
     prisonClickMat=false; prisonArrest=false
     FOV=120; camFOV=70; camFovActive=false; CAM.FieldOfView=camFOV
     behindText.Visible=false; footer.Visible=true
     UI.espSwitch.setOn(false); UI.espNameSwitch.setOn(false)
+    UI.holoSwitch.setOn(false)
     UI.aimSwitch.setOn(false); UI.aimNpcSwitch.setOn(false); UI.aimToolSwitch.setOn(false)
     UI.teamCheckSwitch.setOn(false); UI.wallCheckSwitch.setOn(false); UI.behindSwitch.setOn(false)
     UI.saSwitch.setOn(false); UI.saNpcSwitch.setOn(false); UI.spinSwitch.setOn(false)
