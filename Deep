@@ -323,11 +323,11 @@ gui.innerHTML=`
 <div id="pgLine"></div>
 
 <button id="pgNivel">
-    🎚️ NÍVEL: MÉDIO
+    NÍVEL: MÉDIO
 </button>
 
 <button id="pgGerar">
-    ✍️ GERAR REDAÇÃO
+    GERAR REDAÇÃO
 </button>
 
 `;
@@ -432,7 +432,7 @@ $("pgNivel").onclick=()=>{
     nivel=niveis[(i+1)%niveis.length];
 
     $("pgNivel").textContent=
-        "🎚️ NÍVEL: "+
+        "NÍVEL: "+
         nomesNivel[nivel];
 
     notify("Nível: "+nomesNivel[nivel]);
@@ -659,9 +659,6 @@ async function digitar(campo,texto){
         const naoCancelado=
             campo.dispatchEvent(evt);
 
-        // se o editor NÃO cancelou o paste,
-        // ele provavelmente não tratou, então
-        // aplica manualmente
         if(naoCancelado){
 
             aplicarTexto(campo,texto);
@@ -706,7 +703,6 @@ async function digitar(campo,texto){
         ? campo.value
         : campo.innerText;
 
-    // se ficou vazio, força de novo
     if(!conteudo || conteudo.length < texto.length/2){
 
         aplicarTexto(campo,texto);
@@ -757,7 +753,7 @@ $("pgGerar").onclick=async()=>{
     $("pgGerar").disabled=true;
 
     $("pgGerar").textContent=
-        "📖 LENDO PÁGINA...";
+        "LENDO PÁGINA...";
 
     notify("Lendo página...",true);
 
@@ -773,14 +769,14 @@ $("pgGerar").onclick=async()=>{
         $("pgGerar").disabled=false;
 
         $("pgGerar").textContent=
-            "✍️ GERAR REDAÇÃO";
+            "GERAR REDAÇÃO";
 
         return;
     }
 
 
     $("pgGerar").textContent=
-        "🤖 GERANDO...";
+        "GERANDO...";
 
     notify(
         "Gerando redação ("+
@@ -900,7 +896,7 @@ $("pgGerar").onclick=async()=>{
 
 
         $("pgGerar").textContent=
-            "📋 COLANDO...";
+            "COLANDO...";
 
         notify("Colando redação...",true);
 
@@ -910,7 +906,7 @@ $("pgGerar").onclick=async()=>{
         notify("Redação pronta!");
 
         $("pgGerar").textContent=
-            "✍️ GERAR REDAÇÃO";
+            "GERAR REDAÇÃO";
 
         $("pgGerar").disabled=false;
 
@@ -926,7 +922,7 @@ $("pgGerar").onclick=async()=>{
 
 
         $("pgGerar").textContent=
-            "✍️ GERAR REDAÇÃO";
+            "GERAR REDAÇÃO";
 
         $("pgGerar").disabled=false;
 
