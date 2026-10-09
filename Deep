@@ -478,7 +478,6 @@ function lerPagina(){
 
 function acharCampo(){
 
-    // 1) tenta seletores comuns de campo de redação
     const preferidos=[
 
         'textarea[name*="redac" i]',
@@ -509,7 +508,6 @@ function acharCampo(){
         }
     }
 
-    // 2) fallback: maior textarea visível
     const areas=
         [...document.querySelectorAll("textarea")]
         .filter(e=>e.offsetParent!==null);
@@ -523,7 +521,6 @@ function acharCampo(){
 
     }
 
-    // 3) fallback: contenteditable visível
     const edit=
         [...document.querySelectorAll(
             '[contenteditable="true"]'
@@ -581,12 +578,10 @@ function setNative(el,val){
 
 
 // ==============================
-// DIGITAR (INSTANTÂNEO)
+// APLICA TEXTO (FALLBACK)
 // ==============================
 
-async function digitar(campo,texto){
-
-    campo.focus();
+function aplicarTexto(campo,texto){
 
     if(
         campo.tagName==="TEXTAREA" ||
@@ -595,30 +590,133 @@ async function digitar(campo,texto){
 
         setNative(campo,texto);
 
-        campo.dispatchEvent(
-            new Event(
-                "change",
-                {bubbles:true}
-            )
-        );
-
     }else{
 
-        // contenteditable
+        campo.focus();
 
-        campo.innerHTML="";
+        const range=document.createRange();
 
-        document.execCommand(
-            "insertText",
-            false,
-            texto
+        range.selectNodeContents(campo);
+
+        const sel=window.getSelection();
+
+        sel.removeAllRanges();
+
+        sel.addRange(range);
+
+        const ok=
+            document.execCommand(
+                "insertText",
+                false,
+                texto
+            );
+
+        if(!ok){
+
+            campo.innerHTML=
+                texto
+                .split("\n\n")
+                .map(p=>
+                    "<p>"+
+                    p.replace(/\n/g,"<br>")+
+                    "</p>"
+                )
+                .join("");
+        }
+    }
+}
+
+
+// ==============================
+// COLAR (SIMULA CTRL+V REAL)
+// ==============================
+
+async function digitar(campo,texto){
+
+    campo.focus();
+
+    // ==========================
+    // 1) SIMULA PASTE REAL
+    // ==========================
+
+    let pasteTratado=false;
+
+    try{
+
+        const dt=new DataTransfer();
+
+        dt.setData("text/plain",texto);
+
+        const evt=new ClipboardEvent(
+            "paste",
+            {
+                bubbles:true,
+                cancelable:true,
+                clipboardData:dt
+            }
+        );
+
+        const naoCancelado=
+            campo.dispatchEvent(evt);
+
+        // se o editor NÃO cancelou o paste,
+        // ele provavelmente não tratou, então
+        // aplica manualmente
+        if(naoCancelado){
+
+            aplicarTexto(campo,texto);
+
+        }else{
+
+            pasteTratado=true;
+        }
+
+    }catch(e){
+
+        aplicarTexto(campo,texto);
+    }
+
+    // ==========================
+    // 2) EVENTOS EXTRAS
+    // ==========================
+
+    campo.dispatchEvent(
+        new Event("input",{bubbles:true})
+    );
+
+    campo.dispatchEvent(
+        new Event("change",{bubbles:true})
+    );
+
+    campo.dispatchEvent(
+        new KeyboardEvent("keyup",{
+            bubbles:true,
+            key:"v",
+            ctrlKey:true
+        })
+    );
+
+    // ==========================
+    // 3) VERIFICA SE COLOU
+    // ==========================
+
+    const conteudo=
+        campo.tagName==="TEXTAREA" ||
+        campo.tagName==="INPUT"
+        ? campo.value
+        : campo.innerText;
+
+    // se ficou vazio, força de novo
+    if(!conteudo || conteudo.length < texto.length/2){
+
+        aplicarTexto(campo,texto);
+
+        campo.dispatchEvent(
+            new Event("input",{bubbles:true})
         );
 
         campo.dispatchEvent(
-            new InputEvent(
-                "input",
-                {bubbles:true}
-            )
+            new Event("change",{bubbles:true})
         );
     }
 }
@@ -802,9 +900,9 @@ $("pgGerar").onclick=async()=>{
 
 
         $("pgGerar").textContent=
-            "⌨️ DIGITANDO...";
+            "📋 COLANDO...";
 
-        notify("Digitando redação...",true);
+        notify("Colando redação...",true);
 
 
         await digitar(campo,texto);
