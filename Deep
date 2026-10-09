@@ -1,1363 +1,200 @@
 javascript:(async()=>{
-
-const KEY_CORRETA="rzinmodder";
-
-const key=prompt("Digite a Key:");
-
-if(key!==KEY_CORRETA){
-    alert("Key inválida!");
-    return;
-}
-
-if(document.getElementById("pgFloat"))return;
-
-
-// ==============================
-// ESTADOS
-// ==============================
-
-let minimized=false;
-let hidden=false;
-
-let pageText="";
-let pageImages=[];
-
-let apiPrincipal="";
-let apiReserva="";
-
-let usandoReserva=false;
-
-let dragging=false;
-let offsetX=0;
-let offsetY=0;
-
-const MAX_TENTATIVAS_SAFETY=3;
-
-
-// ==============================
-// FAVICON
-// ==============================
-
-const favicon=document.createElement("link");
-
-favicon.rel="icon";
-
-favicon.href=
-"https://media.tenor.com/m11vauEEbcUAAAAM/meow-neko-arc.gif";
-
-document.head.appendChild(favicon);
-
-
-// ==============================
-// STYLE
-// ==============================
-
-const style=document.createElement("style");
-
-style.textContent=`
-
-#pgFloat,
-#pgToggle,
-#pgNotify{
-    box-sizing:border-box;
-}
-
-#pgFloat{
-
-    position:fixed;
-
-    top:80px;
-    left:50%;
-
-    width:335px;
-
-    padding:16px;
-
-    background:rgba(20,20,20,.82);
-
-    backdrop-filter:blur(15px);
-    -webkit-backdrop-filter:blur(15px);
-
-    color:#eee;
-
-    border:1px solid rgba(255,255,255,.18);
-
-    border-radius:20px;
-
-    z-index:2147483640;
-
-    font-family:"Trebuchet MS",Arial,sans-serif;
-
-    box-shadow:0 15px 50px #000b;
-
-    user-select:none;
-
-    transform:
-        translateX(-50%)
-        scale(1);
-
-    transition:
-        opacity .3s ease,
-        transform .35s cubic-bezier(.2,.8,.2,1),
-        visibility .35s ease;
-}
-
-#pgFloat.pgMini{
-
-    opacity:0;
-
-    visibility:hidden;
-
-    transform:
-        translateX(-50%)
-        scale(.82);
-}
-
-#pgHead{
-
-    height:32px;
-
-    display:flex;
-
-    align-items:center;
-
-    justify-content:center;
-
-    font-size:18px;
-
-    font-weight:bold;
-
-    letter-spacing:1px;
-
-    cursor:move;
-
-    margin-bottom:12px;
-
-    touch-action:none;
-}
-
-#pgLine{
-
-    height:1px;
-
-    background:
-        rgba(255,255,255,.2);
-
-    margin-bottom:14px;
-}
-
-#pgQuestion,
-#pgAnswer,
-#pgReserve{
-
-    width:100%;
-
-    box-sizing:border-box;
-
-    background:
-        rgba(0,0,0,.4);
-
-    color:#eee;
-
-    border:
-        1px solid rgba(255,255,255,.18);
-
-    border-radius:13px;
-
-    padding:12px;
-
-    outline:none;
-
-    font-family:
-        "Trebuchet MS",
-        Arial,
-        sans-serif;
-
-    font-size:14px;
-
-    user-select:text;
-}
-
-#pgQuestion{
-
-    height:80px;
-
-    resize:none;
-}
-
-#pgAnswer{
-
-    height:150px;
-
-    resize:none;
-
-    margin-top:10px;
-}
-
-#pgReserve{
-
-    height:70px;
-
-    resize:none;
-
-    margin-top:10px;
-
-    display:none;
-}
-
-#pgQuestion:focus,
-#pgAnswer:focus,
-#pgReserve:focus{
-
-    border-color:
-        rgba(255,255,255,.5);
-
-    box-shadow:
-        0 0 15px
-        rgba(255,255,255,.08);
-}
-
-#pgFloat button{
-
-    width:100%;
-
-    border:
-        1px solid rgba(255,255,255,.12);
-
-    border-radius:12px;
-
-    padding:12px;
-
-    margin-top:9px;
-
-    background:
-        rgba(255,255,255,.12);
-
-    color:#eee;
-
-    font-family:
-        "Trebuchet MS",
-        Arial,
-        sans-serif;
-
-    font-weight:bold;
-
-    font-size:14px;
-
-    cursor:pointer;
-
-    transition:
-        background .2s ease,
-        transform .2s ease,
-        box-shadow .2s ease;
-}
-
-#pgFloat button:hover{
-
-    background:
-        rgba(255,255,255,.2);
-
-    transform:
-        translateY(-2px);
-
-    box-shadow:
-        0 6px 18px #0005;
-}
-
-#pgFloat button:active{
-
-    transform:scale(.97);
-}
-
-#pgFloat button:disabled{
-
-    opacity:.55;
-
-    cursor:wait;
-
-    transform:none;
-}
-
-#pgReserveTitle{
-
-    display:none;
-
-    margin-top:12px;
-
-    font-size:13px;
-
-    font-weight:bold;
-
-    color:#ccc;
-}
-
-#pgSaveReserve{
-
-    display:none;
-}
-
-#pgStatus{
-
-    margin-top:9px;
-
-    padding:8px 10px;
-
-    border-radius:10px;
-
-    background:
-        rgba(255,255,255,.06);
-
-    color:#aaa;
-
-    font-size:12px;
-
-    text-align:center;
-}
-
-#pgToggle{
-
-    position:fixed;
-
-    right:20px;
-
-    bottom:25px;
-
-    width:62px;
-
-    height:62px;
-
-    border-radius:50%;
-
-    background:#111;
-
-    border:2px solid #555;
-
-    z-index:2147483641;
-
-    box-shadow:
-        0 8px 30px #000b;
-
-    cursor:pointer;
-
-    overflow:hidden;
-
-    display:flex;
-
-    align-items:center;
-
-    justify-content:center;
-
-    transition:
-        transform .3s cubic-bezier(.2,.8,.2,1),
-        box-shadow .3s ease,
-        border-color .3s ease;
-
-    user-select:none;
-
-    touch-action:none;
-}
-
-#pgToggle:hover{
-
-    transform:scale(1.08);
-
-    border-color:#aaa;
-}
-
-#pgToggle:active{
-
-    transform:scale(.92);
-}
-
-#pgToggle img{
-
-    width:100%;
-
-    height:100%;
-
-    object-fit:cover;
-
-    display:block;
-
-    pointer-events:none;
-}
-
-#pgNotify{
-
-    position:fixed;
-
-    top:25px;
-
-    left:50%;
-
-    transform:
-        translateX(-50%)
-        translateY(-20px);
-
-    background:#555;
-
-    color:#fff;
-
-    padding:11px 25px;
-
-    border-radius:10px;
-
-    font-family:
-        "Trebuchet MS",
-        Arial,
-        sans-serif;
-
-    font-weight:bold;
-
-    font-size:15px;
-
-    z-index:2147483642;
-
-    opacity:0;
-
-    transition:
-        opacity .3s ease,
-        transform .35s ease;
-
-    box-shadow:
-        0 8px 25px #0008;
-
-    pointer-events:none;
-}
-
-`;
-
-document.head.appendChild(style);
-
-
-// ==============================
-// GUI
-// ==============================
-
-const gui=document.createElement("div");
-
-gui.id="pgFloat";
-
-gui.innerHTML=`
-
-<div id="pgHead">
-    PORTUGA IA
-</div>
-
-<div id="pgLine"></div>
-
-<textarea
-id="pgQuestion"
-placeholder="Digite sua pergunta para a IA..."
-></textarea>
-
-<button id="pgRead">
-    LER PÁGINA + IMAGENS
-</button>
-
-<button id="pgAsk">
-    PERGUNTAR À IA
-</button>
-
-<div id="pgStatus">
-    Nenhuma página carregada
-</div>
-
-<textarea
-id="pgAnswer"
-placeholder="A resposta da IA aparecerá aqui..."
-readonly
-></textarea>
-
-<div id="pgReserveTitle">
-    API RESERVA
-</div>
-
-<textarea
-id="pgReserve"
-placeholder="Cole a API reserva aqui..."
-></textarea>
-
-<button id="pgSaveReserve">
-    USAR API RESERVA
-</button>
-
-`;
-
-document.body.appendChild(gui);
-
-
-// ==============================
-// BOTÃO FLUTUANTE
-// ==============================
-
-const toggle=document.createElement("div");
-
-toggle.id="pgToggle";
-
-toggle.innerHTML=`
-
-<img src="https://media.tenor.com/m11vauEEbcUAAAAM/meow-neko-arc.gif">
-
-`;
-
-document.body.appendChild(toggle);
-
-
-// ==============================
-// NOTIFICAÇÃO
-// ==============================
-
-const notifyBox=document.createElement("div");
-
-notifyBox.id="pgNotify";
-
-notifyBox.textContent="Feito!!";
-
-document.body.appendChild(notifyBox);
-
-
-const $=id=>
-document.getElementById(id);
-
-
-// ==============================
-// NOTIFY
-// ==============================
-
-function notify(text="Feito!!"){
-
-    notifyBox.textContent=text;
-
-    notifyBox.style.opacity="1";
-
-    notifyBox.style.transform=
-        "translateX(-50%) translateY(0)";
-
-    setTimeout(()=>{
-
-        notifyBox.style.opacity="0";
-
-        notifyBox.style.transform=
-            "translateX(-50%) translateY(-20px)";
-
-    },1800);
-}
-
-
-// ==============================
-// PEDIR API PRINCIPAL
-// ==============================
-
-function pedirApiPrincipal(){
-
-    if(apiPrincipal)
-        return true;
-
-    const nova=
-        prompt(
-            "Cole sua chave principal do OpenRouter:"
-        );
-
-    if(!nova)
-        return false;
-
-    apiPrincipal=
-        nova.trim();
-
-    return true;
-}
-
-
-// ==============================
-// API RESERVA
-// SÓ APARECE QUANDO HOUVER
-// ERRO DE LIMITE/COTA
-// ==============================
-
-function mostrarApiReserva(){
-
-    $("pgReserveTitle").style.display=
-        "block";
-
-    $("pgReserve").style.display=
-        "block";
-
-    $("pgSaveReserve").style.display=
-        "block";
-
-    notify(
-        "API principal atingiu o limite"
-    );
-}
-
-
-// ==============================
-// VERIFICA SE É LIMITE/COTA
-// ==============================
-
-function ehErroDeLimite(status,mensagem=""){
-
-    const texto=
-        String(mensagem).toLowerCase();
-
-    return(
-        status===429 ||
-
-        texto.includes("rate limit") ||
-
-        texto.includes("rate_limit") ||
-
-        texto.includes("quota") ||
-
-        texto.includes("credit limit") ||
-
-        texto.includes("credits exhausted") ||
-
-        texto.includes("insufficient credits") ||
-
-        texto.includes("too many requests")
-    );
-}
-
-
-// ==============================
-// LER PÁGINA
-// ==============================
-
-$("pgRead").onclick=()=>{
-
-    const clone=
-        document.body.cloneNode(true);
-
-
-    [
-        "#pgFloat",
-        "#pgToggle",
-        "#pgNotify",
-        "script",
-        "style",
-        "noscript"
-    ].forEach(seletor=>{
-
-        clone
-        .querySelectorAll(seletor)
-        .forEach(e=>e.remove());
-
-    });
-
-
-    pageText=
-        clone.innerText
-        .replace(/\n{3,}/g,"\n\n")
-        .trim();
-
-
-    pageText=
-        pageText.slice(0,50000);
-
-
-    // ==========================
-    // IMAGENS
-    // ==========================
-
-    pageImages=[];
-
-
-    const imagens=
-        [...document.images];
-
-
-    for(
-        const img of imagens
-    ){
-
-        if(
-            !img.src ||
-            img.width<40 ||
-            img.height<40
-        ){
-
-            continue;
-        }
-
-
-        if(
-            img.closest("#pgFloat") ||
-            img.closest("#pgToggle")
-        ){
-
-            continue;
-        }
-
-
-        const url=
-            img.currentSrc ||
-            img.src;
-
-
-        if(
-            !url ||
-            url.startsWith("data:")
-        ){
-
-            continue;
-        }
-
-
-        if(
-            !pageImages.includes(url)
-        ){
-
-            pageImages.push(url);
-        }
-
-
-        if(
-            pageImages.length>=10
-        ){
-
-            break;
-        }
-
+    if(window._r)return; window._r=1;
+
+    let apiKey="";
+    let nivel="medio";
+
+    // ============ STYLE ============
+    const style=document.createElement("style");
+    style.textContent=`
+        #rwGui{position:fixed;bottom:20px;right:20px;z-index:2147483647;
+            font-family:system-ui,Arial,sans-serif;display:flex;flex-direction:column;
+            gap:8px;user-select:none}
+        #rwGui button{border:1px solid rgba(255,255,255,.15);
+            background:rgba(20,20,20,.9);backdrop-filter:blur(10px);color:#eee;
+            padding:12px 18px;border-radius:12px;font-size:14px;font-weight:bold;
+            cursor:pointer;box-shadow:0 8px 24px #0008;transition:.2s}
+        #rwGui button:hover{background:rgba(50,50,50,.95);transform:translateY(-2px)}
+        #rwGui button:active{transform:scale(.96)}
+        #rwGui button:disabled{opacity:.6;cursor:wait}
+        #rwStatus{position:fixed;bottom:20px;left:20px;background:rgba(20,20,20,.9);
+            color:#eee;padding:10px 16px;border-radius:10px;font-family:system-ui,Arial,
+            sans-serif;font-size:13px;z-index:2147483647;opacity:0;transition:.3s;
+            pointer-events:none;max-width:280px}
+    `;
+    document.head.appendChild(style);
+
+    // ============ GUI ============
+    const gui=document.createElement("div");
+    gui.id="rwGui";
+    gui.innerHTML=`
+        <button id="rwGerar">✍️ Gerar Redação</button>
+        <button id="rwNivel">🎚️ Nível: Médio</button>
+    `;
+    document.body.appendChild(gui);
+
+    const status=document.createElement("div");
+    status.id="rwStatus";
+    document.body.appendChild(status);
+
+    const $=id=>document.getElementById(id);
+
+    function notify(t,persist){
+        status.textContent=t; status.style.opacity="1";
+        clearTimeout(notify._t);
+        if(!persist) notify._t=setTimeout(()=>status.style.opacity="0",2500);
     }
 
-
-    if(
-        !pageText &&
-        !pageImages.length
-    ){
-
-        alert(
-            "Não encontrei texto nem imagens!"
-        );
-
-        return;
-    }
-
-
-    $("pgStatus").textContent=
-        "Texto: "+
-        pageText.length+
-        " caracteres | Imagens: "+
-        pageImages.length;
-
-
-    notify(
-        "Página carregada!"
-    );
-
-};
-
-
-// ==============================
-// FAZER UMA REQUISIÇÃO
-// ==============================
-
-async function fazerPergunta(apiKey,pergunta){
-
-    const content=[
-
-        {
-            type:"text",
-
-            text:
-                "PERGUNTA:\n"+
-                pergunta+
-                "\n\n"+
-                "CONTEÚDO DA PÁGINA:\n"+
-                pageText
-        }
-
-    ];
-
-
-    for(
-        const imagem of pageImages
-    ){
-
-        content.push({
-
-            type:"image_url",
-
-            image_url:{
-                url:imagem
-            }
-
-        });
-
-    }
-
-
-    const resposta=
-        await fetch(
-            "https://openrouter.ai/api/v1/chat/completions",
-            {
-
-                method:"POST",
-
-                headers:{
-
-                    "Authorization":
-                        "Bearer "+apiKey,
-
-                    "Content-Type":
-                        "application/json"
-
-                },
-
-                body:JSON.stringify({
-
-                    model:
-                        "openrouter/free",
-
-                    messages:[
-
-                        {
-
-                            role:"system",
-
-                            content:
-                                "Responda em português de forma clara e objetiva. Analise o texto e as imagens fornecidas quando forem relevantes. Não inclua classificações internas de segurança na resposta."
-                        },
-
-                        {
-
-                            role:"user",
-
-                            content:content
-
-                        }
-
-                    ]
-
-                })
-
-            }
-        );
-
-
-    const dados=
-        await resposta.json();
-
-
-    return{
-        resposta,
-        dados
+    // ============ NÍVEIS ============
+    const niveis=["baixo","medio","alto"];
+    const nomes={baixo:"Baixo",medio:"Médio",alto:"Alto"};
+    const descricao={
+        baixo:"Linguagem simples, frases curtas, vocabulário básico, estrutura direta e objetiva.",
+        medio:"Vocabulário intermediário, algumas figuras de linguagem, boa coesão, argumentação equilibrada.",
+        alto:"Vocabulário rebuscado, argumentação sofisticada, repertório sociocultural, conectivos variados, alta coesão."
     };
 
-}
+    $("rwNivel").onclick=()=>{
+        const i=niveis.indexOf(nivel);
+        nivel=niveis[(i+1)%niveis.length];
+        $("rwNivel").textContent="🎚️ Nível: "+nomes[nivel];
+    };
 
-
-// ==============================
-// SAFETY
-// ==============================
-
-function respostaEhSafety(texto){
-
-    if(!texto)
-        return true;
-
-    const t=
-        String(texto)
-        .trim()
-        .toLowerCase();
-
-
-    return(
-        t==="user safety: safe" ||
-
-        t.startsWith(
-            "user safety: safe"
-        )
-    );
-}
-
-
-// ==============================
-// PERGUNTAR À IA
-// ==============================
-
-$("pgAsk").onclick=async()=>{
-
-    const pergunta=
-        $("pgQuestion")
-        .value
-        .trim();
-
-
-    if(!pergunta){
-
-        alert(
-            "Digite uma pergunta primeiro!"
-        );
-
-        return;
+    // ============ LER PÁGINA ============
+    function lerPagina(){
+        const clone=document.body.cloneNode(true);
+        ["#rwGui","#rwStatus","script","style","noscript"].forEach(s=>{
+            clone.querySelectorAll(s).forEach(e=>e.remove());
+        });
+        return clone.innerText.replace(/\n{3,}/g,"\n\n").trim().slice(0,50000);
     }
 
-
-    if(
-        !pageText &&
-        !pageImages.length
-    ){
-
-        alert(
-            "Clique em LER PÁGINA + IMAGENS primeiro!"
-        );
-
-        return;
+    // ============ ACHAR CAMPO ============
+    function acharCampo(){
+        const areas=[...document.querySelectorAll("textarea")]
+            .filter(e=>e.offsetParent!==null);
+        if(areas.length){
+            return areas.sort((a,b)=>
+                (b.clientHeight*b.clientWidth)-(a.clientHeight*a.clientWidth)
+            )[0];
+        }
+        const edit=[...document.querySelectorAll('[contenteditable="true"]')]
+            .filter(e=>e.offsetParent!==null);
+        return edit[0]||null;
     }
 
-
-    if(
-        !usandoReserva &&
-        !pedirApiPrincipal()
-    ){
-
-        return;
+    // ============ SETTER NATIVO (React/Vue) ============
+    function setNative(el,val){
+        const proto=el.tagName==="TEXTAREA"
+            ? HTMLTextAreaElement.prototype
+            : HTMLInputElement.prototype;
+        const setter=Object.getOwnPropertyDescriptor(proto,"value").set;
+        setter.call(el,val);
+        el.dispatchEvent(new Event("input",{bubbles:true}));
     }
 
+    // ============ DIGITAR ============
+    async function digitar(campo,texto){
+        campo.focus();
 
-    const apiAtual=
-        usandoReserva
-        ? apiReserva
-        : apiPrincipal;
-
-
-    if(!apiAtual){
-
-        alert(
-            "Nenhuma API disponível."
-        );
-
-        return;
+        if(campo.tagName==="TEXTAREA"||campo.tagName==="INPUT"){
+            setNative(campo,"");
+            let acumulado="";
+            for(let i=0;i<texto.length;i++){
+                acumulado+=texto[i];
+                setNative(campo,acumulado);
+                if(i%20===0) await new Promise(r=>setTimeout(r,12));
+            }
+            campo.dispatchEvent(new Event("change",{bubbles:true}));
+        }else{
+            // contenteditable
+            campo.innerHTML="";
+            campo.dispatchEvent(new InputEvent("input",{bubbles:true}));
+            for(let i=0;i<texto.length;i++){
+                document.execCommand("insertText",false,texto[i]);
+                if(i%20===0) await new Promise(r=>setTimeout(r,12));
+            }
+        }
     }
 
-
-    $("pgAsk").textContent=
-        "CONSULTANDO IA...";
-
-    $("pgAsk").disabled=true;
-
-    $("pgAnswer").value=
-        "Analisando...";
-
-
-    try{
-
-        let resultado="";
-
-        let ultimaMensagem="";
-
-        let limiteDetectado=false;
-
-
-        // ======================
-        // TENTATIVAS
-        // ======================
-
-        for(
-            let tentativa=1;
-            tentativa<=MAX_TENTATIVAS_SAFETY;
-            tentativa++
-        ){
-
-            $("pgAnswer").value=
-                "Consultando IA..."+
-                "\nTentativa "+
-                tentativa+
-                "/"+
-                MAX_TENTATIVAS_SAFETY;
-
-
-            const retorno=
-                await fazerPergunta(
-                    apiAtual,
-                    pergunta
-                );
-
-
-            const status=
-                retorno.resposta.status;
-
-
-            const dados=
-                retorno.dados;
-
-
-            const mensagemErro=
-                dados?.error?.message ||
-                "";
-
-
-            ultimaMensagem=
-                mensagemErro;
-
-
-            // ==================
-            // LIMITE/COTA
-            // ==================
-
-            if(
-                ehErroDeLimite(
-                    status,
-                    mensagemErro
-                )
-            ){
-
-                limiteDetectado=true;
-
-                break;
-            }
-
-
-            // ==================
-            // OUTRO ERRO
-            // ==================
-
-            if(
-                !retorno.resposta.ok
-            ){
-
-                throw new Error(
-                    mensagemErro ||
-                    "Erro HTTP "+
-                    status
-                );
-
-            }
-
-
-            resultado=
-                dados
-                ?.choices
-                ?.[0]
-                ?.message
-                ?.content;
-
-
-            if(
-                typeof resultado!=="string"
-            ){
-
-                resultado=
-                    JSON.stringify(
-                        resultado,
-                        null,
-                        2
-                    );
-
-            }
-
-
-            // ==================
-            // SAFETY
-            // ==================
-
-            if(
-                respostaEhSafety(
-                    resultado
-                )
-            ){
-
-                if(
-                    tentativa<
-                    MAX_TENTATIVAS_SAFETY
-                ){
-
-                    await new Promise(
-                        resolve=>
-                            setTimeout(
-                                resolve,
-                                700
-                            )
-                    );
-
-                    continue;
-
-                }
-
-
-                // Terminou as tentativas
-                // de safety.
-
-                resultado=
-                    "";
-
-                break;
-
-            }
-
-
-            // ==================
-            // RESPOSTA NORMAL
-            // ==================
-
-            if(resultado){
-
-                break;
-            }
-
+    // ============ GERAR ============
+    $("rwGerar").onclick=async()=>{
+        if(!apiKey){
+            apiKey=prompt("Cole sua chave do OpenRouter:");
+            if(!apiKey) return;
         }
 
-
-        // ======================
-        // LIMITE DA API
-        // ======================
-
-        if(limiteDetectado){
-
-            if(!usandoReserva){
-
-                mostrarApiReserva();
-
-                $("pgAnswer").value=
-                    "A API principal atingiu o limite.\n\n"+
-                    "Cole uma API reserva abaixo.";
-
-                return;
-
-            }else{
-
-                throw new Error(
-                    "A API reserva também atingiu o limite."
-                );
-
-            }
-
-        }
-
-
-        // ======================
-        // SAFETY ESGOTADO
-        // ======================
-
-        if(!resultado){
-
-            $("pgAnswer").value=
-                "A IA não retornou uma resposta válida após "+
-                MAX_TENTATIVAS_SAFETY+
-                " tentativas.";
-
-            notify(
-                "Tentativas esgotadas"
-            );
-
+        const campo=acharCampo();
+        if(!campo){
+            alert("Não encontrei nenhum campo de texto na página!");
             return;
-
         }
 
+        $("rwGerar").disabled=true;
+        notify("📖 Lendo página...",true);
 
-        // ======================
-        // LIMPEZA
-        // ======================
-
-        resultado=
-            resultado
-            .replace(
-                /^User Safety:\s*(safe|unsafe)\s*$/gim,
-                ""
-            )
-            .trim();
-
-
-        $("pgAnswer").value=
-            resultado;
-
-
-        notify(
-            usandoReserva
-            ? "Resposta pela API reserva!"
-            : "Resposta recebida!"
-        );
-
-
-    }catch(erro){
-
-        $("pgAnswer").value=
-            "ERRO:\n\n"+
-            erro.message;
-
-
-        alert(
-            "Erro ao consultar a IA:\n\n"+
-            erro.message
-        );
-
-
-    }finally{
-
-        $("pgAsk").textContent=
-            "PERGUNTAR À IA";
-
-        $("pgAsk").disabled=false;
-
-    }
-
-};
-
-
-// ==============================
-// SALVAR API RESERVA
-// ==============================
-
-$("pgSaveReserve").onclick=()=>{
-
-    const nova=
-        $("pgReserve")
-        .value
-        .trim();
-
-
-    if(!nova){
-
-        alert(
-            "Cole uma API reserva primeiro!"
-        );
-
-        return;
-    }
-
-
-    apiReserva=
-        nova;
-
-    usandoReserva=true;
-
-
-    $("pgStatus").textContent=
-        "API reserva ativada";
-
-
-    notify(
-        "API reserva ativada!"
-    );
-
-};
-
-
-// ==============================
-// MINIMIZAR
-// ==============================
-
-toggle.onclick=()=>{
-
-    if(
-        toggle.dataset.dragged===
-        "true"
-    ){
-
-        toggle.dataset.dragged=
-        "false";
-
-        return;
-    }
-
-
-    minimized=!minimized;
-
-
-    gui.classList.toggle(
-        "pgMini",
-        minimized
-    );
-
-};
-
-
-// ==============================
-// ARRASTAR BOTÃO PC
-// ==============================
-
-let toggleDragging=false;
-let toggleMoved=false;
-
-let toggleOffsetX=0;
-let toggleOffsetY=0;
-
-
-toggle.addEventListener(
-    "mousedown",
-    event=>{
-
-        toggleDragging=true;
-
-        toggleMoved=false;
-
-        toggleOffsetX=
-            event.clientX-
-            toggle.offsetLeft;
-
-        toggleOffsetY=
-            event.clientY-
-            toggle.offsetTop;
-
-        event.preventDefault();
-
-    }
-);
-
-
-document.addEventListener(
-    "mousemove",
-    event=>{
-
-        if(!toggleDragging)
+        const pageText=lerPagina();
+        if(!pageText){
+            alert("Não consegui ler o conteúdo da página!");
+            $("rwGerar").disabled=false;
             return;
-
-
-        toggleMoved=true;
-
-
-        toggle.style.left=
-            event.clientX-
-            toggleOffsetX+
-            "px";
-
-
-        toggle.style.top=
-            event.clientY-
-            toggleOffsetY+
-            "px";
-
-
-        toggle.style.right="auto";
-
-        toggle.style.bottom="auto";
-
-    }
-);
-
-
-document.addEventListener(
-    "mouseup",
-    ()=>{
-
-        if(!toggleDragging)
-            return;
-
-
-        if(toggleMoved){
-
-            toggle.dataset.dragged=
-            "true";
-
         }
 
+        notify("🤖 Gerando redação (nível "+nomes[nivel]+")...",true);
 
-        toggleDragging=false;
+        try{
+            const resp=await fetch("https://openrouter.ai/api/v1/chat/completions",{
+                method:"POST",
+                headers:{
+                    "Authorization":"Bearer "+apiKey,
+                    "Content-Type":"application/json"
+                },
+                body:JSON.stringify({
+                    model:"openrouter/free",
+                    messages:[
+                        {
+                            role:"system",
+                            content:
+                                "Você é um especialista em redações. "+
+                                "PRIMEIRO identifique o TEMA da redação a partir do conteúdo da página. "+
+                                "DEPOIS escreva uma redação completa em português sobre esse tema. "+
+                                "NÍVEL DE COMPLEXIDADE DESEJADO: "+descricao[nivel]+" "+
+                                "REGRAS IMPORTANTES: responda APENAS com o texto final da redação, "+
+                                "SEM títulos, SEM explicações, SEM marcadores, SEM introdução do tipo "+
+                                "'aqui está sua redação'. Apenas o texto puro. "+
+                                "Parágrafos separados por uma linha em branco. "+
+                                "Tamanho aproximado: entre 25 e 35 linhas."
+                        },
+                        {
+                            role:"user",
+                            content:"CONTEÚDO DA PÁGINA:\n\n"+pageText
+                        }
+                    ]
+                })
+            });
 
-    }
-);
+            const dados=await resp.json();
 
+            if(!resp.ok){
+                if(resp.status===401||resp.status===403) apiKey="";
+                throw new Error(dados?.error?.message||"Erro HTTP "+resp.status);
+            }
 
-// ==============================
-// ARRASTAR BOTÃO CELULAR
-// ==============================
+            let texto=dados?.choices?.[0]?.message?.content;
+            if(!texto) throw new Error("A IA não retornou resposta.");
 
-toggle.addEventListener(
-    "touchstart",
-    event=>{
+            // limpa cercas markdown caso venham
+            texto=texto.replace(/^```[\w]*\n?/,"").replace(/```$/,"").trim();
 
-        const touch=
-            event.touches[0]
+            notify("⌨️ Digitando redação...",true);
+            await digitar(campo,texto);
+            notify("✅ Redação pronta!");
+
+        }catch(e){
+            notify("❌ Erro");
+            alert("Erro:\n\n"+e.message);
+        }finally{
+            $("rwGerar").disabled=false;
+        }
+    };
+})();
