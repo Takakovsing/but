@@ -581,7 +581,7 @@ function setNative(el,val){
 
 
 // ==============================
-// DIGITAR
+// DIGITAR (INSTANTÂNEO)
 // ==============================
 
 async function digitar(campo,texto){
@@ -593,23 +593,7 @@ async function digitar(campo,texto){
         campo.tagName==="INPUT"
     ){
 
-        setNative(campo,"");
-
-        let acumulado="";
-
-        for(let i=0;i<texto.length;i++){
-
-            acumulado+=texto[i];
-
-            setNative(campo,acumulado);
-
-            if(i%20===0){
-
-                await new Promise(
-                    r=>setTimeout(r,12)
-                );
-            }
-        }
+        setNative(campo,texto);
 
         campo.dispatchEvent(
             new Event(
@@ -624,28 +608,18 @@ async function digitar(campo,texto){
 
         campo.innerHTML="";
 
+        document.execCommand(
+            "insertText",
+            false,
+            texto
+        );
+
         campo.dispatchEvent(
             new InputEvent(
                 "input",
                 {bubbles:true}
             )
         );
-
-        for(let i=0;i<texto.length;i++){
-
-            document.execCommand(
-                "insertText",
-                false,
-                texto[i]
-            );
-
-            if(i%20===0){
-
-                await new Promise(
-                    r=>setTimeout(r,12)
-                );
-            }
-        }
     }
 }
 
