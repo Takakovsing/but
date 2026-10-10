@@ -19,16 +19,21 @@ let apiKey="";
 let nivel="medio";
 let busy=false;
 let notifyTimer=null;
-let toggleDragging=false;
-let toggleMoved=false;
-let toggleStartX=0;
-let toggleStartY=0;
-let toggleOffsetX=0;
-let toggleOffsetY=0;
-let panelDragging=false;
-let panelMoved=false;
+
+/* ESTADO DO ÍCONE */
+let iconPointerId=null;
+let iconStartX=0;
+let iconStartY=0;
+let iconOffsetX=0;
+let iconOffsetY=0;
+let iconMoved=false;
+let iconDragging=false;
+
+/* ESTADO DO PAINEL */
+let panelPointerId=null;
 let panelOffsetX=0;
 let panelOffsetY=0;
+let panelDragging=false;
 
 const $=id=>document.getElementById(id);
 
@@ -70,7 +75,7 @@ style.textContent=`
     -webkit-user-select:none;
     transform:translateX(-50%) scale(1);
     transform-origin:top center;
-    transition:opacity .3s ease,transform .35s cubic-bezier(.2,.8,.2,1),visibility .35s;
+    transition:opacity .3s ease,transform .3s ease,visibility .3s;
     overflow:hidden;
 }
 
@@ -281,7 +286,7 @@ style.textContent=`
 
 document.head.appendChild(style);
 
-/* INTERFACE */
+/* PAINEL */
 const gui=document.createElement("div");
 gui.id="pgFloat";
 
@@ -307,7 +312,7 @@ toggle.setAttribute("aria-label","Abrir ou minimizar PORTUGA IA");
 toggle.innerHTML=`<img src="${ICONE}" alt="">`;
 document.body.appendChild(toggle);
 
-/* NOTIFICAÇÃO */
+/* NOTIFICAÇÕES */
 const notifyBox=document.createElement("div");
 notifyBox.id="pgNotify";
 document.body.appendChild(notifyBox);
@@ -316,6 +321,7 @@ function notify(message="Feito!",persist=false){
     notifyBox.textContent=message;
     notifyBox.style.opacity="1";
     notifyBox.style.transform="translateX(-50%) translateY(0)";
+
     clearTimeout(notifyTimer);
 
     if(!persist){
@@ -334,7 +340,7 @@ function setBusy(value){
 
 function setMinimized(value){
     minimized=value;
-    gui.classList.toggle("pgMini",value);
+    gui.classList.toggle("pgMini",minimized);
 }
 
 /* NÍVEIS */
@@ -360,8 +366,15 @@ $("pgNivel").onclick=()=>{
 };
 
 /* API KEY */
-$("pgEditApi").onclick=()=>{
+$("pgEditApi").addEventListener("pointerdown",event=>{
+    event.stopPropagation();
+});
+
+$("pgEditApi").onclick=event=>{
+    event.stopPropagation();
+
     const value=prompt("Cole sua chave da OpenRouter (sk-or-v1-...):");
+
     if(value&&value.trim()){
         apiKey=value.trim();
         notify("API Key atualizada nesta sessão.");
@@ -385,7 +398,7 @@ function lerPagina(){
         .slice(0,30000);
 }
 
-/* ACHAR CAMPO */
+/* ACHAR CAMPO DE TEXTO */
 function acharCampo(){
     const preferidos=[
         'textarea[name*="redac" i]',
@@ -402,6 +415,7 @@ function acharCampo(){
     for(const selector of preferidos){
         try{
             const el=document.querySelector(selector);
+
             if(el&&el.getClientRects().length&&!el.disabled&&!el.readOnly){
                 return el;
             }
@@ -435,7 +449,7 @@ function destacarCampo(campo){
     setTimeout(()=>campo.style.outline=antigo,1500);
 }
 
-/* PREENCHER CAMPO */
+/* INSERIR TEXTO */
 function aplicarTexto(campo,texto){
     if(campo.matches("textarea,input")){
         const proto=campo.tagName==="TEXTAREA"
@@ -462,9 +476,11 @@ function aplicarTexto(campo,texto){
     try{
         const selection=window.getSelection();
         const range=document.createRange();
+
         range.selectNodeContents(campo);
         selection.removeAllRanges();
         selection.addRange(range);
+
         inseriu=document.execCommand("insertText",false,texto);
     }catch(e){}
 
@@ -482,7 +498,9 @@ $("pgGerar").onclick=async()=>{
 
     if(!apiKey){
         const value=prompt("Cole sua chave da OpenRouter:");
+
         if(!value||!value.trim())return;
+
         apiKey=value.trim();
     }
 
@@ -547,9 +565,7 @@ $("pgGerar").onclick=async()=>{
                 apiKey="";
             }
 
-            throw new Error(
-                data?.error?.message||"Erro HTTP "+response.status
-            );
+            throw new Error(data?.error?.message||"Erro HTTP "+response.status);
         }
 
         let texto=data?.choices?.[0]?.message?.content;
@@ -582,62 +598,93 @@ $("pgGerar").onclick=async()=>{
     }
 };
 
-/* MINIMIZAR / RESTAURAR */
-toggle.addEventListener("click",()=>{
-    if(toggleMoved){
-        toggleMoved=false;
-        return;
-    }
+/* MINIMIZAR E ARRASTAR ÍCONE
+   Um toque minimiza/restaura.
+   Arrastar move o botão sem ativar o clique.
+*/
+toggle.addEventListener("pointerdown",event=>{
+    if(event.button!==undefined&&event.button!==0)return;
 
-    setMinimized(!minimized);
+    iconPointerId=event.pointerId;
+    iconStartX=event.clientX;
+    iconStartY=event.clientY;
+
+    const rect=toggle.getBoundingClientRect();
+
+    iconOffsetX=event.clientX-rect.left;
+    iconOffsetY=event.clientY-rect.top;
+
+    iconMoved=false;
+    iconDragging=true;
+
+    try{
+        toggle.setPointerCapture(event.pointerId);
+    }catch(e){}
+
+    event.preventDefault();
 });
 
-/* ARRASTAR ÍCONE - PC E CELULAR */
-function startToggleDrag(x,y){
-    toggleDragging=true;
-    toggleMoved=false;
-    toggleStartX=x;
-    toggleStartY=y;
-    toggleOffsetX=x-toggle.getBoundingClientRect().left;
-    toggleOffsetY=y-toggle.getBoundingClientRect().top;
-}
+toggle.addEventListener("pointermove",event=>{
+    if(!iconDragging||event.pointerId!==iconPointerId)return;
 
-function moveToggleDrag(x,y){
-    if(!toggleDragging)return;
+    const dx=event.clientX-iconStartX;
+    const dy=event.clientY-iconStartY;
 
-    if(Math.abs(x-toggleStartX)>5||Math.abs(y-toggleStartY)>5){
-        toggleMoved=true;
+    if(Math.abs(dx)>7||Math.abs(dy)>7){
+        iconMoved=true;
     }
 
-    if(!toggleMoved)return;
+    if(!iconMoved)return;
 
     const width=toggle.offsetWidth;
     const height=toggle.offsetHeight;
 
-    toggle.style.left=Math.max(0,Math.min(innerWidth-width,x-toggleOffsetX))+"px";
-    toggle.style.top=Math.max(0,Math.min(innerHeight-height,y-toggleOffsetY))+"px";
+    const x=Math.max(0,Math.min(
+        window.innerWidth-width,
+        event.clientX-iconOffsetX
+    ));
+
+    const y=Math.max(0,Math.min(
+        window.innerHeight-height,
+        event.clientY-iconOffsetY
+    ));
+
+    toggle.style.left=x+"px";
+    toggle.style.top=y+"px";
     toggle.style.right="auto";
     toggle.style.bottom="auto";
-}
+});
 
-function endToggleDrag(){
-    toggleDragging=false;
-    if(toggleMoved){
-        setTimeout(()=>{toggleMoved=false;},80);
+function finishIconPointer(event){
+    if(!iconDragging||event.pointerId!==iconPointerId)return;
+
+    const dragged=iconMoved;
+
+    iconDragging=false;
+    iconPointerId=null;
+
+    if(!dragged){
+        setMinimized(!minimized);
     }
+
+    iconMoved=false;
 }
 
-toggle.addEventListener("pointerdown",event=>{
-    startToggleDrag(event.clientX,event.clientY);
-    try{toggle.setPointerCapture(event.pointerId);}catch(e){}
+toggle.addEventListener("pointerup",finishIconPointer);
+
+toggle.addEventListener("pointercancel",event=>{
+    if(event.pointerId===iconPointerId){
+        iconDragging=false;
+        iconPointerId=null;
+        iconMoved=false;
+    }
 });
 
-toggle.addEventListener("pointermove",event=>{
-    moveToggleDrag(event.clientX,event.clientY);
+/* Evita que um clique duplicado altere o estado novamente */
+toggle.addEventListener("click",event=>{
+    event.preventDefault();
+    event.stopPropagation();
 });
-
-toggle.addEventListener("pointerup",endToggleDrag);
-toggle.addEventListener("pointercancel",endToggleDrag);
 
 /* ARRASTAR PAINEL PELO TÍTULO */
 const head=$("pgHead");
@@ -645,41 +692,53 @@ const head=$("pgHead");
 head.addEventListener("pointerdown",event=>{
     if(event.target.closest("button"))return;
 
+    panelPointerId=event.pointerId;
     panelDragging=true;
-    panelMoved=false;
 
     const rect=gui.getBoundingClientRect();
 
     panelOffsetX=event.clientX-rect.left;
     panelOffsetY=event.clientY-rect.top;
 
-    try{head.setPointerCapture(event.pointerId);}catch(e){}
+    try{
+        head.setPointerCapture(event.pointerId);
+    }catch(e){}
+
+    event.preventDefault();
 });
 
 head.addEventListener("pointermove",event=>{
-    if(!panelDragging)return;
-
-    panelMoved=true;
+    if(!panelDragging||event.pointerId!==panelPointerId)return;
 
     const width=gui.offsetWidth;
     const height=gui.offsetHeight;
 
-    const x=Math.max(0,Math.min(innerWidth-width,event.clientX-panelOffsetX));
-    const y=Math.max(0,Math.min(innerHeight-height,event.clientY-panelOffsetY));
+    const x=Math.max(0,Math.min(
+        window.innerWidth-width,
+        event.clientX-panelOffsetX
+    ));
+
+    const y=Math.max(0,Math.min(
+        window.innerHeight-height,
+        event.clientY-panelOffsetY
+    ));
 
     gui.style.left=x+"px";
     gui.style.top=y+"px";
     gui.style.transform="none";
 });
 
-function endPanelDrag(){
+function finishPanelDrag(event){
+    if(event.pointerId!==panelPointerId)return;
+
     panelDragging=false;
+    panelPointerId=null;
 }
 
-head.addEventListener("pointerup",endPanelDrag);
-head.addEventListener("pointercancel",endPanelDrag);
+head.addEventListener("pointerup",finishPanelDrag);
+head.addEventListener("pointercancel",finishPanelDrag);
 
-/* OCULTAR / MOSTRAR */
+/* ATALHOS */
 function toggleHiddenMode(){
     hidden=!hidden;
 
@@ -705,16 +764,17 @@ document.addEventListener("mousedown",event=>{
     }
 });
 
+/* AJUSTE DE TELA */
 window.addEventListener("resize",()=>{
     const rect=gui.getBoundingClientRect();
 
-    if(rect.right>innerWidth){
-        gui.style.left=Math.max(0,innerWidth-gui.offsetWidth)+"px";
+    if(rect.right>window.innerWidth){
+        gui.style.left=Math.max(0,window.innerWidth-gui.offsetWidth)+"px";
         gui.style.transform="none";
     }
 
-    if(rect.bottom>innerHeight){
-        gui.style.top=Math.max(0,innerHeight-gui.offsetHeight)+"px";
+    if(rect.bottom>window.innerHeight){
+        gui.style.top=Math.max(0,window.innerHeight-gui.offsetHeight)+"px";
     }
 });
 
