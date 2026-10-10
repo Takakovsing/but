@@ -32,7 +32,7 @@ favicon.href=
 document.head.appendChild(favicon);
 
 // ==============================
-// STYLE  (idêntico ao original)
+// STYLE
 // ==============================
 
 const style=document.createElement("style");
@@ -389,7 +389,7 @@ style.textContent=`
 document.head.appendChild(style);
 
 // ==============================
-// GUI  (mesmo layout, 1 botão)
+// GUI
 // ==============================
 
 const gui=document.createElement("div");
@@ -753,7 +753,7 @@ function extractAnswer(text){
 }
 
 // ==============================
-// PROCURAR RESPOSTA  (tudo junto)
+// PROCURAR RESPOSTA
 // ==============================
 
 apiKey=store.get("apikey","");
@@ -804,15 +804,18 @@ $("pgGo").onclick=async()=>{
         $("pgAnswer").value=
             "Enviando conteúdo para a IA...";
 
-        // 3) chamar IA
+        // 3) montar pergunta
         const extra=$("pgQuestion").value.trim();
 
         const pergunta=
-            "Analise o conteúdo da página, identifique a PERGUNTA e as ALTERNATIVAS, "+
-            "e determine a alternativa CORRETA. Responda na primeira linha exatamente com:\n"+
-            "RESPOSTA: <texto exato da alternativa correta>\n\n"+
-            (extra?("OBSERVAÇÃO EXTRA DO USUÁRIO:\n"+extra+"\n\n"):"");
+            "Analise o conteúdo da página e responda a questão. "+
+            "Na PRIMEIRA LINHA, informe qual alternativa é a correta, "+
+            "usando o texto EXATO da alternativa, no formato:\n"+
+            "RESPOSTA: <texto exato da alternativa>\n"+
+            "Depois, se quiser, explique brevemente.\n\n"+
+            (extra?("PERGUNTA/OBSERVAÇÃO DO USUÁRIO:\n"+extra+"\n\n"):"");
 
+        // 4) chamar IA
         const res=await fetch(
             "https://openrouter.ai/api/v1/chat/completions",
             {
@@ -823,18 +826,13 @@ $("pgGo").onclick=async()=>{
                 },
                 body:JSON.stringify({
 
-                    model:"google/gemini-2.0-flash-exp:free",
+                    model:"openrouter/free",
 
                     messages:[
                         {
                             role:"system",
                             content:
-                                "Você é um assistente especializado em responder questões de múltipla escolha. "+
-                                "Analise o conteúdo da página, identifique a PERGUNTA e as ALTERNATIVAS. "+
-                                "Responda OBRIGATORIAMENTE na primeira linha exatamente no formato:\n"+
-                                "RESPOSTA: <texto exato da alternativa correta como aparece na página>\n"+
-                                "Não use numeração, letras, aspas ou marcadores antes do texto. "+
-                                "Use o texto IDÊNTICO ao que aparece na alternativa correta."
+                                "Você é um assistente que analisa páginas da internet. Responda em português, de forma clara e objetiva."
                         },
                         {
                             role:"user",
@@ -884,7 +882,7 @@ $("pgGo").onclick=async()=>{
 
         $("pgAnswer").value=resposta;
 
-        // 4) extrair e clicar
+        // 5) extrair e clicar
         const alvo=extractAnswer(resposta);
 
         if(!alvo){
