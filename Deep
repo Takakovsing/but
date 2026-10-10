@@ -54,7 +54,9 @@ style.textContent=`
     left:50%;
     width:min(320px,calc(100vw - 24px));
     padding:16px;
-    background:radial-gradient(ellipse at 50% 0%,#ffffff15,transparent 65%),rgba(15,15,18,.96);
+    background:
+        radial-gradient(ellipse at 50% 0%,#ffffff15,transparent 65%),
+        rgba(15,15,18,.96);
     backdrop-filter:blur(18px);
     -webkit-backdrop-filter:blur(18px);
     color:#eee;
@@ -108,7 +110,6 @@ style.textContent=`
 }
 
 #pgHead:active{cursor:grabbing}
-.pgStar{margin:0 7px;color:#fff;text-shadow:0 0 12px #fff}
 
 #pgEditApi{
     position:absolute;
@@ -153,7 +154,9 @@ style.textContent=`
     box-shadow:0 6px 18px #0005;
 }
 
-#pgFloat button:not(#pgEditApi):active{transform:scale(.97)}
+#pgFloat button:not(#pgEditApi):active{
+    transform:scale(.97);
+}
 
 #pgGerar{
     background:linear-gradient(110deg,#fff,#c8c8d0)!important;
@@ -161,7 +164,10 @@ style.textContent=`
     border-color:#fff!important;
 }
 
-#pgFloat button:disabled{opacity:.65;cursor:wait}
+#pgFloat button:disabled{
+    opacity:.65;
+    cursor:wait;
+}
 
 /* BOTÃO FLUTUANTE */
 #pgToggle{
@@ -186,10 +192,13 @@ style.textContent=`
     user-select:none;
     -webkit-user-select:none;
     box-shadow:0 5px 20px #000b;
-    transition:transform .18s cubic-bezier(.2,.8,.2,1),filter .18s ease,box-shadow .18s ease;
+    transition:
+        transform .18s cubic-bezier(.2,.8,.2,1),
+        filter .18s ease,
+        box-shadow .18s ease;
 }
 
-/* ANEL BRANCO GIRATÓRIO */
+/* ANEL GIRATÓRIO */
 #pgToggle:before{
     content:"";
     position:absolute;
@@ -223,6 +232,7 @@ style.textContent=`
     z-index:3;
 }
 
+/* IMAGEM CENTRAL */
 #pgToggle img{
     position:relative;
     z-index:1;
@@ -247,26 +257,33 @@ style.textContent=`
     box-shadow:0 0 12px #fff,0 0 28px #ffffff70,0 8px 25px #000b;
 }
 
-#pgToggle.pgPressed img{filter:brightness(1.25)}
+#pgToggle.pgPressed img{
+    filter:brightness(1.25);
+}
 
 #pgToggle.pgReleased{
     transform:scale(1.06);
 }
 
-/* BRILHO SUAVE */
+/* BRILHO EM REPOUSO */
 #pgToggle.pgAura{
     animation:pgAura 3s ease-in-out infinite;
 }
 
 @keyframes pgAura{
-    0%,100%{box-shadow:0 0 7px #ffffff18,0 8px 25px #000b}
-    50%{box-shadow:0 0 18px #ffffff50,0 0 30px #ffffff16,0 8px 25px #000b}
+    0%,100%{
+        box-shadow:0 0 7px #ffffff18,0 8px 25px #000b;
+    }
+    50%{
+        box-shadow:0 0 18px #ffffff50,0 0 30px #ffffff16,0 8px 25px #000b;
+    }
 }
 
-/* ANIMAÇÃO DURANTE A GERAÇÃO */
+/* ANEL INTEIRAMENTE VERDE DURANTE A GERAÇÃO */
 #pgToggle.pgWorking:before{
-    background:conic-gradient(#00ff88,#fff,#00aaff,#fff,#00ff88);
+    background:#00ff55;
     animation:pgRingRotate .65s linear infinite;
+    box-shadow:0 0 12px #00ff55,0 0 24px #00ff5570;
 }
 
 #pgToggle.pgWorking{
@@ -278,7 +295,7 @@ style.textContent=`
     to{filter:brightness(1.3);transform:scale(1.04)}
 }
 
-/* NOTIFICAÇÃO */
+/* NOTIFICAÇÕES */
 #pgNotify{
     position:fixed;
     top:25px;
@@ -317,19 +334,17 @@ gui.id="pgFloat";
 
 gui.innerHTML=`
     <div id="pgHead">
-        <span class="pgStar">✦</span>
         <span>PORTUGA IA</span>
-        <span class="pgStar">✦</span>
         <button id="pgEditApi" type="button" title="Alterar API Key">✎</button>
     </div>
     <div id="pgLine"></div>
     <button id="pgNivel" type="button">NÍVEL: MÉDIO</button>
-    <button id="pgGerar" type="button">✧ GERAR REDAÇÃO</button>
+    <button id="pgGerar" type="button">GERAR REDAÇÃO</button>
 `;
 
 document.body.appendChild(gui);
 
-/* ÍCONE */
+/* ÍCONE FLUTUANTE */
 const toggle=document.createElement("button");
 toggle.id="pgToggle";
 toggle.type="button";
@@ -391,13 +406,14 @@ $("pgNivel").onclick=()=>{
     notify("Nível: "+nomesNivel[nivel]);
 };
 
-/* API KEY */
+/* ALTERAR API KEY */
 $("pgEditApi").addEventListener("pointerdown",event=>{
     event.stopPropagation();
 });
 
 $("pgEditApi").onclick=event=>{
     event.stopPropagation();
+
     const value=prompt("Cole sua chave da OpenRouter:");
 
     if(value&&value.trim()){
@@ -423,7 +439,7 @@ function lerPagina(){
         .slice(0,30000);
 }
 
-/* ACHAR CAMPO */
+/* ENCONTRAR CAMPO */
 function acharCampo(){
     const preferidos=[
         'textarea[name*="redac" i]',
@@ -462,14 +478,14 @@ function acharCampo(){
         .find(el=>el.getClientRects().length)||null;
 }
 
-/* DESTACAR CAMPO */
+/* DESTAQUE DO CAMPO */
 function destacarCampo(campo){
     const antigo=campo.style.outline;
     campo.style.outline="3px solid lime";
     setTimeout(()=>campo.style.outline=antigo,1500);
 }
 
-/* INSERIR TEXTO */
+/* INSERIR REDAÇÃO */
 function aplicarTexto(campo,texto){
     if(campo.matches("textarea,input")){
         const proto=campo.tagName==="TEXTAREA"
@@ -505,7 +521,7 @@ function aplicarTexto(campo,texto){
     campo.dispatchEvent(new Event("change",{bubbles:true}));
 }
 
-/* GERAR REDAÇÃO */
+/* GERAR REDAÇÃO AUTOMATICAMENTE */
 $("pgGerar").onclick=async()=>{
     if(busy)return;
 
@@ -532,10 +548,12 @@ $("pgGerar").onclick=async()=>{
     try{
         const pageText=lerPagina();
 
-        if(!pageText)throw new Error("Não consegui ler o conteúdo da página.");
+        if(!pageText){
+            throw new Error("Não consegui ler o conteúdo da página.");
+        }
 
-        $("pgGerar").textContent="GERANDO...";
-        notify("Gerando redação ("+nomesNivel[nivel]+")...",true);
+        $("pgGerar").textContent="GERANDO REDAÇÃO...";
+        notify("Gerando redação...",true);
 
         const response=await fetch(
             "https://openrouter.ai/api/v1/chat/completions",
@@ -551,17 +569,19 @@ $("pgGerar").onclick=async()=>{
                         {
                             role:"system",
                             content:
-                                "Você é um assistente especializado em produção textual em português. "+
-                                "Analise o conteúdo fornecido para identificar o tema ou a proposta de redação. "+
-                                "Escreva um texto original, coerente, bem estruturado e adequado ao tema. "+
-                                "NÍVEL: "+descNivel[nivel]+" "+
-                                "Retorne somente o texto final, sem comentários sobre o processo. "+
-                                "Separe os parágrafos com uma linha em branco."
+                                "Escreva diretamente a redação solicitada com base no tema e nas informações da página. "+
+                                "Retorne SOMENTE o conteúdo da redação, sem título, sem cabeçalho, sem nome de seção, "+
+                                "sem perguntas ao usuário, sem pedidos de tema, sem explicações e sem comentários. "+
+                                "Não escreva frases como 'Aqui está a redação'. "+
+                                "Comece diretamente pelo primeiro parágrafo e separe os parágrafos com uma linha em branco. "+
+                                "Use português correto e respeite o nível de escrita: "+descNivel[nivel]
                         },
                         {
                             role:"user",
-                            content:"Conteúdo da página:\n\n"+pageText+
-                                "\n\nProduza uma redação relacionada ao tema identificado."
+                            content:
+                                "Identifique o tema da atividade a partir do conteúdo abaixo e escreva a redação diretamente. "+
+                                "Não me pergunte nada. Se o tema estiver implícito, deduza-o pelo contexto.\n\n"+
+                                "CONTEÚDO DA PÁGINA:\n"+pageText
                         }
                     ]
                 })
@@ -588,10 +608,12 @@ $("pgGerar").onclick=async()=>{
         texto=texto
             .replace(/^```[\w-]*\s*/,"")
             .replace(/\s*```$/,"")
+            .replace(/^\s*(título|titulo)\s*:\s*.*(?:\r?\n)+/i,"")
+            .replace(/^\s*redação\s*:\s*/i,"")
             .trim();
 
         $("pgGerar").textContent="INSERINDO...";
-        notify("Inserindo redação no campo...",true);
+        notify("Inserindo redação...",true);
 
         aplicarTexto(campo,texto);
         notify("Redação pronta!");
@@ -601,11 +623,11 @@ $("pgGerar").onclick=async()=>{
         alert("Erro ao gerar redação:\n\n"+(error.message||error));
     }finally{
         setBusy(false);
-        $("pgGerar").textContent="✧ GERAR REDAÇÃO";
+        $("pgGerar").textContent="GERAR REDAÇÃO";
     }
 };
 
-/* ANIMAÇÃO + ARRASTE DO ÍCONE */
+/* TOQUE, ANIMAÇÃO E ARRASTE DO ÍCONE */
 toggle.addEventListener("pointerdown",event=>{
     if(event.button!==undefined&&event.button!==0)return;
 
@@ -772,7 +794,7 @@ document.addEventListener("mousedown",event=>{
     }
 });
 
-/* AJUSTAR À TELA */
+/* AJUSTE DE TELA */
 window.addEventListener("resize",()=>{
     const rect=gui.getBoundingClientRect();
 
