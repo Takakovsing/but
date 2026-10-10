@@ -1342,8 +1342,6 @@ local function refreshHolo()
 end
 
 -- ===== ZERO DELAY PROMPTS =====
-local promptHooked=setmetatable({},{__mode="k"})
-
 local function applyZeroDelay(prompt)
     pcall(function() prompt.HoldDuration=0 end)
     pcall(function() prompt.MaxActivationDistance=math.huge end)
@@ -1353,29 +1351,18 @@ local function applyZeroDelay(prompt)
 end
 
 local function restorePromptDefaults(prompt)
-    -- Não temos como saber os valores originais, então só reabilita
-    -- Se quiser, dá pra salvar antes de mexer
     pcall(function() prompt.RequiresLineOfSight=true end)
 end
 
-local function scanPrompt(prompt)
-    if zeroPromptEnabled then
-        applyZeroDelay(prompt)
-    end
-    if not promptHooked[prompt] then
-        promptHooked[prompt]=true
-    end
-end
-
 for _,d in ipairs(game:GetDescendants()) do
-    if d:IsA("ProximityPrompt") then scanPrompt(d) end
+    if d:IsA("ProximityPrompt") and zeroPromptEnabled then applyZeroDelay(d) end
 end
 
 game.DescendantAdded:Connect(function(d)
-    if d:IsA("ProximityPrompt") then scanPrompt(d) end
+    if d:IsA("ProximityPrompt") and zeroPromptEnabled then applyZeroDelay(d) end
 end)
 
--- ===== SECURITY MODE / FOOTER =====
+-- ===== SECURITY MODE =====
 local function pickRandomPlayer()
     local plrs={}
     for _,p in pairs(PS:GetPlayers()) do
@@ -1394,13 +1381,9 @@ local function applySecurityMode(on)
             footerAvatar.Image=""
         end
         greeting.Text="Security by portuga"
-        title.Text="SECURITY"
-        subtitle.Text="BY PORTUGA"
     else
         footerAvatar.Image="rbxthumb://type=AvatarHeadShot&id="..PL.UserId.."&w=48&h=48"
         greeting.Text="Olá "..string.sub(displayName,1,4).."****"
-        title.Text="PORTUGA"
-        subtitle.Text=IS_PRISON and "H U B • PRISON LIFE" or "H U B"
     end
 end
 
@@ -1843,7 +1826,6 @@ task.spawn(function()
     end
 end)
 
--- Hologram maintenance
 task.spawn(function()
     while true do
         task.wait(0.3)
