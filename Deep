@@ -17,6 +17,8 @@
     let minimized = false;
     let hidden = false;
     let notifyTimer;
+    let panelDrag = null;
+    let togglePointer = null;
 
     const $ = id => document.getElementById(id);
 
@@ -37,7 +39,7 @@
     const style = document.createElement("style");
 
     style.textContent = `
-        #pgFloat, #pgToggle, #pgNotify {
+        #pgFloat, #pgToggle, #pgNotify, #pgEditApi {
             box-sizing: border-box;
         }
 
@@ -76,12 +78,7 @@
             position: absolute;
             inset: -100%;
             background: conic-gradient(
-                from 0deg,
-                transparent,
-                #ffffff16,
-                transparent,
-                #ffffff0a,
-                transparent
+                transparent, #ffffff16, transparent, #ffffff0a, transparent
             );
             animation: pgGlow 7s linear infinite;
             pointer-events: none;
@@ -118,6 +115,7 @@
         }
 
         #pgHead {
+            position: relative;
             min-height: 43px;
             display: flex;
             justify-content: center;
@@ -141,12 +139,34 @@
             text-shadow: 0 0 13px #ffffffaa;
         }
 
-        #pgStatus {
-            color: #a9a9b3;
-            font-size: 10px;
-            text-align: center;
-            letter-spacing: 1.7px;
-            margin: 4px 0 15px;
+        #pgEditApi {
+            position: absolute;
+            top: 4px;
+            right: 0;
+            width: 34px;
+            height: 34px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+            margin: 0;
+            border: 1px solid #ffffff30;
+            border-radius: 10px;
+            color: #fff;
+            background: #ffffff12;
+            font-size: 19px;
+            cursor: pointer;
+            z-index: 5;
+            touch-action: manipulation;
+        }
+
+        #pgEditApi:hover {
+            background: #ffffff28;
+            border-color: #ffffff80;
+        }
+
+        #pgEditApi:active {
+            transform: scale(.92);
         }
 
         #pgLine {
@@ -155,7 +175,7 @@
             background: linear-gradient(90deg, transparent, #ffffff35, transparent);
         }
 
-        #pgFloat button {
+        #pgFloat button:not(#pgEditApi) {
             display: block;
             width: 100%;
             padding: 12px;
@@ -173,13 +193,13 @@
                 box-shadow .2s ease;
         }
 
-        #pgFloat button:hover {
+        #pgFloat button:not(#pgEditApi):hover {
             background: #ffffff24;
             border-color: #ffffff70;
             box-shadow: 0 0 18px #ffffff0b;
         }
 
-        #pgFloat button:active {
+        #pgFloat button:not(#pgEditApi):active {
             transform: scale(.975);
         }
 
@@ -193,10 +213,6 @@
             background: linear-gradient(115deg, #fff, #c9c9d1) !important;
             border-color: #fff !important;
             box-shadow: 0 4px 18px #ffffff12;
-        }
-
-        #pgGerar:disabled {
-            color: #222 !important;
         }
 
         #pgFoot {
@@ -216,7 +232,7 @@
             padding: 4px;
             border: 0;
             border-radius: 50%;
-            background: #09090c;
+            background: transparent;
             box-shadow: 0 8px 30px #000b, 0 0 17px #ffffff13;
             z-index: 2147483641;
             cursor: grab;
@@ -238,24 +254,11 @@
             inset: -3px;
             border-radius: 50%;
             background: conic-gradient(
-                #ffffff,
-                #777782,
-                #ffffff,
-                #42424d,
-                #ffffff
+                #ffffff, #777782, #ffffff, #42424d, #ffffff
             );
             animation: pgIdleSpin 4s linear infinite;
-            z-index: -2;
-            opacity: .85;
-        }
-
-        #pgToggle:after {
-            content: "";
-            position: absolute;
-            inset: 1px;
-            border-radius: 50%;
-            background: #09090c;
             z-index: -1;
+            opacity: .95;
         }
 
         #pgToggle img {
@@ -265,7 +268,7 @@
             border-radius: 50%;
             object-fit: cover;
             pointer-events: none;
-            border: 1px solid #ffffff38;
+            border: 0;
         }
 
         #pgToggle.pgWorking:before {
@@ -283,11 +286,6 @@
             opacity: 1;
             filter: drop-shadow(0 0 7px #29ff82);
             animation: pgWorkSpin .8s linear infinite;
-        }
-
-        #pgToggle.pgWorking:after {
-            inset: 1px;
-            box-shadow: inset 0 0 13px #23ff7528;
         }
 
         #pgToggle.pgWorking {
@@ -356,8 +354,9 @@
             <span class="pgStar">✦</span>
             <span>PORTUGA IA</span>
             <span class="pgStar">✦</span>
+            <button id="pgEditApi" type="button" title="Alterar API Key"
+                aria-label="Alterar API Key">✎</button>
         </div>
-        <div id="pgStatus">ASSISTENTE DE REDAÇÃO</div>
         <div id="pgLine"></div>
         <button id="pgNivel">NÍVEL: MÉDIO</button>
         <button id="pgGerar">✧ GERAR REDAÇÃO</button>
@@ -405,14 +404,31 @@
         minimized = Boolean(valor);
         gui.classList.toggle("pgMini", minimized);
 
-        if (minimized) {
-            animarToggle();
-        }
+        if (minimized) animarToggle();
     }
 
     function definirGeracao(ativa) {
         toggle.classList.toggle("pgWorking", ativa);
     }
+
+    $("pgEditApi").addEventListener("pointerdown", e => {
+        e.stopPropagation();
+    });
+
+    $("pgEditApi").addEventListener("click", e => {
+        e.stopPropagation();
+
+        const novaChave = prompt(
+            "Alterar API Key\n\n" +
+            "Cole sua chave da OpenRouter (sk-or-v1-...) " +
+            "ou da OpenAI (sk-...)."
+        );
+
+        if (!novaChave || !novaChave.trim()) return;
+
+        apiKey = novaChave.trim();
+        notify("API Key alterada nesta sessão!");
+    });
 
     $("pgNivel").addEventListener("click", () => {
         nivel = niveis[(niveis.indexOf(nivel) + 1) % niveis.length];
@@ -449,21 +465,14 @@
         for (const selector of seletores) {
             try {
                 const el = document.querySelector(selector);
-                if (
-                    el &&
-                    el.getClientRects().length &&
-                    !el.disabled &&
-                    !el.readOnly
-                ) return el;
+                if (el && el.getClientRects().length &&
+                    !el.disabled && !el.readOnly) return el;
             } catch (_) {}
         }
 
         const areas = [...document.querySelectorAll("textarea")]
-            .filter(el =>
-                el.getClientRects().length &&
-                !el.disabled &&
-                !el.readOnly
-            );
+            .filter(el => el.getClientRects().length &&
+                !el.disabled && !el.readOnly);
 
         if (areas.length) {
             return areas.sort((a, b) =>
@@ -479,17 +488,13 @@
     function aplicarTexto(campo, texto) {
         campo.focus();
 
-        if (
-            campo instanceof HTMLTextAreaElement ||
-            campo instanceof HTMLInputElement
-        ) {
+        if (campo instanceof HTMLTextAreaElement ||
+            campo instanceof HTMLInputElement) {
             const proto = campo instanceof HTMLTextAreaElement
                 ? HTMLTextAreaElement.prototype
                 : HTMLInputElement.prototype;
 
-            const setter =
-                Object.getOwnPropertyDescriptor(proto, "value").set;
-
+            const setter = Object.getOwnPropertyDescriptor(proto, "value").set;
             setter.call(campo, texto);
             campo.dispatchEvent(new Event("input", { bubbles: true }));
             campo.dispatchEvent(new Event("change", { bubbles: true }));
@@ -511,9 +516,7 @@
     }
 
     function identificarProvedor(chave) {
-        return /^sk-or-v1-/i.test(chave)
-            ? "openrouter"
-            : "openai";
+        return /^sk-or-v1-/i.test(chave) ? "openrouter" : "openai";
     }
 
     function erroApi(mensagem, codigo) {
@@ -569,8 +572,7 @@
             });
         } catch (e) {
             throw erroApi(
-                "Falha de conexão. Verifique a internet ou tente novamente. " +
-                (e?.message || ""),
+                "Falha de conexão. Verifique a internet e tente novamente.",
                 "CONEXAO"
             );
         }
@@ -588,41 +590,31 @@
 
             const erro = dados?.error || {};
             const mensagem = String(
-                erro.message ||
-                dados?.message ||
-                "Erro HTTP " + response.status
+                erro.message || dados?.message || "Erro HTTP " + response.status
             );
 
-            const codigo = String(erro.code || erro.type || "").toLowerCase();
-            const textoErro = (mensagem + " " + codigo).toLowerCase();
+            const textoErro =
+                (mensagem + " " + String(erro.code || erro.type || "")).toLowerCase();
 
-            const chaveInvalida =
+            if (
                 response.status === 401 ||
                 /invalid_api_key|incorrect api key|invalid.*key|authentication/i
-                    .test(textoErro);
-
-            const cotaEsgotada =
-                response.status === 402 ||
-                /insufficient_quota|quota.*(exceed|exhaust|insufficient)|billing|credit balance|credits exhausted|payment required|spend limit|monthly limit|out of credits|no credits/i
-                    .test(textoErro);
-
-            if (chaveInvalida) {
-                throw erroApi(
-                    "A chave da API é inválida ou não foi aceita.",
-                    "CHAVE_INVALIDA"
-                );
+                    .test(textoErro)
+            ) {
+                throw erroApi("A chave da API é inválida ou foi recusada.", "CHAVE_INVALIDA");
             }
 
-            if (cotaEsgotada) {
-                throw erroApi(
-                    "O saldo ou a cota dessa API acabou.",
-                    "COTA"
-                );
+            if (
+                response.status === 402 ||
+                /insufficient_quota|quota.*(exceed|exhaust|insufficient)|billing|credit balance|credits exhausted|payment required|spend limit|monthly limit|out of credits|no credits/i
+                    .test(textoErro)
+            ) {
+                throw erroApi("O saldo ou a cota dessa API acabou.", "COTA");
             }
 
             if (response.status === 429) {
                 throw erroApi(
-                    "Limite temporário de requisições atingido. Aguarde um pouco e tente novamente. " +
+                    "Limite temporário de requisições atingido. Aguarde e tente novamente. " +
                     mensagem,
                     "RATE_LIMIT"
                 );
@@ -658,15 +650,14 @@
     }
 
     async function solicitarChave(motivo) {
-        const instrucoes = motivo === "COTA"
+        const mensagem = motivo === "COTA"
             ? "O saldo ou a cota da chave atual acabou."
             : "A chave atual foi recusada.";
 
         const entrada = prompt(
-            instrucoes +
-            "\n\nCole uma nova API Key da OpenRouter (sk-or-v1-...) " +
-            "ou da OpenAI (sk-...).\n\n" +
-            "A nova chave será usada apenas nesta sessão."
+            mensagem +
+            "\n\nCole outra API Key da OpenRouter (sk-or-v1-...) " +
+            "ou da OpenAI (sk-...)."
         );
 
         if (!entrada || !entrada.trim()) {
@@ -674,7 +665,6 @@
         }
 
         apiKey = entrada.trim();
-        return apiKey;
     }
 
     $("pgGerar").addEventListener("click", async () => {
@@ -724,9 +714,7 @@
                         erro.codigoApi === "COTA" ||
                         erro.codigoApi === "CHAVE_INVALIDA";
 
-                    if (!podeTrocar || tentativas >= 2) {
-                        throw erro;
-                    }
+                    if (!podeTrocar || tentativas >= 2) throw erro;
 
                     tentativas++;
                     notify("É necessário trocar a API Key.", true);
@@ -749,7 +737,7 @@
                 alert(
                     "Erro ao gerar redação:\n\n" +
                     (erro?.message || "Erro desconhecido") +
-                    "\n\nSe o erro persistir, confira a chave, a cota e o modelo."
+                    "\n\nConfira a chave, a cota e o modelo."
                 );
             }
         } finally {
@@ -759,10 +747,6 @@
             definirGeracao(false);
         }
     });
-
-    // Minimizar e restaurar pelo botão flutuante.
-    // O clique só acontece se o botão não tiver sido arrastado.
-    let togglePointer = null;
 
     toggle.addEventListener("pointerdown", e => {
         if (e.button !== undefined && e.button !== 0) return;
@@ -795,17 +779,20 @@
 
         if (!togglePointer.moved) return;
 
-        const width = toggle.offsetWidth;
-        const height = toggle.offsetHeight;
-
         const left = Math.max(
             4,
-            Math.min(window.innerWidth - width - 4, togglePointer.left + dx)
+            Math.min(
+                window.innerWidth - toggle.offsetWidth - 4,
+                togglePointer.left + dx
+            )
         );
 
         const top = Math.max(
             4,
-            Math.min(window.innerHeight - height - 4, togglePointer.top + dy)
+            Math.min(
+                window.innerHeight - toggle.offsetHeight - 4,
+                togglePointer.top + dy
+            )
         );
 
         toggle.style.left = left + "px";
@@ -820,21 +807,18 @@
         const arrastou = togglePointer.moved;
         togglePointer = null;
 
-        if (!arrastou) {
-            definirMinimizado(!minimized);
-        }
+        if (!arrastou) definirMinimizado(!minimized);
     });
 
     toggle.addEventListener("pointercancel", () => {
         togglePointer = null;
     });
 
-    // Arrastar a janela segurando a barra de título.
-    let panelDrag = null;
     const head = $("pgHead");
 
     head.addEventListener("pointerdown", e => {
         if (e.button !== undefined && e.button !== 0) return;
+        if (e.target.closest("#pgEditApi")) return;
 
         const rect = gui.getBoundingClientRect();
 
@@ -863,21 +847,21 @@
         const dx = e.clientX - panelDrag.x;
         const dy = e.clientY - panelDrag.y;
 
-        const width = gui.offsetWidth;
-        const height = gui.offsetHeight;
-
-        const left = Math.max(
+        gui.style.left = Math.max(
             4,
-            Math.min(window.innerWidth - width - 4, panelDrag.left + dx)
-        );
+            Math.min(
+                window.innerWidth - gui.offsetWidth - 4,
+                panelDrag.left + dx
+            )
+        ) + "px";
 
-        const top = Math.max(
+        gui.style.top = Math.max(
             4,
-            Math.min(window.innerHeight - height - 4, panelDrag.top + dy)
-        );
-
-        gui.style.left = left + "px";
-        gui.style.top = top + "px";
+            Math.min(
+                window.innerHeight - gui.offsetHeight - 4,
+                panelDrag.top + dy
+            )
+        ) + "px";
     });
 
     function pararArrastePainel() {
@@ -903,14 +887,11 @@
         };
 
         if (gui.style.transform === "none") limitar(gui);
-
         if (toggle.style.left) limitar(toggle);
     });
 
     document.addEventListener("keydown", e => {
-        if (e.key === "Escape") {
-            definirMinimizado(!minimized);
-        }
+        if (e.key === "Escape") definirMinimizado(!minimized);
 
         if (e.key === "Alt" && !e.repeat) {
             hidden = !hidden;
@@ -921,14 +902,13 @@
     });
 
     document.addEventListener("mousedown", e => {
-        if (e.button === 1) {
-            e.preventDefault();
+        if (e.button !== 1) return;
 
-            hidden = !hidden;
-            gui.style.display = hidden ? "none" : "";
-            toggle.style.display = hidden ? "none" : "";
-            notifyBox.style.display = hidden ? "none" : "";
-        }
+        e.preventDefault();
+        hidden = !hidden;
+        gui.style.display = hidden ? "none" : "";
+        toggle.style.display = hidden ? "none" : "";
+        notifyBox.style.display = hidden ? "none" : "";
     });
 
     notify("PORTUGA IA iniciada!");
