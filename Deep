@@ -20,19 +20,13 @@ let nivel="medio";
 let busy=false;
 let notifyTimer=null;
 
-/* ESTADO DO ÍCONE */
 let iconPointerId=null;
-let iconStartX=0;
-let iconStartY=0;
-let iconOffsetX=0;
-let iconOffsetY=0;
-let iconMoved=false;
-let iconDragging=false;
+let iconStartX=0,iconStartY=0;
+let iconOffsetX=0,iconOffsetY=0;
+let iconMoved=false,iconDragging=false;
 
-/* ESTADO DO PAINEL */
 let panelPointerId=null;
-let panelOffsetX=0;
-let panelOffsetY=0;
+let panelOffsetX=0,panelOffsetY=0;
 let panelDragging=false;
 
 const $=id=>document.getElementById(id);
@@ -48,7 +42,7 @@ if(!favicon){
 
 favicon.href=ICONE;
 
-/* ESTILO */
+/* CSS */
 const style=document.createElement("style");
 
 style.textContent=`
@@ -60,13 +54,11 @@ style.textContent=`
     left:50%;
     width:min(320px,calc(100vw - 24px));
     padding:16px;
-    background:
-        radial-gradient(ellipse at 50% 0%,rgba(255,255,255,.09),transparent 65%),
-        rgba(15,15,18,.94);
+    background:radial-gradient(ellipse at 50% 0%,#ffffff15,transparent 65%),rgba(15,15,18,.96);
     backdrop-filter:blur(18px);
     -webkit-backdrop-filter:blur(18px);
     color:#eee;
-    border:1px solid rgba(255,255,255,.2);
+    border:1px solid #ffffff30;
     border-radius:20px;
     z-index:2147483640;
     font-family:"Trebuchet MS",Arial,sans-serif;
@@ -75,8 +67,9 @@ style.textContent=`
     -webkit-user-select:none;
     transform:translateX(-50%) scale(1);
     transform-origin:top center;
-    transition:opacity .3s ease,transform .3s ease,visibility .3s;
+    transition:opacity .25s ease,transform .25s ease,visibility .25s;
     overflow:hidden;
+    isolation:isolate;
 }
 
 #pgFloat:before{
@@ -84,13 +77,12 @@ style.textContent=`
     position:absolute;
     inset:-100%;
     background:conic-gradient(transparent,#ffffff12,transparent,#ffffff08,transparent);
-    animation:pgGlow 8s linear infinite;
+    animation:pgPanelGlow 8s linear infinite;
     pointer-events:none;
+    z-index:-1;
 }
 
-#pgFloat>*{position:relative}
-
-@keyframes pgGlow{
+@keyframes pgPanelGlow{
     to{transform:rotate(360deg)}
 }
 
@@ -116,12 +108,7 @@ style.textContent=`
 }
 
 #pgHead:active{cursor:grabbing}
-
-.pgStar{
-    margin:0 7px;
-    color:#fff;
-    text-shadow:0 0 12px #fff;
-}
+.pgStar{margin:0 7px;color:#fff;text-shadow:0 0 12px #fff}
 
 #pgEditApi{
     position:absolute;
@@ -130,7 +117,6 @@ style.textContent=`
     width:31px;
     height:31px;
     padding:0;
-    margin:0;
     border:1px solid #ffffff30;
     border-radius:9px;
     background:#ffffff10;
@@ -142,81 +128,91 @@ style.textContent=`
 #pgLine{
     height:1px;
     margin-bottom:14px;
-    background:linear-gradient(90deg,transparent,#ffffff45,transparent);
+    background:linear-gradient(90deg,transparent,#ffffff55,transparent);
 }
 
 #pgFloat button:not(#pgEditApi){
     display:block;
     width:100%;
     min-height:43px;
-    border:1px solid rgba(255,255,255,.15);
+    border:1px solid #ffffff20;
     border-radius:12px;
     padding:12px;
     margin-top:9px;
-    background:linear-gradient(135deg,#ffffff17,#ffffff08);
+    background:linear-gradient(135deg,#ffffff18,#ffffff08);
     color:#eee;
     font-family:"Trebuchet MS",Arial,sans-serif;
     font-weight:bold;
     font-size:14px;
     cursor:pointer;
-    transition:background .2s,transform .2s,box-shadow .2s,border-color .2s;
+    transition:background .2s,transform .2s,box-shadow .2s;
 }
 
 #pgFloat button:not(#pgEditApi):hover{
     background:#ffffff24;
-    border-color:#ffffff60;
     box-shadow:0 6px 18px #0005;
 }
 
-#pgFloat button:not(#pgEditApi):active{
-    transform:scale(.97);
-}
-
-#pgFloat button:disabled{
-    opacity:.65;
-    cursor:wait;
-}
+#pgFloat button:not(#pgEditApi):active{transform:scale(.97)}
 
 #pgGerar{
     background:linear-gradient(110deg,#fff,#c8c8d0)!important;
     color:#101014!important;
     border-color:#fff!important;
-    box-shadow:0 3px 16px #ffffff12;
 }
 
+#pgFloat button:disabled{opacity:.65;cursor:wait}
+
+/* BOTÃO FLUTUANTE */
 #pgToggle{
     position:fixed;
     right:20px;
     bottom:25px;
     width:62px;
     height:62px;
-    padding:3px;
-    border:0;
+    padding:4px;
+    border:1px solid #000;
     border-radius:50%;
-    background:transparent;
+    background:#050505;
     z-index:2147483641;
-    box-shadow:0 8px 30px #000b;
     cursor:grab;
-    overflow:visible;
     display:flex;
     align-items:center;
     justify-content:center;
+    isolation:isolate;
+    overflow:visible;
     touch-action:none;
+    -webkit-tap-highlight-color:transparent;
     user-select:none;
     -webkit-user-select:none;
-    -webkit-tap-highlight-color:transparent;
+    box-shadow:0 5px 20px #000b;
+    transition:transform .18s cubic-bezier(.2,.8,.2,1),filter .18s ease,box-shadow .18s ease;
 }
 
+/* ANEL BRANCO GIRATÓRIO */
 #pgToggle:before{
     content:"";
     position:absolute;
-    inset:-3px;
+    inset:-4px;
     border-radius:50%;
-    background:conic-gradient(#fff,#bdbdc6,#fff,#70707a,#fff);
-    animation:pgSpin 3s linear infinite;
+    background:conic-gradient(
+        from 0deg,
+        transparent 0deg,
+        #fff 55deg,
+        #bcbcc8 100deg,
+        transparent 145deg,
+        transparent 180deg,
+        #fff 235deg,
+        #aaa 280deg,
+        transparent 325deg,
+        transparent 360deg
+    );
+    animation:pgRingRotate 2.2s linear infinite;
     z-index:-1;
+    pointer-events:none;
 }
 
+/* BORDA PRETA */
 #pgToggle:after{
     content:"";
     position:absolute;
@@ -224,36 +220,65 @@ style.textContent=`
     border:1px solid #000;
     border-radius:50%;
     pointer-events:none;
+    z-index:3;
 }
 
 #pgToggle img{
+    position:relative;
+    z-index:1;
     width:100%;
     height:100%;
-    object-fit:cover;
     display:block;
+    object-fit:cover;
     border-radius:50%;
     pointer-events:none;
+    transition:filter .18s ease;
 }
 
-#pgToggle.pgWorking:before{
-    background:conic-gradient(#37ff8a,#fff,#00b956,#caffdc,#37ff8a);
-    animation:pgSpin .7s linear infinite;
-    filter:drop-shadow(0 0 8px #20ff79);
-}
-
-#pgToggle.pgWorking{
-    animation:pgPulse .65s ease-in-out infinite alternate;
-}
-
-@keyframes pgSpin{
+@keyframes pgRingRotate{
+    from{transform:rotate(0deg)}
     to{transform:rotate(360deg)}
 }
 
-@keyframes pgPulse{
-    from{filter:drop-shadow(0 0 1px #2cff70)}
-    to{filter:drop-shadow(0 0 10px #2cff70)}
+/* ANIMAÇÃO AO APERTAR */
+#pgToggle.pgPressed{
+    transform:scale(.88);
+    filter:brightness(1.5);
+    box-shadow:0 0 12px #fff,0 0 28px #ffffff70,0 8px 25px #000b;
 }
 
+#pgToggle.pgPressed img{filter:brightness(1.25)}
+
+#pgToggle.pgReleased{
+    transform:scale(1.06);
+}
+
+/* BRILHO SUAVE */
+#pgToggle.pgAura{
+    animation:pgAura 3s ease-in-out infinite;
+}
+
+@keyframes pgAura{
+    0%,100%{box-shadow:0 0 7px #ffffff18,0 8px 25px #000b}
+    50%{box-shadow:0 0 18px #ffffff50,0 0 30px #ffffff16,0 8px 25px #000b}
+}
+
+/* ANIMAÇÃO DURANTE A GERAÇÃO */
+#pgToggle.pgWorking:before{
+    background:conic-gradient(#00ff88,#fff,#00aaff,#fff,#00ff88);
+    animation:pgRingRotate .65s linear infinite;
+}
+
+#pgToggle.pgWorking{
+    animation:pgWorkingPulse .7s ease-in-out infinite alternate;
+}
+
+@keyframes pgWorkingPulse{
+    from{filter:brightness(1);transform:scale(1)}
+    to{filter:brightness(1.3);transform:scale(1.04)}
+}
+
+/* NOTIFICAÇÃO */
 #pgNotify{
     position:fixed;
     top:25px;
@@ -304,12 +329,13 @@ gui.innerHTML=`
 
 document.body.appendChild(gui);
 
-/* ÍCONE FLUTUANTE */
+/* ÍCONE */
 const toggle=document.createElement("button");
 toggle.id="pgToggle";
 toggle.type="button";
 toggle.setAttribute("aria-label","Abrir ou minimizar PORTUGA IA");
 toggle.innerHTML=`<img src="${ICONE}" alt="">`;
+toggle.classList.add("pgAura");
 document.body.appendChild(toggle);
 
 /* NOTIFICAÇÕES */
@@ -321,7 +347,6 @@ function notify(message="Feito!",persist=false){
     notifyBox.textContent=message;
     notifyBox.style.opacity="1";
     notifyBox.style.transform="translateX(-50%) translateY(0)";
-
     clearTimeout(notifyTimer);
 
     if(!persist){
@@ -335,6 +360,7 @@ function notify(message="Feito!",persist=false){
 function setBusy(value){
     busy=value;
     toggle.classList.toggle("pgWorking",value);
+    toggle.classList.toggle("pgAura",!value);
     $("pgGerar").disabled=value;
 }
 
@@ -372,8 +398,7 @@ $("pgEditApi").addEventListener("pointerdown",event=>{
 
 $("pgEditApi").onclick=event=>{
     event.stopPropagation();
-
-    const value=prompt("Cole sua chave da OpenRouter (sk-or-v1-...):");
+    const value=prompt("Cole sua chave da OpenRouter:");
 
     if(value&&value.trim()){
         apiKey=value.trim();
@@ -398,7 +423,7 @@ function lerPagina(){
         .slice(0,30000);
 }
 
-/* ACHAR CAMPO DE TEXTO */
+/* ACHAR CAMPO */
 function acharCampo(){
     const preferidos=[
         'textarea[name*="redac" i]',
@@ -415,10 +440,7 @@ function acharCampo(){
     for(const selector of preferidos){
         try{
             const el=document.querySelector(selector);
-
-            if(el&&el.getClientRects().length&&!el.disabled&&!el.readOnly){
-                return el;
-            }
+            if(el&&el.getClientRects().length&&!el.disabled&&!el.readOnly)return el;
         }catch(e){}
     }
 
@@ -436,13 +458,11 @@ function acharCampo(){
         )[0];
     }
 
-    const editables=[...document.querySelectorAll('[contenteditable="true"]')]
-        .filter(el=>el.getClientRects().length);
-
-    return editables[0]||null;
+    return [...document.querySelectorAll('[contenteditable="true"]')]
+        .find(el=>el.getClientRects().length)||null;
 }
 
-/* DESTAQUE DO CAMPO */
+/* DESTACAR CAMPO */
 function destacarCampo(campo){
     const antigo=campo.style.outline;
     campo.style.outline="3px solid lime";
@@ -458,11 +478,8 @@ function aplicarTexto(campo,texto){
 
         const setter=Object.getOwnPropertyDescriptor(proto,"value")?.set;
 
-        if(setter){
-            setter.call(campo,texto);
-        }else{
-            campo.value=texto;
-        }
+        if(setter)setter.call(campo,texto);
+        else campo.value=texto;
 
         campo.dispatchEvent(new Event("input",{bubbles:true}));
         campo.dispatchEvent(new Event("change",{bubbles:true}));
@@ -476,17 +493,13 @@ function aplicarTexto(campo,texto){
     try{
         const selection=window.getSelection();
         const range=document.createRange();
-
         range.selectNodeContents(campo);
         selection.removeAllRanges();
         selection.addRange(range);
-
         inseriu=document.execCommand("insertText",false,texto);
     }catch(e){}
 
-    if(!inseriu){
-        campo.textContent=texto;
-    }
+    if(!inseriu)campo.textContent=texto;
 
     campo.dispatchEvent(new Event("input",{bubbles:true}));
     campo.dispatchEvent(new Event("change",{bubbles:true}));
@@ -519,9 +532,7 @@ $("pgGerar").onclick=async()=>{
     try{
         const pageText=lerPagina();
 
-        if(!pageText){
-            throw new Error("Não consegui ler o conteúdo da página.");
-        }
+        if(!pageText)throw new Error("Não consegui ler o conteúdo da página.");
 
         $("pgGerar").textContent="GERANDO...";
         notify("Gerando redação ("+nomesNivel[nivel]+")...",true);
@@ -549,8 +560,7 @@ $("pgGerar").onclick=async()=>{
                         },
                         {
                             role:"user",
-                            content:
-                                "Conteúdo da página:\n\n"+pageText+
+                            content:"Conteúdo da página:\n\n"+pageText+
                                 "\n\nProduza uma redação relacionada ao tema identificado."
                         }
                     ]
@@ -561,10 +571,7 @@ $("pgGerar").onclick=async()=>{
         const data=await response.json();
 
         if(!response.ok){
-            if(response.status===401||response.status===403){
-                apiKey="";
-            }
-
+            if(response.status===401||response.status===403)apiKey="";
             throw new Error(data?.error?.message||"Erro HTTP "+response.status);
         }
 
@@ -587,8 +594,8 @@ $("pgGerar").onclick=async()=>{
         notify("Inserindo redação no campo...",true);
 
         aplicarTexto(campo,texto);
-
         notify("Redação pronta!");
+
     }catch(error){
         notify("Não foi possível gerar a redação.");
         alert("Erro ao gerar redação:\n\n"+(error.message||error));
@@ -598,10 +605,7 @@ $("pgGerar").onclick=async()=>{
     }
 };
 
-/* MINIMIZAR E ARRASTAR ÍCONE
-   Um toque minimiza/restaura.
-   Arrastar move o botão sem ativar o clique.
-*/
+/* ANIMAÇÃO + ARRASTE DO ÍCONE */
 toggle.addEventListener("pointerdown",event=>{
     if(event.button!==undefined&&event.button!==0)return;
 
@@ -617,6 +621,9 @@ toggle.addEventListener("pointerdown",event=>{
     iconMoved=false;
     iconDragging=true;
 
+    toggle.classList.add("pgPressed");
+    toggle.classList.remove("pgReleased");
+
     try{
         toggle.setPointerCapture(event.pointerId);
     }catch(e){}
@@ -630,9 +637,7 @@ toggle.addEventListener("pointermove",event=>{
     const dx=event.clientX-iconStartX;
     const dy=event.clientY-iconStartY;
 
-    if(Math.abs(dx)>7||Math.abs(dy)>7){
-        iconMoved=true;
-    }
+    if(Math.abs(dx)>7||Math.abs(dy)>7)iconMoved=true;
 
     if(!iconMoved)return;
 
@@ -663,9 +668,16 @@ function finishIconPointer(event){
     iconDragging=false;
     iconPointerId=null;
 
-    if(!dragged){
-        setMinimized(!minimized);
-    }
+    toggle.classList.remove("pgPressed");
+    toggle.classList.add("pgReleased");
+
+    requestAnimationFrame(()=>{
+        requestAnimationFrame(()=>{
+            toggle.classList.remove("pgReleased");
+        });
+    });
+
+    if(!dragged)setMinimized(!minimized);
 
     iconMoved=false;
 }
@@ -678,9 +690,10 @@ toggle.addEventListener("pointercancel",event=>{
         iconPointerId=null;
         iconMoved=false;
     }
+
+    toggle.classList.remove("pgPressed","pgReleased");
 });
 
-/* Evita que um clique duplicado altere o estado novamente */
 toggle.addEventListener("click",event=>{
     event.preventDefault();
     event.stopPropagation();
@@ -748,13 +761,8 @@ function toggleHiddenMode(){
 }
 
 document.addEventListener("keydown",event=>{
-    if(event.key==="Escape"){
-        setMinimized(!minimized);
-    }
-
-    if(event.key==="Alt"){
-        toggleHiddenMode();
-    }
+    if(event.key==="Escape")setMinimized(!minimized);
+    if(event.key==="Alt")toggleHiddenMode();
 });
 
 document.addEventListener("mousedown",event=>{
@@ -764,7 +772,7 @@ document.addEventListener("mousedown",event=>{
     }
 });
 
-/* AJUSTE DE TELA */
+/* AJUSTAR À TELA */
 window.addEventListener("resize",()=>{
     const rect=gui.getBoundingClientRect();
 
