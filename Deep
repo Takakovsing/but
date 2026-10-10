@@ -3,1000 +3,721 @@ javascript:(async()=>{
 
 "use strict";
 
-const KEY_CORRETA = "rzinmodder";
-const ICONE_PORTUGA = "https://media.tenor.com/m11vauEEbcUAAAAM/meow-neko-arc.gif";
+const KEY_CORRETA="rzinmodder";
+const ICONE="https://media.tenor.com/m11vauEEbcUAAAAM/meow-neko-arc.gif";
 
-if(document.getElementById("pgFloat")) return;
+if(document.getElementById("pgFloat"))return;
 
-if(prompt("Digite a Key:") !== KEY_CORRETA){
+if(prompt("Digite a Key:")!==KEY_CORRETA){
     alert("Key inválida!");
     return;
 }
 
-let apiKey = "";
-let nivel = "medio";
-let busy = false;
-let minimized = false;
-let hidden = false;
-let notifyTimer;
-let panelDrag = null;
-let togglePointer = null;
+let minimized=false;
+let hidden=false;
+let apiKey="";
+let nivel="medio";
+let busy=false;
+let notifyTimer=null;
+let toggleDragging=false;
+let toggleMoved=false;
+let toggleStartX=0;
+let toggleStartY=0;
+let toggleOffsetX=0;
+let toggleOffsetY=0;
+let panelDragging=false;
+let panelMoved=false;
+let panelOffsetX=0;
+let panelOffsetY=0;
 
-const $ = id => document.getElementById(id);
+const $=id=>document.getElementById(id);
 
-const niveis = ["baixo", "medio", "alto"];
-
-const nomesNivel = {
-    baixo: "BAIXO",
-    medio: "MÉDIO",
-    alto: "ALTO"
-};
-
-const descNivel = {
-    baixo: "Use linguagem simples, frases curtas e vocabulário básico.",
-    medio: "Use vocabulário intermediário, boa coesão e argumentação equilibrada.",
-    alto: "Use argumentação aprofundada, repertório sociocultural, conectivos variados e excelente coesão."
-};
-
-/* Ícone da aba do site */
-let favicon = document.querySelector('link[rel~="icon"]');
+/* FAVICON */
+let favicon=document.querySelector('link[rel~="icon"]');
 
 if(!favicon){
-    favicon = document.createElement("link");
-    favicon.rel = "icon";
+    favicon=document.createElement("link");
+    favicon.rel="icon";
     document.head.appendChild(favicon);
 }
 
-favicon.href = ICONE_PORTUGA;
+favicon.href=ICONE;
 
 /* ESTILO */
-const style = document.createElement("style");
+const style=document.createElement("style");
 
-style.textContent = `
-    #pgFloat, #pgToggle, #pgNotify, #pgEditApi {
-        box-sizing: border-box;
-    }
+style.textContent=`
+#pgFloat,#pgToggle,#pgNotify{box-sizing:border-box}
 
-    #pgFloat {
-        position: fixed;
-        top: 80px;
-        left: 50%;
-        width: min(350px, calc(100vw - 24px));
-        aspect-ratio: 1 / 1;
-        padding: 17px;
-        color: #f5f5f5;
-        font: 14px "Trebuchet MS", Arial, sans-serif;
-        background:
-            radial-gradient(ellipse at 50% -20%, #ffffff18, transparent 65%),
-            linear-gradient(145deg, rgba(30,30,35,.97), rgba(7,7,10,.97));
-        border: 1px solid #ffffff38;
-        border-radius: 21px;
-        backdrop-filter: blur(22px);
-        -webkit-backdrop-filter: blur(22px);
-        box-shadow: 0 22px 65px #000c, 0 0 25px #ffffff09;
-        z-index: 2147483640;
-        transform: translateX(-50%) scale(1);
-        opacity: 1;
-        visibility: visible;
-        transform-origin: top center;
-        transition:
-            opacity .24s ease,
-            transform .32s cubic-bezier(.2,.85,.25,1),
-            visibility 0s;
-        overflow: hidden;
-        user-select: none;
-        -webkit-user-select: none;
-        display: flex;
-        flex-direction: column;
-    }
+#pgFloat{
+    position:fixed;
+    top:80px;
+    left:50%;
+    width:min(320px,calc(100vw - 24px));
+    padding:16px;
+    background:
+        radial-gradient(ellipse at 50% 0%,rgba(255,255,255,.09),transparent 65%),
+        rgba(15,15,18,.94);
+    backdrop-filter:blur(18px);
+    -webkit-backdrop-filter:blur(18px);
+    color:#eee;
+    border:1px solid rgba(255,255,255,.2);
+    border-radius:20px;
+    z-index:2147483640;
+    font-family:"Trebuchet MS",Arial,sans-serif;
+    box-shadow:0 15px 50px #000b,0 0 20px #ffffff08;
+    user-select:none;
+    -webkit-user-select:none;
+    transform:translateX(-50%) scale(1);
+    transform-origin:top center;
+    transition:opacity .3s ease,transform .35s cubic-bezier(.2,.8,.2,1),visibility .35s;
+    overflow:hidden;
+}
 
-    #pgFloat:before {
-        content: "";
-        position: absolute;
-        inset: -100%;
-        background: conic-gradient(
-            transparent, #ffffff16, transparent, #ffffff0a, transparent
-        );
-        animation: pgGlow 7s linear infinite;
-        pointer-events: none;
-    }
+#pgFloat:before{
+    content:"";
+    position:absolute;
+    inset:-100%;
+    background:conic-gradient(transparent,#ffffff12,transparent,#ffffff08,transparent);
+    animation:pgGlow 8s linear infinite;
+    pointer-events:none;
+}
 
-    #pgFloat:after {
-        content: "";
-        position: absolute;
-        top: 0;
-        left: 12%;
-        width: 76%;
-        height: 1px;
-        background: linear-gradient(90deg, transparent, #fff9, transparent);
-        pointer-events: none;
-    }
+#pgFloat>*{position:relative}
 
-    @keyframes pgGlow {
-        to { transform: rotate(360deg); }
-    }
+@keyframes pgGlow{
+    to{transform:rotate(360deg)}
+}
 
-    #pgFloat > * {
-        position: relative;
-    }
+#pgFloat.pgMini{
+    opacity:0;
+    visibility:hidden;
+    pointer-events:none;
+    transform:translateX(-50%) scale(.82);
+}
 
-    #pgFloat.pgMini {
-        opacity: 0;
-        visibility: hidden;
-        transform: translateX(-50%) translateY(18px) scale(.76);
-        pointer-events: none;
-        transition:
-            opacity .2s ease,
-            transform .28s cubic-bezier(.4,0,.8,.3),
-            visibility 0s linear .28s;
-    }
+#pgHead{
+    position:relative;
+    min-height:32px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:18px;
+    font-weight:900;
+    letter-spacing:1.5px;
+    cursor:grab;
+    margin-bottom:12px;
+    touch-action:none;
+}
 
-    #pgHead {
-        position: relative;
-        min-height: 43px;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        gap: 8px;
-        font-size: 17px;
-        font-weight: 900;
-        letter-spacing: 1.8px;
-        cursor: grab;
-        touch-action: none;
-        border-radius: 12px;
-        flex-shrink: 0;
-    }
+#pgHead:active{cursor:grabbing}
 
-    #pgHead:active {
-        cursor: grabbing;
-    }
+.pgStar{
+    margin:0 7px;
+    color:#fff;
+    text-shadow:0 0 12px #fff;
+}
 
-    #pgHead .pgStar {
-        color: #fff;
-        font-size: 19px;
-        text-shadow: 0 0 13px #ffffffaa;
-    }
+#pgEditApi{
+    position:absolute;
+    right:0;
+    top:-3px;
+    width:31px;
+    height:31px;
+    padding:0;
+    margin:0;
+    border:1px solid #ffffff30;
+    border-radius:9px;
+    background:#ffffff10;
+    color:#fff;
+    font-size:18px;
+    cursor:pointer;
+}
 
-    #pgEditApi {
-        position: absolute;
-        top: 4px;
-        right: 0;
-        width: 34px;
-        height: 34px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 0;
-        margin: 0;
-        border: 1px solid #ffffff30;
-        border-radius: 10px;
-        color: #fff;
-        background: #ffffff12;
-        font-size: 19px;
-        cursor: pointer;
-        z-index: 5;
-        touch-action: manipulation;
-    }
+#pgLine{
+    height:1px;
+    margin-bottom:14px;
+    background:linear-gradient(90deg,transparent,#ffffff45,transparent);
+}
 
-    #pgEditApi:hover {
-        background: #ffffff28;
-        border-color: #ffffff80;
-    }
+#pgFloat button:not(#pgEditApi){
+    display:block;
+    width:100%;
+    min-height:43px;
+    border:1px solid rgba(255,255,255,.15);
+    border-radius:12px;
+    padding:12px;
+    margin-top:9px;
+    background:linear-gradient(135deg,#ffffff17,#ffffff08);
+    color:#eee;
+    font-family:"Trebuchet MS",Arial,sans-serif;
+    font-weight:bold;
+    font-size:14px;
+    cursor:pointer;
+    transition:background .2s,transform .2s,box-shadow .2s,border-color .2s;
+}
 
-    #pgEditApi:active {
-        transform: scale(.92);
-    }
+#pgFloat button:not(#pgEditApi):hover{
+    background:#ffffff24;
+    border-color:#ffffff60;
+    box-shadow:0 6px 18px #0005;
+}
 
-    #pgLine {
-        height: 1px;
-        margin: 0 0 13px;
-        background: linear-gradient(90deg, transparent, #ffffff35, transparent);
-        flex-shrink: 0;
-    }
+#pgFloat button:not(#pgEditApi):active{
+    transform:scale(.97);
+}
 
-    #pgActions {
-        display: flex;
-        flex-direction: column;
-        align-items: stretch;
-        justify-content: center;
-        gap: 10px;
-        width: 100%;
-        flex: 1;
-        min-height: 0;
-    }
+#pgFloat button:disabled{
+    opacity:.65;
+    cursor:wait;
+}
 
-    #pgFloat button:not(#pgEditApi) {
-        color: #eee;
-        background: linear-gradient(135deg, #ffffff13, #ffffff07);
-        border: 1px solid #ffffff25;
-        border-radius: 12px;
-        font: bold 13px "Trebuchet MS", Arial, sans-serif;
-        cursor: pointer;
-        transition:
-            background .2s ease,
-            border-color .2s ease,
-            transform .2s ease,
-            box-shadow .2s ease;
-    }
+#pgGerar{
+    background:linear-gradient(110deg,#fff,#c8c8d0)!important;
+    color:#101014!important;
+    border-color:#fff!important;
+    box-shadow:0 3px 16px #ffffff12;
+}
 
-    #pgActions button {
-        display: flex;
-        width: 100%;
-        min-height: 46px;
-        padding: 12px;
-        margin: 0;
-        align-items: center;
-        justify-content: center;
-        text-align: center;
-        flex-shrink: 0;
-    }
+#pgToggle{
+    position:fixed;
+    right:20px;
+    bottom:25px;
+    width:62px;
+    height:62px;
+    padding:3px;
+    border:0;
+    border-radius:50%;
+    background:transparent;
+    z-index:2147483641;
+    box-shadow:0 8px 30px #000b;
+    cursor:grab;
+    overflow:visible;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    touch-action:none;
+    user-select:none;
+    -webkit-user-select:none;
+    -webkit-tap-highlight-color:transparent;
+}
 
-    #pgFloat button:not(#pgEditApi):hover {
-        background: #ffffff24;
-        border-color: #ffffff70;
-        box-shadow: 0 0 18px #ffffff0b;
-    }
+#pgToggle:before{
+    content:"";
+    position:absolute;
+    inset:-3px;
+    border-radius:50%;
+    background:conic-gradient(#fff,#bdbdc6,#fff,#70707a,#fff);
+    animation:pgSpin 3s linear infinite;
+    z-index:-1;
+}
 
-    #pgFloat button:not(#pgEditApi):active {
-        transform: scale(.975);
-    }
+#pgToggle:after{
+    content:"";
+    position:absolute;
+    inset:0;
+    border:1px solid #000;
+    border-radius:50%;
+    pointer-events:none;
+}
 
-    #pgFloat button:disabled {
-        opacity: .72;
-        cursor: wait;
-    }
+#pgToggle img{
+    width:100%;
+    height:100%;
+    object-fit:cover;
+    display:block;
+    border-radius:50%;
+    pointer-events:none;
+}
 
-    #pgGerar {
-        color: #101014 !important;
-        background: linear-gradient(115deg, #fff, #c9c9d1) !important;
-        border-color: #fff !important;
-        box-shadow: 0 4px 18px #ffffff12;
-    }
+#pgToggle.pgWorking:before{
+    background:conic-gradient(#37ff8a,#fff,#00b956,#caffdc,#37ff8a);
+    animation:pgSpin .7s linear infinite;
+    filter:drop-shadow(0 0 8px #20ff79);
+}
 
-    #pgToggle {
-        position: fixed;
-        right: 20px;
-        bottom: 25px;
-        width: 68px;
-        height: 68px;
-        padding: 4px;
-        border: 0;
-        border-radius: 50%;
-        background: transparent;
-        box-shadow: 0 8px 30px #000b, 0 0 17px #ffffff13;
-        z-index: 2147483641;
-        cursor: grab;
-        overflow: visible;
-        touch-action: none;
-        user-select: none;
-        -webkit-user-select: none;
-        isolation: isolate;
-        -webkit-tap-highlight-color: transparent;
-    }
+#pgToggle.pgWorking{
+    animation:pgPulse .65s ease-in-out infinite alternate;
+}
 
-    #pgToggle:active {
-        cursor: grabbing;
-    }
+@keyframes pgSpin{
+    to{transform:rotate(360deg)}
+}
 
-    /* Borda branca restaurada */
-    #pgToggle:before {
-        content: "";
-        position: absolute;
-        inset: -3px;
-        border-radius: 50%;
-        background: conic-gradient(
-            #ffffff, #dcdce3, #ffffff, #777782, #ffffff
-        );
-        animation: pgIdleSpin 4s linear infinite;
-        z-index: -2;
-        opacity: 1;
-    }
+@keyframes pgPulse{
+    from{filter:drop-shadow(0 0 1px #2cff70)}
+    to{filter:drop-shadow(0 0 10px #2cff70)}
+}
 
-    /* Borda preta ultrafina entre o anel e o ícone */
-    #pgToggle img {
-        display: block;
-        width: 100%;
-        height: 100%;
-        border-radius: 50%;
-        object-fit: cover;
-        border: 1px solid #000;
-        box-sizing: border-box;
-        background: #000;
-        pointer-events: none;
-    }
+#pgNotify{
+    position:fixed;
+    top:25px;
+    left:50%;
+    transform:translateX(-50%) translateY(-20px);
+    background:rgba(18,18,21,.97);
+    color:#fff;
+    padding:11px 20px;
+    border:1px solid #ffffff30;
+    border-radius:11px;
+    font-family:"Trebuchet MS",Arial,sans-serif;
+    font-weight:bold;
+    font-size:14px;
+    z-index:2147483642;
+    opacity:0;
+    transition:opacity .3s,transform .35s;
+    box-shadow:0 8px 25px #0008;
+    pointer-events:none;
+    max-width:85vw;
+    text-align:center;
+    overflow-wrap:anywhere;
+}
 
-    /* Anel mais chamativo durante a geração */
-    #pgToggle.pgWorking:before {
-        inset: -3px;
-        background: conic-gradient(
-            #48ff8b,
-            #d9ffe5,
-            #13ce68,
-            #ffffff,
-            #21ff81,
-            #087d3b,
-            #48ff8b
-        );
-        opacity: 1;
-        filter: drop-shadow(0 0 7px #29ff82);
-        animation: pgWorkSpin .8s linear infinite;
-    }
-
-    #pgToggle.pgWorking {
-        animation: pgWorkPulse 1s ease-in-out infinite alternate;
-    }
-
-    #pgToggle.pgPop {
-        animation: pgPop .42s cubic-bezier(.18,.9,.3,1.35);
-    }
-
-    @keyframes pgIdleSpin {
-        to { transform: rotate(360deg); }
-    }
-
-    @keyframes pgWorkSpin {
-        to { transform: rotate(360deg); }
-    }
-
-    @keyframes pgWorkPulse {
-        from { filter: drop-shadow(0 0 2px #22ff7040); }
-        to { filter: drop-shadow(0 0 12px #22ff70aa); }
-    }
-
-    @keyframes pgPop {
-        0% { transform: scale(.55) rotate(-20deg); }
-        70% { transform: scale(1.13) rotate(5deg); }
-        100% { transform: scale(1) rotate(0); }
-    }
-
-    #pgNotify {
-        position: fixed;
-        top: 22px;
-        left: 50%;
-        transform: translate(-50%, -15px) scale(.97);
-        padding: 12px 18px;
-        color: #fff;
-        background: rgba(13,13,17,.97);
-        border: 1px solid #ffffff38;
-        border-radius: 13px;
-        font: bold 13px Arial, sans-serif;
-        box-shadow: 0 8px 30px #0008;
-        z-index: 2147483642;
-        opacity: 0;
-        transition: opacity .25s, transform .25s;
-        pointer-events: none;
-        max-width: 85vw;
-        overflow-wrap: anywhere;
-        text-align: center;
-    }
-
-    @media (max-width: 380px) {
-        #pgFloat {
-            padding: 13px;
-        }
-
-        #pgHead {
-            font-size: 15px;
-            letter-spacing: 1.3px;
-        }
-
-        #pgActions button {
-            min-height: 42px;
-            padding: 9px;
-        }
-    }
-
-    @media (prefers-reduced-motion: reduce) {
-        #pgFloat:before,
-        #pgToggle:before,
-        #pgToggle.pgWorking {
-            animation-duration: 3s;
-        }
-    }
+@media(max-width:360px){
+    #pgFloat{padding:13px}
+    #pgHead{font-size:16px}
+    #pgFloat button:not(#pgEditApi){padding:10px}
+}
 `;
 
 document.head.appendChild(style);
 
-/* PAINEL */
-const gui = document.createElement("div");
-gui.id = "pgFloat";
+/* INTERFACE */
+const gui=document.createElement("div");
+gui.id="pgFloat";
 
-gui.innerHTML = `
+gui.innerHTML=`
     <div id="pgHead">
         <span class="pgStar">✦</span>
         <span>PORTUGA IA</span>
         <span class="pgStar">✦</span>
-        <button id="pgEditApi" type="button"
-            title="Alterar API Key"
-            aria-label="Alterar API Key">✎</button>
+        <button id="pgEditApi" type="button" title="Alterar API Key">✎</button>
     </div>
-
     <div id="pgLine"></div>
-
-    <div id="pgActions">
-        <button id="pgNivel">NÍVEL: MÉDIO</button>
-        <button id="pgGerar">✧ GERAR REDAÇÃO</button>
-    </div>
+    <button id="pgNivel" type="button">NÍVEL: MÉDIO</button>
+    <button id="pgGerar" type="button">✧ GERAR REDAÇÃO</button>
 `;
 
 document.body.appendChild(gui);
 
-/* BOTÃO FLUTUANTE */
-const toggle = document.createElement("button");
-toggle.id = "pgToggle";
-toggle.type = "button";
-toggle.setAttribute("aria-label", "Abrir ou minimizar PORTUGA IA");
-
-toggle.innerHTML = `
-    <img alt="PORTUGA IA" src="${ICONE_PORTUGA}">
-`;
-
+/* ÍCONE FLUTUANTE */
+const toggle=document.createElement("button");
+toggle.id="pgToggle";
+toggle.type="button";
+toggle.setAttribute("aria-label","Abrir ou minimizar PORTUGA IA");
+toggle.innerHTML=`<img src="${ICONE}" alt="">`;
 document.body.appendChild(toggle);
 
-/* NOTIFICAÇÕES */
-const notifyBox = document.createElement("div");
-notifyBox.id = "pgNotify";
+/* NOTIFICAÇÃO */
+const notifyBox=document.createElement("div");
+notifyBox.id="pgNotify";
 document.body.appendChild(notifyBox);
 
-function notify(msg, persist = false){
-    notifyBox.textContent = msg;
-    notifyBox.style.opacity = "1";
-    notifyBox.style.transform = "translate(-50%,0) scale(1)";
-
+function notify(message="Feito!",persist=false){
+    notifyBox.textContent=message;
+    notifyBox.style.opacity="1";
+    notifyBox.style.transform="translateX(-50%) translateY(0)";
     clearTimeout(notifyTimer);
 
     if(!persist){
-        notifyTimer = setTimeout(()=>{
-            notifyBox.style.opacity = "0";
-            notifyBox.style.transform = "translate(-50%,-15px) scale(.97)";
-        }, 2800);
+        notifyTimer=setTimeout(()=>{
+            notifyBox.style.opacity="0";
+            notifyBox.style.transform="translateX(-50%) translateY(-20px)";
+        },2200);
     }
 }
 
-function animarToggle(){
-    toggle.classList.remove("pgPop");
-    void toggle.offsetWidth;
-    toggle.classList.add("pgPop");
+function setBusy(value){
+    busy=value;
+    toggle.classList.toggle("pgWorking",value);
+    $("pgGerar").disabled=value;
 }
 
-function definirMinimizado(valor){
-    minimized = Boolean(valor);
-    gui.classList.toggle("pgMini", minimized);
-
-    if(minimized) animarToggle();
+function setMinimized(value){
+    minimized=value;
+    gui.classList.toggle("pgMini",value);
 }
 
-function definirGeracao(ativa){
-    toggle.classList.toggle("pgWorking", ativa);
-}
+/* NÍVEIS */
+const niveis=["baixo","medio","alto"];
 
-/* ALTERAR API */
-$("pgEditApi").addEventListener("pointerdown", e=>{
-    e.stopPropagation();
-});
+const nomesNivel={
+    baixo:"BAIXO",
+    medio:"MÉDIO",
+    alto:"ALTO"
+};
 
-$("pgEditApi").addEventListener("click", e=>{
-    e.stopPropagation();
+const descNivel={
+    baixo:"Use linguagem simples, frases curtas, vocabulário básico e estrutura direta.",
+    medio:"Use vocabulário intermediário, boa coesão e argumentação equilibrada.",
+    alto:"Use argumentação aprofundada, repertório sociocultural, conectivos variados e excelente coesão."
+};
 
-    const novaChave = prompt(
-        "Alterar API Key\n\nCole sua chave da OpenRouter (sk-or-v1-...) ou da OpenAI (sk-...)."
-    );
+$("pgNivel").onclick=()=>{
+    const i=niveis.indexOf(nivel);
+    nivel=niveis[(i+1)%niveis.length];
+    $("pgNivel").textContent="NÍVEL: "+nomesNivel[nivel];
+    notify("Nível: "+nomesNivel[nivel]);
+};
 
-    if(!novaChave || !novaChave.trim()) return;
+/* API KEY */
+$("pgEditApi").onclick=()=>{
+    const value=prompt("Cole sua chave da OpenRouter (sk-or-v1-...):");
+    if(value&&value.trim()){
+        apiKey=value.trim();
+        notify("API Key atualizada nesta sessão.");
+    }
+};
 
-    apiKey = novaChave.trim();
-    notify("API Key alterada nesta sessão!");
-});
-
-/* NÍVEL */
-$("pgNivel").addEventListener("click", ()=>{
-    nivel = niveis[(niveis.indexOf(nivel) + 1) % niveis.length];
-    $("pgNivel").textContent = "NÍVEL: " + nomesNivel[nivel];
-    notify("Nível selecionado: " + nomesNivel[nivel]);
-});
-
-/* LER CONTEÚDO DA PÁGINA */
+/* LER PÁGINA */
 function lerPagina(){
-    const clone = document.body.cloneNode(true);
+    const clone=document.body.cloneNode(true);
 
     [
-        "#pgFloat",
-        "#pgToggle",
-        "#pgNotify",
-        "script",
-        "style",
-        "noscript"
+        "#pgFloat","#pgToggle","#pgNotify",
+        "script","style","noscript"
     ].forEach(selector=>{
         clone.querySelectorAll(selector).forEach(el=>el.remove());
     });
 
-    return (clone.innerText || "")
-        .replace(/\n{3,}/g, "\n\n")
+    return (clone.innerText||"")
+        .replace(/\n{3,}/g,"\n\n")
         .trim()
-        .slice(0, 30000);
+        .slice(0,30000);
 }
 
-/* ENCONTRAR CAMPO EDITÁVEL */
+/* ACHAR CAMPO */
 function acharCampo(){
-    const seletores = [
+    const preferidos=[
         'textarea[name*="redac" i]',
         'textarea[id*="redac" i]',
+        'textarea[class*="redac" i]',
         'textarea[placeholder*="redac" i]',
-        'textarea[placeholder*="escreva" i]',
         'textarea[placeholder*="digite" i]',
-        'textarea[placeholder*="resposta" i]'
+        'textarea[placeholder*="escreva" i]',
+        'textarea[placeholder*="texto" i]',
+        'textarea[aria-label*="redac" i]',
+        'textarea[aria-label*="resposta" i]'
     ];
 
-    for(const selector of seletores){
+    for(const selector of preferidos){
         try{
-            const el = document.querySelector(selector);
-
-            if(el && el.getClientRects().length &&
-                !el.disabled && !el.readOnly){
+            const el=document.querySelector(selector);
+            if(el&&el.getClientRects().length&&!el.disabled&&!el.readOnly){
                 return el;
             }
-        }catch(_){}
+        }catch(e){}
     }
 
-    const areas = [...document.querySelectorAll("textarea")]
+    const areas=[...document.querySelectorAll("textarea,input")]
         .filter(el=>
-            el.getClientRects().length &&
-            !el.disabled &&
-            !el.readOnly
+            el.getClientRects().length&&
+            !el.disabled&&
+            !el.readOnly&&
+            !["password","hidden","button","submit","checkbox","radio"].includes(el.type)
         );
 
     if(areas.length){
         return areas.sort((a,b)=>
-            b.clientWidth * b.clientHeight -
-            a.clientWidth * a.clientHeight
+            b.clientWidth*b.clientHeight-a.clientWidth*a.clientHeight
         )[0];
     }
 
-    return [...document.querySelectorAll('[contenteditable="true"]')]
-        .find(el=>el.getClientRects().length) || null;
+    const editables=[...document.querySelectorAll('[contenteditable="true"]')]
+        .filter(el=>el.getClientRects().length);
+
+    return editables[0]||null;
 }
 
-/* PREENCHER REDAÇÃO */
-function aplicarTexto(campo, texto){
+/* DESTAQUE DO CAMPO */
+function destacarCampo(campo){
+    const antigo=campo.style.outline;
+    campo.style.outline="3px solid lime";
+    setTimeout(()=>campo.style.outline=antigo,1500);
+}
+
+/* PREENCHER CAMPO */
+function aplicarTexto(campo,texto){
+    if(campo.matches("textarea,input")){
+        const proto=campo.tagName==="TEXTAREA"
+            ?HTMLTextAreaElement.prototype
+            :HTMLInputElement.prototype;
+
+        const setter=Object.getOwnPropertyDescriptor(proto,"value")?.set;
+
+        if(setter){
+            setter.call(campo,texto);
+        }else{
+            campo.value=texto;
+        }
+
+        campo.dispatchEvent(new Event("input",{bubbles:true}));
+        campo.dispatchEvent(new Event("change",{bubbles:true}));
+        return;
+    }
+
     campo.focus();
 
-    if(
-        campo instanceof HTMLTextAreaElement ||
-        campo instanceof HTMLInputElement
-    ){
-        const proto = campo instanceof HTMLTextAreaElement
-            ? HTMLTextAreaElement.prototype
-            : HTMLInputElement.prototype;
-
-        const setter = Object.getOwnPropertyDescriptor(
-            proto,
-            "value"
-        ).set;
-
-        setter.call(campo, texto);
-
-        campo.dispatchEvent(new Event("input", {bubbles:true}));
-        campo.dispatchEvent(new Event("change", {bubbles:true}));
-    }else{
-        campo.replaceChildren();
-
-        texto.split(/\n{2,}/).forEach(paragrafo=>{
-            const p = document.createElement("p");
-            p.textContent = paragrafo;
-            campo.appendChild(p);
-        });
-
-        campo.dispatchEvent(new InputEvent("input", {
-            bubbles:true,
-            inputType:"insertText",
-            data:texto
-        }));
-    }
-}
-
-/* API */
-function identificarProvedor(chave){
-    return /^sk-or-v1-/i.test(chave) ? "openrouter" : "openai";
-}
-
-function erroApi(mensagem, codigo){
-    const erro = new Error(mensagem);
-    erro.codigoApi = codigo;
-    return erro;
-}
-
-async function gerarRedacao(chave, pageText){
-    const provedor = identificarProvedor(chave);
-
-    const endpoint = provedor === "openrouter"
-        ? "https://openrouter.ai/api/v1/chat/completions"
-        : "https://api.openai.com/v1/chat/completions";
-
-    const modelo = provedor === "openrouter"
-        ? "openrouter/auto"
-        : "gpt-4o-mini";
-
-    let response;
+    let inseriu=false;
 
     try{
-        response = await fetch(endpoint, {
-            method:"POST",
-            headers:{
-                "Authorization":"Bearer " + chave,
-                "Content-Type":"application/json",
-                ...(provedor === "openrouter"
-                    ? {"X-OpenRouter-Title":"PORTUGA IA"}
-                    : {})
-            },
-            body:JSON.stringify({
-                model:modelo,
-                messages:[
-                    {
-                        role:"system",
-                        content:
-                            "Você é especialista em redações escolares em português. " +
-                            "Identifique o tema do material e escreva uma redação original, " +
-                            "coerente e adequada ao nível solicitado. " +
-                            descNivel[nivel] +
-                            " Responda apenas com a redação, sem comentários adicionais. " +
-                            "Separe os parágrafos com uma linha em branco."
-                    },
-                    {
-                        role:"user",
-                        content:"Material da atividade:\n\n" + pageText
-                    }
-                ],
-                temperature:0.7,
-                max_tokens:2500
-            })
-        });
-    }catch(_){
-        throw erroApi(
-            "Falha de conexão. Verifique a internet e tente novamente.",
-            "CONEXAO"
-        );
+        const selection=window.getSelection();
+        const range=document.createRange();
+        range.selectNodeContents(campo);
+        selection.removeAllRanges();
+        selection.addRange(range);
+        inseriu=document.execCommand("insertText",false,texto);
+    }catch(e){}
+
+    if(!inseriu){
+        campo.textContent=texto;
     }
 
-    let dados;
-
-    try{
-        dados = await response.json();
-    }catch(_){
-        throw erroApi("A API retornou uma resposta inválida.", "RESPOSTA");
-    }
-
-    if(!response.ok || dados.error){
-        console.error("Erro da API:", dados);
-
-        const erro = dados?.error || {};
-        const mensagem = String(
-            erro.message || dados?.message || "Erro HTTP " + response.status
-        );
-
-        const textoErro =
-            (mensagem + " " + String(erro.code || erro.type || "")).toLowerCase();
-
-        if(
-            response.status === 401 ||
-            /invalid_api_key|incorrect api key|invalid.*key|authentication/i.test(textoErro)
-        ){
-            throw erroApi("A chave da API é inválida ou foi recusada.", "CHAVE_INVALIDA");
-        }
-
-        if(
-            response.status === 402 ||
-            /insufficient_quota|quota.*(exceed|exhaust|insufficient)|billing|credit balance|credits exhausted|payment required|spend limit|monthly limit|out of credits|no credits/i.test(textoErro)
-        ){
-            throw erroApi("O saldo ou a cota dessa API acabou.", "COTA");
-        }
-
-        if(response.status === 429){
-            throw erroApi(
-                "Limite temporário de requisições atingido. Aguarde e tente novamente. " + mensagem,
-                "RATE_LIMIT"
-            );
-        }
-
-        if(/user safety|safety|moderation|content.filter/i.test(mensagem)){
-            throw erroApi(
-                "O provedor ou modelo recusou a solicitação por uma regra de segurança. Detalhe: " + mensagem,
-                "SEGURANCA"
-            );
-        }
-
-        throw erroApi(mensagem, "OUTRO");
-    }
-
-    let texto = dados?.choices?.[0]?.message?.content;
-
-    if(Array.isArray(texto)){
-        texto = texto.map(item=>
-            typeof item === "string" ? item : item?.text || ""
-        ).join("\n");
-    }
-
-    if(typeof texto !== "string" || !texto.trim()){
-        throw erroApi("O modelo não retornou uma redação.", "SEM_TEXTO");
-    }
-
-    return texto
-        .replace(/^```[\w-]*\s*/, "")
-        .replace(/\s*```$/, "")
-        .trim();
-}
-
-async function solicitarChave(motivo){
-    const mensagem = motivo === "COTA"
-        ? "O saldo ou a cota da chave atual acabou."
-        : "A chave atual foi recusada.";
-
-    const entrada = prompt(
-        mensagem +
-        "\n\nCole outra API Key da OpenRouter (sk-or-v1-...) ou da OpenAI (sk-...)."
-    );
-
-    if(!entrada || !entrada.trim()){
-        throw erroApi("Troca de API cancelada.", "CANCELADO");
-    }
-
-    apiKey = entrada.trim();
+    campo.dispatchEvent(new Event("input",{bubbles:true}));
+    campo.dispatchEvent(new Event("change",{bubbles:true}));
 }
 
 /* GERAR REDAÇÃO */
-$("pgGerar").addEventListener("click", async ()=>{
-    if(busy) return;
+$("pgGerar").onclick=async()=>{
+    if(busy)return;
 
-    const campo = acharCampo();
+    if(!apiKey){
+        const value=prompt("Cole sua chave da OpenRouter:");
+        if(!value||!value.trim())return;
+        apiKey=value.trim();
+    }
+
+    const campo=acharCampo();
 
     if(!campo){
         alert("Não encontrei um campo de texto editável nesta página.");
         return;
     }
 
-    const pageText = lerPagina();
+    destacarCampo(campo);
+    setBusy(true);
+    $("pgGerar").textContent="LENDO PÁGINA...";
+    notify("Lendo conteúdo da página...",true);
 
-    if(!pageText){
-        alert("Não consegui ler o conteúdo da página.");
+    try{
+        const pageText=lerPagina();
+
+        if(!pageText){
+            throw new Error("Não consegui ler o conteúdo da página.");
+        }
+
+        $("pgGerar").textContent="GERANDO...";
+        notify("Gerando redação ("+nomesNivel[nivel]+")...",true);
+
+        const response=await fetch(
+            "https://openrouter.ai/api/v1/chat/completions",
+            {
+                method:"POST",
+                headers:{
+                    "Authorization":"Bearer "+apiKey,
+                    "Content-Type":"application/json"
+                },
+                body:JSON.stringify({
+                    model:"openrouter/free",
+                    messages:[
+                        {
+                            role:"system",
+                            content:
+                                "Você é um assistente especializado em produção textual em português. "+
+                                "Analise o conteúdo fornecido para identificar o tema ou a proposta de redação. "+
+                                "Escreva um texto original, coerente, bem estruturado e adequado ao tema. "+
+                                "NÍVEL: "+descNivel[nivel]+" "+
+                                "Retorne somente o texto final, sem comentários sobre o processo. "+
+                                "Separe os parágrafos com uma linha em branco."
+                        },
+                        {
+                            role:"user",
+                            content:
+                                "Conteúdo da página:\n\n"+pageText+
+                                "\n\nProduza uma redação relacionada ao tema identificado."
+                        }
+                    ]
+                })
+            }
+        );
+
+        const data=await response.json();
+
+        if(!response.ok){
+            if(response.status===401||response.status===403){
+                apiKey="";
+            }
+
+            throw new Error(
+                data?.error?.message||"Erro HTTP "+response.status
+            );
+        }
+
+        let texto=data?.choices?.[0]?.message?.content;
+
+        if(Array.isArray(texto)){
+            texto=texto.map(item=>item.text||"").join("\n");
+        }
+
+        if(typeof texto!=="string"||!texto.trim()){
+            throw new Error("A IA não retornou uma redação.");
+        }
+
+        texto=texto
+            .replace(/^```[\w-]*\s*/,"")
+            .replace(/\s*```$/,"")
+            .trim();
+
+        $("pgGerar").textContent="INSERINDO...";
+        notify("Inserindo redação no campo...",true);
+
+        aplicarTexto(campo,texto);
+
+        notify("Redação pronta!");
+    }catch(error){
+        notify("Não foi possível gerar a redação.");
+        alert("Erro ao gerar redação:\n\n"+(error.message||error));
+    }finally{
+        setBusy(false);
+        $("pgGerar").textContent="✧ GERAR REDAÇÃO";
+    }
+};
+
+/* MINIMIZAR / RESTAURAR */
+toggle.addEventListener("click",()=>{
+    if(toggleMoved){
+        toggleMoved=false;
         return;
     }
 
-    if(!apiKey){
-        const entrada = prompt(
-            "Cole sua API Key da OpenRouter ou da OpenAI:"
-        );
-
-        if(!entrada || !entrada.trim()) return;
-
-        apiKey = entrada.trim();
-    }
-
-    busy = true;
-
-    const btn = $("pgGerar");
-    btn.disabled = true;
-    btn.textContent = "GERANDO REDAÇÃO...";
-    definirGeracao(true);
-    notify("A IA está preparando sua redação...", true);
-
-    try{
-        let texto;
-        let tentativas = 0;
-
-        while(true){
-            try{
-                texto = await gerarRedacao(apiKey, pageText);
-                break;
-            }catch(erro){
-                const podeTrocar =
-                    erro.codigoApi === "COTA" ||
-                    erro.codigoApi === "CHAVE_INVALIDA";
-
-                if(!podeTrocar || tentativas >= 2) throw erro;
-
-                tentativas++;
-
-                notify("É necessário trocar a API Key.", true);
-                await solicitarChave(erro.codigoApi);
-
-                notify("Nova chave inserida. Tentando novamente...", true);
-            }
-        }
-
-        btn.textContent = "PREENCHENDO...";
-        aplicarTexto(campo, texto);
-        notify("Redação gerada e preenchida com sucesso!");
-    }catch(erro){
-        console.error("[PORTUGA IA]", erro);
-
-        if(erro.codigoApi === "CANCELADO"){
-            notify("Troca de API cancelada.");
-        }else{
-            notify("Não foi possível gerar a redação.");
-
-            alert(
-                "Erro ao gerar redação:\n\n" +
-                (erro?.message || "Erro desconhecido") +
-                "\n\nConfira a chave, a cota e o modelo."
-            );
-        }
-    }finally{
-        busy = false;
-        btn.disabled = false;
-        btn.textContent = "✧ GERAR REDAÇÃO";
-        definirGeracao(false);
-    }
+    setMinimized(!minimized);
 });
 
-/* ARRASTAR O BOTÃO FLUTUANTE */
-toggle.addEventListener("pointerdown", e=>{
-    if(e.button !== undefined && e.button !== 0) return;
-
-    togglePointer = {
-        id:e.pointerId,
-        x:e.clientX,
-        y:e.clientY,
-        left:toggle.getBoundingClientRect().left,
-        top:toggle.getBoundingClientRect().top,
-        moved:false
-    };
-
-    try{
-        toggle.setPointerCapture(e.pointerId);
-    }catch(_){}
-
-    e.preventDefault();
-});
-
-toggle.addEventListener("pointermove", e=>{
-    if(!togglePointer || togglePointer.id !== e.pointerId) return;
-
-    const dx = e.clientX - togglePointer.x;
-    const dy = e.clientY - togglePointer.y;
-
-    if(Math.abs(dx) > 5 || Math.abs(dy) > 5){
-        togglePointer.moved = true;
-    }
-
-    if(!togglePointer.moved) return;
-
-    const left = Math.max(
-        4,
-        Math.min(
-            window.innerWidth - toggle.offsetWidth - 4,
-            togglePointer.left + dx
-        )
-    );
-
-    const top = Math.max(
-        4,
-        Math.min(
-            window.innerHeight - toggle.offsetHeight - 4,
-            togglePointer.top + dy
-        )
-    );
-
-    toggle.style.left = left + "px";
-    toggle.style.top = top + "px";
-    toggle.style.right = "auto";
-    toggle.style.bottom = "auto";
-});
-
-toggle.addEventListener("pointerup", e=>{
-    if(!togglePointer || togglePointer.id !== e.pointerId) return;
-
-    const arrastou = togglePointer.moved;
-    togglePointer = null;
-
-    if(!arrastou) definirMinimizado(!minimized);
-});
-
-toggle.addEventListener("pointercancel", ()=>{
-    togglePointer = null;
-});
-
-/* ARRASTAR O PAINEL PELO TÍTULO */
-const head = $("pgHead");
-
-head.addEventListener("pointerdown", e=>{
-    if(e.button !== undefined && e.button !== 0) return;
-    if(e.target.closest("#pgEditApi")) return;
-
-    const rect = gui.getBoundingClientRect();
-
-    panelDrag = {
-        id:e.pointerId,
-        x:e.clientX,
-        y:e.clientY,
-        left:rect.left,
-        top:rect.top
-    };
-
-    gui.style.left = rect.left + "px";
-    gui.style.top = rect.top + "px";
-    gui.style.transform = "none";
-
-    try{
-        head.setPointerCapture(e.pointerId);
-    }catch(_){}
-
-    e.preventDefault();
-});
-
-head.addEventListener("pointermove", e=>{
-    if(!panelDrag || panelDrag.id !== e.pointerId) return;
-
-    const dx = e.clientX - panelDrag.x;
-    const dy = e.clientY - panelDrag.y;
-
-    gui.style.left = Math.max(
-        4,
-        Math.min(
-            window.innerWidth - gui.offsetWidth - 4,
-            panelDrag.left + dx
-        )
-    ) + "px";
-
-    gui.style.top = Math.max(
-        4,
-        Math.min(
-            window.innerHeight - gui.offsetHeight - 4,
-            panelDrag.top + dy
-        )
-    ) + "px";
-});
-
-function pararArrastePainel(){
-    panelDrag = null;
+/* ARRASTAR ÍCONE - PC E CELULAR */
+function startToggleDrag(x,y){
+    toggleDragging=true;
+    toggleMoved=false;
+    toggleStartX=x;
+    toggleStartY=y;
+    toggleOffsetX=x-toggle.getBoundingClientRect().left;
+    toggleOffsetY=y-toggle.getBoundingClientRect().top;
 }
 
-head.addEventListener("pointerup", pararArrastePainel);
-head.addEventListener("pointercancel", pararArrastePainel);
+function moveToggleDrag(x,y){
+    if(!toggleDragging)return;
 
-/* AJUSTE PARA MUDANÇAS NA TELA */
-window.addEventListener("resize", ()=>{
-    const limitar = elemento=>{
-        const rect = elemento.getBoundingClientRect();
-
-        elemento.style.left = Math.max(
-            4,
-            Math.min(window.innerWidth - rect.width - 4, rect.left)
-        ) + "px";
-
-        elemento.style.top = Math.max(
-            4,
-            Math.min(window.innerHeight - rect.height - 4, rect.top)
-        ) + "px";
-    };
-
-    if(gui.style.transform === "none") limitar(gui);
-    if(toggle.style.left) limitar(toggle);
-});
-
-/* ATALHOS */
-document.addEventListener("keydown", e=>{
-    if(e.key === "Escape"){
-        definirMinimizado(!minimized);
+    if(Math.abs(x-toggleStartX)>5||Math.abs(y-toggleStartY)>5){
+        toggleMoved=true;
     }
 
-    if(e.key === "Alt" && !e.repeat){
-        hidden = !hidden;
-        gui.style.display = hidden ? "none" : "";
-        toggle.style.display = hidden ? "none" : "";
-        notifyBox.style.display = hidden ? "none" : "";
+    if(!toggleMoved)return;
+
+    const width=toggle.offsetWidth;
+    const height=toggle.offsetHeight;
+
+    toggle.style.left=Math.max(0,Math.min(innerWidth-width,x-toggleOffsetX))+"px";
+    toggle.style.top=Math.max(0,Math.min(innerHeight-height,y-toggleOffsetY))+"px";
+    toggle.style.right="auto";
+    toggle.style.bottom="auto";
+}
+
+function endToggleDrag(){
+    toggleDragging=false;
+    if(toggleMoved){
+        setTimeout(()=>{toggleMoved=false;},80);
+    }
+}
+
+toggle.addEventListener("pointerdown",event=>{
+    startToggleDrag(event.clientX,event.clientY);
+    try{toggle.setPointerCapture(event.pointerId);}catch(e){}
+});
+
+toggle.addEventListener("pointermove",event=>{
+    moveToggleDrag(event.clientX,event.clientY);
+});
+
+toggle.addEventListener("pointerup",endToggleDrag);
+toggle.addEventListener("pointercancel",endToggleDrag);
+
+/* ARRASTAR PAINEL PELO TÍTULO */
+const head=$("pgHead");
+
+head.addEventListener("pointerdown",event=>{
+    if(event.target.closest("button"))return;
+
+    panelDragging=true;
+    panelMoved=false;
+
+    const rect=gui.getBoundingClientRect();
+
+    panelOffsetX=event.clientX-rect.left;
+    panelOffsetY=event.clientY-rect.top;
+
+    try{head.setPointerCapture(event.pointerId);}catch(e){}
+});
+
+head.addEventListener("pointermove",event=>{
+    if(!panelDragging)return;
+
+    panelMoved=true;
+
+    const width=gui.offsetWidth;
+    const height=gui.offsetHeight;
+
+    const x=Math.max(0,Math.min(innerWidth-width,event.clientX-panelOffsetX));
+    const y=Math.max(0,Math.min(innerHeight-height,event.clientY-panelOffsetY));
+
+    gui.style.left=x+"px";
+    gui.style.top=y+"px";
+    gui.style.transform="none";
+});
+
+function endPanelDrag(){
+    panelDragging=false;
+}
+
+head.addEventListener("pointerup",endPanelDrag);
+head.addEventListener("pointercancel",endPanelDrag);
+
+/* OCULTAR / MOSTRAR */
+function toggleHiddenMode(){
+    hidden=!hidden;
+
+    gui.style.display=hidden?"none":"";
+    toggle.style.display=hidden?"none":"";
+    notifyBox.style.display=hidden?"none":"";
+}
+
+document.addEventListener("keydown",event=>{
+    if(event.key==="Escape"){
+        setMinimized(!minimized);
+    }
+
+    if(event.key==="Alt"){
+        toggleHiddenMode();
     }
 });
 
-document.addEventListener("mousedown", e=>{
-    if(e.button !== 1) return;
-
-    e.preventDefault();
-
-    hidden = !hidden;
-    gui.style.display = hidden ? "none" : "";
-    toggle.style.display = hidden ? "none" : "";
-    notifyBox.style.display = hidden ? "none" : "";
+document.addEventListener("mousedown",event=>{
+    if(event.button===1){
+        event.preventDefault();
+        toggleHiddenMode();
+    }
 });
 
-notify("PORTUGA IA iniciada!");
+window.addEventListener("resize",()=>{
+    const rect=gui.getBoundingClientRect();
+
+    if(rect.right>innerWidth){
+        gui.style.left=Math.max(0,innerWidth-gui.offsetWidth)+"px";
+        gui.style.transform="none";
+    }
+
+    if(rect.bottom>innerHeight){
+        gui.style.top=Math.max(0,innerHeight-gui.offsetHeight)+"px";
+    }
+});
+
+notify("PORTUGA IA carregada!");
 
 })();
