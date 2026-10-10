@@ -629,7 +629,6 @@
             }
         }
 
-        // Ordena por posição na tela
         const sortByPos = arr => arr.sort((a, b) => {
             const ra = a.element.getBoundingClientRect();
             const rb = b.element.getBoundingClientRect();
@@ -676,12 +675,10 @@
         if (!prompt) return { ok: false, motivo: "Prompt não encontrado: " + promptText.slice(0, 40) };
         if (!tile) return { ok: false, motivo: "Região não encontrada: " + tileText.slice(0, 40) };
 
-        // Estratégia 1: pointer drag do prompt até o tile
         await pointerDrag(prompt.element, tile.element);
         await wait(300);
         if (isMatchFilled(prompt.element)) return { ok: true };
 
-        // Estratégia 2: clique no prompt, clique no tile
         const ok1 = await clickEl(prompt.element);
         if (ok1) {
             await wait(250);
@@ -689,12 +686,10 @@
             if (ok2) {
                 await wait(450);
                 if (isMatchFilled(prompt.element)) return { ok: true };
-                // mesmo sem classe confiável, considerar sucesso se o tile ficou "ocupado"
                 return { ok: true };
             }
         }
 
-        // Estratégia 3: HTML5 drag
         try {
             const dt = new DataTransfer();
             const opts = { bubbles: true, cancelable: true, dataTransfer: dt };
@@ -1165,8 +1160,8 @@ Regras:
 - Se não houver dados, escreva "INDETERMINADO".
 `;
         } else if (type === "match" && match) {
-            const pLines = match.prompts.map((p, i) => `PROMPT ${i + 1}: ${p.text}`).join("\n");
-            const tLines = match.tiles.map((t, i) => `REGIAO ${i + 1}: ${t.text}`).join("\n");
+            const pLines = match.prompts.map((p, i) => `PROMPT ${i + 1}: ${p.texto}`).join("\n");
+            const tLines = match.regioes.map((t, i) => `REGIAO ${i + 1}: ${t.texto}`).join("\n");
 
             extra_instructions = `
 ATENCAO: a pagina tem uma questao de ASSOCIACAO (match).
