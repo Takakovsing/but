@@ -23,7 +23,9 @@
     let hidden = false;
     let notifyTimer;
     let report = null;
-    let lastFields = [];
+    let lastFields = [];   // dropdowns detectados
+    let lastChoices = [];  // alternativas clicáveis detectadas
+    let lastType = "";     // "dropdown" | "choices" | ""
     let autoApply = true;
 
     const store = {
@@ -50,7 +52,7 @@
     }
     favicon.href = ICONE;
 
-    /* ============ CSS PREMIUM ============ */
+    /* ===================== CSS ===================== */
 
     const style = document.createElement("style");
     style.textContent = `
@@ -108,7 +110,7 @@
     `;
     document.head.appendChild(style);
 
-    /* ============ HTML DO PAINEL ============ */
+    /* ===================== HTML ===================== */
 
     const gui = document.createElement("div");
     gui.id = "pgFloat";
@@ -125,8 +127,8 @@
 <span class="pgLabel">ORIENTAÇÃO EXTRA (OPCIONAL)</span>
 <textarea id="pgQuestion" placeholder="Ex.: explique os conceitos envolvidos na pergunta..."></textarea>
 <button id="pgGo" class="pgAction" type="button">✦ LER E PERGUNTAR À IA</button>
-<span class="pgLabel">CAMPOS "SELECIONE A RESPOSTA"</span>
-<div id="pgFields"><div class="pgHint">Clique em LER E PERGUNTAR À IA para detectar os campos.</div></div>
+<span class="pgLabel">CAMPOS DETECTADOS</span>
+<div id="pgFields"><div class="pgHint">Clique em LER E PERGUNTAR À IA para detectar.</div></div>
 <span class="pgLabel">RESULTADO</span>
 <textarea id="pgAnswer" placeholder="A leitura e a análise aparecerão aqui..." readonly></textarea>
 <button id="pgCopy" class="pgAction" type="button">COPIAR RESULTADO</button>
@@ -146,7 +148,7 @@
     notifyBox.id = "pgNotify";
     document.body.appendChild(notifyBox);
 
-    /* ============ NOTIFICAÇÕES ============ */
+    /* ===================== NOTIFICAÇÕES ===================== */
 
     function notify(message, ms = 2300) {
         notifyBox.textContent = message;
@@ -172,11 +174,7 @@
         gui.classList.toggle("pgMini", value);
     }
 
-    const modeNames = {
-        vf: "Verdadeiro ou Falso",
-        alternativa: "Alternativa",
-        multi: "Multisseleção"
-    };
+    const modeNames = { vf: "Verdadeiro ou Falso", alternativa: "Alternativa", multi: "Multisseleção" };
 
     document.querySelectorAll("#pgModes .pgMode").forEach(button => {
         button.addEventListener("click", () => {
@@ -207,7 +205,7 @@
         }
     };
 
-    /* ============ UTILITÁRIOS ============ */
+    /* ===================== UTILITÁRIOS ===================== */
 
     function clean(v) { return (v || "").replace(/\s+/g, " ").trim(); }
 
@@ -229,13 +227,28 @@
             .replace(/\n{3,}/g, "\n\n").trim().slice(0, 30000);
     }
 
-    /* ============ DETECÇÃO DOS DROPDOWNS ============ */
+    async function clickEl(el) {
+        if (!el) return false;
+        try {
+            el.scrollIntoView({ block: "center", behavior: "instant" });
+            await wait(60);
+            el.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+            el.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
+            el.dispatchEvent(new MouseEvent("mouseup", { bubbles: true }));
+            el.dispatchEvent(new PointerEvent("pointerup", { bubbles: true }));
+            el.click();
+            return true;
+        } catch {
+            return false;
+        }
+    }
+
+    /* ===================== DETECÇÃO DE DROPDOWNS ===================== */
 
     function getDropdowns() {
         const results = [];
         const seen = new Set();
 
-        // Seletor específico do Wayground (testado no DOM real)
         const primary = [
             ...document.querySelectorAll('button.options-dropdown'),
             ...document.querySelectorAll('[data-cy^="dropdown-"]')
@@ -249,12 +262,10 @@
             results.push(el);
         }
 
-        // Fallbacks genéricos (caso o site mude)
         if (results.length === 0) {
             const fallbacks = [
                 ...document.querySelectorAll('[role="combobox"]'),
-                ...document.querySelectorAll('[aria-haspopup="listbox"]'),
-                ...document.querySelectorAll("select")
+                ...document.querySelectorAll('[aria-haspopup="listbox"]')
             ];
             for (const el of fallbacks) {
                 if (!el || seen.has(el)) continue;
@@ -265,7 +276,6 @@
             }
         }
 
-        // Ordena por posição na tela (topo → base)
         results.sort((a, b) => {
             const ra = a.getBoundingClientRect();
             const rb = b.getBoundingClientRect();
@@ -276,12 +286,8 @@
         return results;
     }
 
-    /* ============ LEITURA DAS OPÇÕES DE UM DROPDOWN ============ */
-
     function findOptionsFor(btn) {
         if (!btn) return [];
-
-        // Estratégia principal: popper apontado por aria-describedby
         const describedBy = btn.getAttribute("aria-describedby");
         if (describedBy) {
             const popper = document.getElementById(describedBy);
@@ -294,7 +300,6 @@
                         element: el
                     })).filter(o => o.text);
                 }
-                // fallback: qualquer botão com texto curto dentro do popper
                 const anyBtn = [...popper.querySelectorAll("button")]
                     .filter(isVisible)
                     .map(el => ({ text: clean(el.innerText || el.textContent), element: el }))
@@ -302,8 +307,6 @@
                 if (anyBtn.length) return anyBtn;
             }
         }
-
-        // Fallback global: qualquer .dropdown-option visível
         return [...document.querySelectorAll("button.dropdown-option, [role='option']")]
             .filter(isVisible)
             .map(el => ({ text: clean(el.innerText || el.textContent), element: el }))
@@ -336,35 +339,15 @@
         });
     }
 
-    async function clickEl(el) {
-        if (!el) return false;
-        try {
-            el.scrollIntoView({ block: "center", behavior: "instant" });
-            await wait(60);
-            el.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
-            el.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
-            el.dispatchEvent(new MouseEvent("mouseup", { bubbles: true }));
-            el.dispatchEvent(new PointerEvent("pointerup", { bubbles: true }));
-            el.click();
-            return true;
-        } catch {
-            return false;
-        }
-    }
-
     async function scanDropdowns() {
-        // Fecha qualquer popper pendente antes de começar
         document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
         await wait(300);
 
         const buttons = getDropdowns();
-        if (buttons.length === 0) {
-            return { aviso: 'Nenhum dropdown "Selecione a resposta" encontrado.', campos: [] };
-        }
+        if (buttons.length === 0) return [];
 
         const fields = [];
         for (let i = 0; i < buttons.length; i++) {
-            // Re-scan a cada iteração para pegar referências frescas
             const fresh = getDropdowns();
             const btn = fresh[i];
             if (!btn || !isVisible(btn)) continue;
@@ -398,7 +381,6 @@
                 erro: options.length === 0 ? "Nenhuma opção detectada." : ""
             });
 
-            // Fecha o popper antes de ir pro próximo
             document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
             await waitForClose(btn, 1000);
             await wait(120);
@@ -406,7 +388,123 @@
         return fields;
     }
 
-    /* ============ MATCH ============ */
+    /* ===================== DETECÇÃO DE ALTERNATIVAS CLICÁVEIS ===================== */
+
+    function getChoices() {
+        // Estratégia 1: seletores específicos (Wayground/Quizizz)
+        const specificSelectors = [
+            '[data-cy*="answer-option"]',
+            '[data-cy*="option-container"]',
+            '[data-cy*="optionContent"]',
+            '[data-cy*="option"]',
+            '[class*="AnswerOption"]',
+            '[class*="answer-option"]',
+            '[class*="option-container"]',
+            '[role="radio"]',
+            '[role="checkbox"]'
+        ];
+
+        for (const sel of specificSelectors) {
+            let list;
+            try { list = document.querySelectorAll(sel); } catch { continue; }
+            const items = [];
+            const seen = new Set();
+            for (const el of list) {
+                if (!el || seen.has(el)) continue;
+                if (el.closest("#pgFloat")) continue;
+                if (!isVisible(el)) continue;
+                if (el.matches("button.options-dropdown, [data-cy^='dropdown-']")) continue;
+
+                const text = clean(el.innerText || el.textContent);
+                if (!text || text.length > 500) continue;
+                // Filtra UI (não é alternativa)
+                if (/^(enviar|submit|undo|menu|bars|bônus|bonus)/i.test(text)) continue;
+                if (/^\d+$/.test(text)) continue; // só número
+
+                seen.add(el);
+                items.push({ element: el, text });
+            }
+            const deduped = dedupeChoices(items);
+            if (deduped.length >= 2) return deduped;
+        }
+
+        // Estratégia 2: botões com texto começando com "A)", "B)", etc.
+        const letterRe = /^\s*([A-Ea-e])\s*[\.\)\-:]\s*(.+)$/;
+        const lettered = [];
+        const seen = new Set();
+        for (const el of document.querySelectorAll('button, [role="button"], [role="radio"], [role="checkbox"]')) {
+            if (seen.has(el)) continue;
+            if (el.closest("#pgFloat")) continue;
+            if (!isVisible(el)) continue;
+            const text = clean(el.innerText || el.textContent);
+            if (!text || text.length > 500) continue;
+            if (!letterRe.test(text)) continue;
+            seen.add(el);
+            lettered.push({ element: el, text });
+        }
+        const dedupedLettered = dedupeChoices(lettered);
+        if (dedupedLettered.length >= 2) return dedupedLettered;
+
+        // Estratégia 3: grupo de botões irmãos dentro de um container de questão
+        const groups = new Map();
+        for (const btn of document.querySelectorAll('button, [role="button"]')) {
+            if (btn.closest("#pgFloat")) continue;
+            if (!isVisible(btn)) continue;
+            const text = clean(btn.innerText || btn.textContent);
+            if (!text || text.length > 300) continue;
+            if (btn.matches("button.options-dropdown, [data-cy^='dropdown-']")) continue;
+            if (/^(enviar|submit|undo|menu|bars|bônus|bonus)/i.test(text)) continue;
+
+            const parent = btn.parentElement;
+            if (!parent) continue;
+            if (!groups.has(parent)) groups.set(parent, []);
+            groups.get(parent).push({ element: btn, text });
+        }
+
+        // Escolhe o maior grupo com 2-6 botões com textos distintos
+        let best = [];
+        for (const [, items] of groups) {
+            const texts = new Set(items.map(i => i.text));
+            if (items.length >= 2 && items.length <= 6 && texts.size === items.length) {
+                if (items.length > best.length) best = items;
+            }
+        }
+        if (best.length >= 2) return dedupeChoices(best);
+
+        return [];
+    }
+
+    function dedupeChoices(items) {
+        if (!items.length) return items;
+
+        // Remove wrappers que contenham outro item com o mesmo texto
+        const filtered = items.filter(item =>
+            !items.some(other =>
+                other !== item && item.element.contains(other.element) &&
+                clean(other.text) === clean(item.text)
+            )
+        );
+
+        // Dedup por texto normalizado
+        const byText = new Map();
+        for (const it of filtered) {
+            const k = it.text.toLowerCase();
+            if (!byText.has(k)) byText.set(k, it);
+        }
+        const out = [...byText.values()];
+
+        // Ordena por posição (topo → base, esquerda → direita)
+        out.sort((a, b) => {
+            const ra = a.element.getBoundingClientRect();
+            const rb = b.element.getBoundingClientRect();
+            if (Math.abs(ra.top - rb.top) > 8) return ra.top - rb.top;
+            return ra.left - rb.left;
+        });
+
+        return out;
+    }
+
+    /* ===================== MATCH ===================== */
 
     function extractLetter(v) {
         const s = clean(v);
@@ -481,47 +579,45 @@
             .map(n => ({ n, text: map[n] }));
     }
 
-    /* ============ PROMPT PARA A IA ============ */
+    /* ===================== PROMPT ===================== */
 
     function buildPrompt(data, extra) {
-        const fields = (data && data.menus) || [];
-        const hasFields = fields.length > 0;
+        const type = data.tipoQuestao;
+        const fields = data.menus || [];
+        const choices = data.alternativas || [];
 
         const instructions = {
-            vf: `
-Analise cada afirmação separadamente.
-Organize na ordem em que aparecem: número, sugestão (Verdadeira/Falsa/Indeterminada)
-e uma justificativa curta.
-`,
-            alternativa: `
-Identifique a pergunta e as alternativas.
-Responda com a LETRA e o TEXTO da alternativa correta.
-Exemplo: "B) Falso".
-`,
-            multi: `
-Analise cada opção uma por uma. Diga quais devem ser marcadas.
-Use a LETRA e o TEXTO de cada opção que deve ser assinalada.
-`
+            vf: `\nAnalise cada afirmação separadamente.\nOrganize na ordem em que aparecem: número, sugestão (Verdadeira/Falsa/Indeterminada)\ne uma justificativa curta.\n`,
+            alternativa: `\nIdentifique a alternativa CORRETA.\nResponda com a LETRA e o TEXTO exato. Ex.: "B) Falso".\n`,
+            multi: `\nAnalise as alternativas e diga quais devem ser assinaladas.\nUse a LETRA e o TEXTO de cada uma.\n`
         };
 
-        let fieldInstructions = "";
-        if (hasFields) {
-            fieldInstructions = `
-ATENÇÃO: a página possui ${fields.length} campo(s) "Selecione a resposta".
-Você DEVE responder CADA CAMPO, na ordem em que aparecem.
+        let extra_instructions = "";
 
-FORMATO OBRIGATÓRIO DA PRIMEIRA PARTE (sem texto adicional):
+        if (type === "dropdown" && fields.length > 0) {
+            extra_instructions = `
+ATENÇÃO: a página tem ${fields.length} dropdown(s) "Selecione a resposta".
+Você DEVE responder CADA CAMPO, na ordem.
+
+FORMATO OBRIGATÓRIO (sem texto adicional):
 1. <texto exato de uma das opções do CAMPO 1>
 2. <texto exato de uma das opções do CAMPO 2>
 ...
 
 Regras:
-- Uma linha por campo, no formato "<número>. <texto>".
-- O texto precisa ser copiado LITERALMENTE de "opcoesDetectadas" do campo correspondente.
+- Uma linha por campo, formato "<número>. <texto>".
+- O texto deve ser copiado LITERALMENTE de "opcoesDetectadas".
 - Se não houver dados, escreva "INDETERMINADO".
-- Não escreva "Campo 1", "Resposta" nem aspas.
-
-Depois, se quiser, uma seção "EXPLICAÇÃO:" (não usada para preencher).
+- Sem aspas, sem "Campo N", sem "Resposta".
+`;
+        } else if (type === "choices" && choices.length > 0) {
+            extra_instructions = `
+ATENÇÃO: a página tem ${choices.length} alternativa(s) clicável(is).
+Você DEVE responder com LETRA e TEXTO EXATO da(s) alternativa(s) correta(s).
+${modo === "multi" ? "Se houver mais de uma correta, responda em linhas numeradas:\n1. A) <texto>\n2. C) <texto>\n" : "Responda em UMA linha: LETRA) TEXTO. Ex.: \"B) Falso\".\n"}
+- O texto deve ser copiado LITERALMENTE de "alternativas".
+- Sem explicações na primeira parte.
+- Se quiser, uma seção "EXPLICAÇÃO:" no final (não usada para preencher).
 `;
         }
 
@@ -538,86 +634,133 @@ ${instructions[modo]}
 
 ORIENTAÇÃO EXTRA:
 ${extra || "Nenhuma."}
-${fieldInstructions}
+${extra_instructions}
 CONTEÚDO CAPTURADO (JSON):
 ${JSON.stringify(data, null, 2)}
 `;
     }
 
-    /* ============ RENDER DOS CAMPOS ============ */
+    /* ===================== RENDER DOS CAMPOS NA UI ===================== */
 
-    function renderFields(fields) {
+    function renderFields() {
         const container = $("pgFields");
         if (!container) return;
         container.innerHTML = "";
-        lastFields = Array.isArray(fields) ? fields : [];
 
-        if (!lastFields.length) {
-            const hint = document.createElement("div");
-            hint.className = "pgHint";
-            hint.textContent = 'Nenhum campo "Selecione a resposta" detectado nesta página.';
-            container.appendChild(hint);
+        if (lastType === "dropdown" && lastFields.length > 0) {
+            const parsed = parseNumberedAnswers($("pgAnswer").value);
+            const byNumber = {};
+            parsed.forEach(item => { byNumber[item.n] = item.text; });
+
+            lastFields.forEach(field => {
+                const suggestion = byNumber[field.campo] || "";
+                const matched = matchOption(suggestion, field.opcoesDetectadas);
+
+                const row = document.createElement("div");
+                row.className = "pgField";
+
+                const title = document.createElement("div");
+                title.className = "pgFieldTitle";
+                title.textContent = `CAMPO ${field.campo}`;
+
+                const sug = document.createElement("div");
+                sug.className = "pgFieldSug";
+                sug.textContent = suggestion || "(sem sugestão da IA)";
+
+                const matchLine = document.createElement("div");
+                matchLine.className = "pgFieldMatch";
+                if (field.erro && (!field.opcoesDetectadas || field.opcoesDetectadas.length === 0)) {
+                    matchLine.textContent = "⚠ " + field.erro;
+                } else if (matched) {
+                    matchLine.classList.add("pgOk");
+                    matchLine.textContent = "✓ Corresponde: " + matched;
+                } else if (suggestion) {
+                    matchLine.classList.add("pgBad");
+                    matchLine.textContent = "✗ Sem correspondência exata.";
+                } else {
+                    matchLine.textContent = "Opções: " +
+                        (field.opcoesDetectadas.slice(0, 4).join(" | ") || "(nenhuma)") +
+                        (field.opcoesDetectadas.length > 4 ? " ..." : "");
+                }
+
+                const btn = document.createElement("button");
+                btn.type = "button";
+                btn.className = "pgApply";
+                btn.textContent = "APLICAR ESTA OPÇÃO";
+                btn.disabled = !matched;
+
+                btn.addEventListener("click", async () => {
+                    if (!matched) return;
+                    btn.disabled = true;
+                    const oldText = btn.textContent;
+                    btn.textContent = "APLICANDO...";
+                    const result = await applyFieldAnswer(field, matched);
+                    if (result.ok) {
+                        btn.textContent = "✓ APLICADO";
+                        btn.classList.add("pgDone");
+                        notify("Campo " + field.campo + " preenchido.");
+                    } else {
+                        btn.textContent = oldText;
+                        btn.disabled = false;
+                        matchLine.classList.remove("pgOk");
+                        matchLine.classList.add("pgBad");
+                        matchLine.textContent = "✗ " + (result.motivo || "Falha ao aplicar.");
+                        notify("Falha no campo " + field.campo + ".", 2600);
+                    }
+                });
+
+                row.appendChild(title);
+                row.appendChild(sug);
+                row.appendChild(matchLine);
+                row.appendChild(btn);
+                container.appendChild(row);
+            });
             return;
         }
 
-        const parsed = parseNumberedAnswers($("pgAnswer").value);
-        const byNumber = {};
-        parsed.forEach(item => { byNumber[item.n] = item.text; });
-
-        lastFields.forEach(field => {
-            const suggestion = byNumber[field.campo] || "";
-            const matched = matchOption(suggestion, field.opcoesDetectadas);
+        if (lastType === "choices" && lastChoices.length > 0) {
+            const parsed = parseNumberedAnswers($("pgAnswer").value);
+            const answer = parsed.length > 0
+                ? parsed.map(p => p.text).join(" ")
+                : $("pgAnswer").value;
 
             const row = document.createElement("div");
             row.className = "pgField";
 
             const title = document.createElement("div");
             title.className = "pgFieldTitle";
-            title.textContent = `CAMPO ${field.campo}`;
+            title.textContent = `${lastChoices.length} ALTERNATIVAS DETECTADAS`;
 
             const sug = document.createElement("div");
             sug.className = "pgFieldSug";
-            sug.textContent = suggestion || "(sem sugestão da IA para este campo)";
+            sug.textContent = "IA: " + (parsed[0]?.text || $("pgAnswer").value.slice(0, 120) || "(vazio)");
 
             const matchLine = document.createElement("div");
             matchLine.className = "pgFieldMatch";
-            if (field.erro && (!field.opcoesDetectadas || field.opcoesDetectadas.length === 0)) {
-                matchLine.textContent = "⚠ " + field.erro;
-            } else if (matched) {
+            const matched = matchOption(parsed[0]?.text || "", lastChoices.map(c => c.text));
+            if (matched) {
                 matchLine.classList.add("pgOk");
-                matchLine.textContent = "✓ Corresponde: " + matched;
-            } else if (suggestion) {
-                matchLine.classList.add("pgBad");
-                matchLine.textContent = "✗ Sem correspondência exata.";
+                matchLine.textContent = "✓ Vai clicar em: " + matched;
             } else {
-                matchLine.textContent = "Opções: " +
-                    (field.opcoesDetectadas.slice(0, 4).join(" | ") || "(nenhuma)") +
-                    (field.opcoesDetectadas.length > 4 ? " ..." : "");
+                matchLine.classList.add("pgBad");
+                matchLine.textContent = "✗ Sem correspondência. Opções: " +
+                    lastChoices.map(c => c.text.slice(0, 25)).join(" | ");
             }
 
             const btn = document.createElement("button");
             btn.type = "button";
             btn.className = "pgApply";
-            btn.textContent = "APLICAR ESTA OPÇÃO";
+            btn.textContent = "CLICAR NA RESPOSTA";
             btn.disabled = !matched;
 
             btn.addEventListener("click", async () => {
-                if (!matched) return;
-                btn.disabled = true;
-                const oldText = btn.textContent;
-                btn.textContent = "APLICANDO...";
-                const result = await applyFieldAnswer(field, matched);
-                if (result.ok) {
+                const r = await applyChoiceAnswer();
+                if (r.ok) {
                     btn.textContent = "✓ APLICADO";
                     btn.classList.add("pgDone");
-                    notify("Campo " + field.campo + " preenchido.");
+                    notify("Alternativa marcada.");
                 } else {
-                    btn.textContent = oldText;
-                    btn.disabled = false;
-                    matchLine.classList.remove("pgOk");
-                    matchLine.classList.add("pgBad");
-                    matchLine.textContent = "✗ " + (result.motivo || "Falha ao aplicar.");
-                    notify("Falha no campo " + field.campo + ".", 2600);
+                    notify("Falha: " + (r.motivo || "erro"), 2600);
                 }
             });
 
@@ -626,22 +769,25 @@ ${JSON.stringify(data, null, 2)}
             row.appendChild(matchLine);
             row.appendChild(btn);
             container.appendChild(row);
-        });
+            return;
+        }
+
+        const hint = document.createElement("div");
+        hint.className = "pgHint";
+        hint.textContent = "Nenhum campo/dropdown/alternativa detectado nesta página.";
+        container.appendChild(hint);
     }
 
-    /* ============ APLICAR EM UM DROPDOWN ============ */
+    /* ===================== APLICAR EM DROPDOWN ===================== */
 
     async function applyFieldAnswer(field, targetText) {
         if (!targetText) return { ok: false, motivo: "Sem texto para aplicar." };
 
-        // Localiza o botão: primeiro pelo data-pgid (estável), depois re-scan por índice
         let button = null;
         if (field.pgid) {
             try { button = document.querySelector(`[data-pgid="${field.pgid}"]`); } catch {}
         }
-        if (!button || !button.isConnected || !isVisible(button)) {
-            button = field.element;
-        }
+        if (!button || !button.isConnected || !isVisible(button)) button = field.element;
         if (!button || !button.isConnected || !isVisible(button)) {
             const all = getDropdowns();
             button = all[field.campo - 1] || null;
@@ -650,35 +796,9 @@ ${JSON.stringify(data, null, 2)}
             return { ok: false, motivo: "Campo não está mais na página." };
         }
 
-        // <select> nativo (fallback raro)
-        if (button.tagName === "SELECT") {
-            const target = normalize(targetText);
-            const tLetter = (extractLetter(targetText) || {}).letter || "";
-            for (const opt of button.options) {
-                if (normalize(opt.text) === target) {
-                    button.value = opt.value;
-                    button.dispatchEvent(new Event("input", { bubbles: true }));
-                    button.dispatchEvent(new Event("change", { bubbles: true }));
-                    return { ok: true };
-                }
-                if (tLetter) {
-                    const ol = extractLetter(opt.text);
-                    if (ol && ol.letter === tLetter) {
-                        button.value = opt.value;
-                        button.dispatchEvent(new Event("input", { bubbles: true }));
-                        button.dispatchEvent(new Event("change", { bubbles: true }));
-                        return { ok: true };
-                    }
-                }
-            }
-            return { ok: false, motivo: "Opção não encontrada no select." };
-        }
-
-        // Fecha qualquer popper anterior antes de abrir
         document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
         await wait(250);
 
-        // Abre
         const opened = await clickEl(button);
         if (!opened) return { ok: false, motivo: "Não foi possível abrir o menu." };
 
@@ -693,7 +813,6 @@ ${JSON.stringify(data, null, 2)}
         const tLetter = (extractLetter(targetText) || {}).letter || "";
 
         let chosen = optEls.find(o => normalize(o.text) === targetNorm);
-
         if (!chosen && tLetter) {
             chosen = optEls.find(o => {
                 const ol = extractLetter(o.text);
@@ -707,7 +826,6 @@ ${JSON.stringify(data, null, 2)}
                     (o2.includes(targetNorm) || targetNorm.includes(o2));
             });
         }
-
         if (!chosen) {
             document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
             await wait(200);
@@ -721,35 +839,109 @@ ${JSON.stringify(data, null, 2)}
             return { ok: false, motivo: "Falha ao clicar na opção." };
         }
 
-        // Espera o popper fechar — ESSENCIAL para não afetar o próximo campo
         await waitForClose(button, 1500);
         await wait(150);
-
         return { ok: true };
     }
 
-    /* ============ AUTO-APLICAR ============ */
+    /* ===================== APLICAR EM ALTERNATIVA CLICÁVEL ===================== */
+
+    async function applyChoiceAnswer() {
+        if (lastChoices.length === 0) return { ok: false, motivo: "Sem alternativas." };
+
+        const parsed = parseNumberedAnswers($("pgAnswer").value);
+        const answers = parsed.length > 0 ? parsed.map(p => p.text) : [$("pgAnswer").value];
+        const optionsTexts = lastChoices.map(c => c.text);
+
+        let clickedAny = false;
+
+        for (const ans of answers) {
+            if (!ans) continue;
+
+            // 1) match direto pela letra+texto
+            const letterInfo = extractLetter(ans);
+            let targetIdx = -1;
+
+            if (letterInfo) {
+                const letter = letterInfo.letter;
+                for (let i = 0; i < lastChoices.length; i++) {
+                    const cl = extractLetter(lastChoices[i].text);
+                    if (cl && cl.letter === letter) { targetIdx = i; break; }
+                }
+                // Se nenhuma alternativa tem letra visível, usa índice
+                if (targetIdx === -1) {
+                    const anyHasLetter = lastChoices.some(c => extractLetter(c.text));
+                    if (!anyHasLetter) {
+                        const idx = letter.charCodeAt(0) - 97;
+                        if (idx >= 0 && idx < lastChoices.length) targetIdx = idx;
+                    }
+                }
+            }
+
+            // 2) match por texto
+            if (targetIdx === -1) {
+                const s = normalize(ans);
+                for (let i = 0; i < lastChoices.length; i++) {
+                    if (normalize(lastChoices[i].text) === s) { targetIdx = i; break; }
+                }
+                if (targetIdx === -1) {
+                    for (let i = 0; i < lastChoices.length; i++) {
+                        const o = normalize(lastChoices[i].text);
+                        if (o.length >= 3 && s.length >= 3 && (o.includes(s) || s.includes(o))) {
+                            targetIdx = i; break;
+                        }
+                    }
+                }
+            }
+
+            if (targetIdx === -1) continue;
+
+            // Pega referência fresca
+            const fresh = getChoices();
+            const target = fresh[targetIdx] || lastChoices[targetIdx];
+            if (!target || !isVisible(target.element)) continue;
+
+            const ok = await clickEl(target.element);
+            if (ok) {
+                clickedAny = true;
+                await wait(350);
+            }
+        }
+
+        return clickedAny
+            ? { ok: true }
+            : { ok: false, motivo: "Nenhuma alternativa pôde ser clicada." };
+    }
+
+    /* ===================== AUTO-APLICAR ===================== */
 
     async function autoApplyAnswers(aiText) {
         if (!autoApply) return;
-        if (!lastFields || lastFields.length === 0) return;
 
-        const parsed = parseNumberedAnswers(aiText);
-        const byNumber = {};
-        parsed.forEach(item => { byNumber[item.n] = item.text; });
+        if (lastType === "dropdown" && lastFields.length > 0) {
+            const parsed = parseNumberedAnswers(aiText);
+            const byNumber = {};
+            parsed.forEach(item => { byNumber[item.n] = item.text; });
 
-        for (const field of lastFields) {
-            const suggestion = byNumber[field.campo] || "";
-            if (!suggestion) continue;
-            const matched = matchOption(suggestion, field.opcoesDetectadas);
-            if (!matched) continue;
-            const r = await applyFieldAnswer(field, matched);
-            if (r.ok) notify("Campo " + field.campo + " preenchido.");
-            await wait(250);
+            for (const field of lastFields) {
+                const suggestion = byNumber[field.campo] || "";
+                if (!suggestion) continue;
+                const matched = matchOption(suggestion, field.opcoesDetectadas);
+                if (!matched) continue;
+                const r = await applyFieldAnswer(field, matched);
+                if (r.ok) notify("Campo " + field.campo + " preenchido.");
+                await wait(250);
+            }
+            return;
+        }
+
+        if (lastType === "choices" && lastChoices.length > 0) {
+            const r = await applyChoiceAnswer();
+            if (r.ok) notify("Alternativa clicada automaticamente.");
         }
     }
 
-    /* ============ BOTÃO PRINCIPAL ============ */
+    /* ===================== BOTÃO PRINCIPAL ===================== */
 
     $("pgGo").onclick = async () => {
         if (busy) return;
@@ -766,28 +958,47 @@ ${JSON.stringify(data, null, 2)}
 
         try {
             $("pgAnswer").value = "① Lendo o conteúdo da página...\nAguarde.";
-            $("pgFields").innerHTML = '<div class="pgHint">Analisando campos e opções...</div>';
+            $("pgFields").innerHTML = '<div class="pgHint">Analisando a questão...</div>';
 
             const pageText = readPage();
-            $("pgAnswer").value = "① Página lida.\n② Identificando menus e opções...";
+            $("pgAnswer").value = "① Página lida.\n② Identificando tipo de questão...";
 
-            const fields = await scanDropdowns();
+            // 1) Detecta tipo: dropdown ou alternativa
+            const dropdowns = getDropdowns();
+            let fields = [];
+            let choices = [];
+            let type = "";
+
+            if (dropdowns.length > 0) {
+                type = "dropdown";
+                $("pgAnswer").value = "① Página lida.\n② Dropdowns detectados.\n③ Lendo opções...";
+                fields = await scanDropdowns();
+            } else {
+                choices = getChoices();
+                if (choices.length > 0) {
+                    type = "choices";
+                }
+            }
+
+            lastType = type;
+            lastFields = fields;
+            lastChoices = choices;
 
             report = {
                 modo: modeNames[modo],
                 pagina: location.href,
+                tipoQuestao: type || "desconhecido",
                 textoDaPagina: pageText,
-                menus: Array.isArray(fields)
-                    ? fields.map(f => ({
-                        campo: f.campo,
-                        valorAtual: f.valorAtual,
-                        opcoesDetectadas: f.opcoesDetectadas,
-                        erro: f.erro || ""
-                    }))
-                    : fields
+                menus: fields.map(f => ({
+                    campo: f.campo,
+                    valorAtual: f.valorAtual,
+                    opcoesDetectadas: f.opcoesDetectadas,
+                    erro: f.erro || ""
+                })),
+                alternativas: choices.map(c => c.text)
             };
 
-            $("pgAnswer").value = "② Leitura concluída.\n③ Consultando a IA...";
+            $("pgAnswer").value = `① Tipo: ${type || "desconhecido"}.\n② Consultando a IA...`;
 
             const response = await fetch(API_URL, {
                 method: "POST",
@@ -802,9 +1013,9 @@ ${JSON.stringify(data, null, 2)}
                             role: "system",
                             content:
                                 "Você é um assistente de estudos. Analise o conteúdo recebido. " +
-                                "Não invente perguntas nem opções. Se houver campos 'Selecione a " +
-                                "resposta', responda com lista numerada (uma linha por campo), " +
-                                "copiando literalmente o texto de uma das opções do campo."
+                                "Não invente perguntas nem opções. Se houver dropdowns, responda " +
+                                "com lista numerada. Se houver alternativas clicáveis, responda " +
+                                "com LETRA e TEXTO exato da correta."
                         },
                         {
                             role: "user",
@@ -831,11 +1042,11 @@ ${JSON.stringify(data, null, 2)}
 
             $("pgAnswer").value = answer.trim();
 
-            try { renderFields(Array.isArray(fields) ? fields : []); }
+            try { renderFields(); }
             catch (err) {
                 console.error("[PortugaIA] renderFields", err);
                 $("pgFields").innerHTML =
-                    '<div class="pgHint">Não foi possível montar a lista de campos.</div>';
+                    '<div class="pgHint">Não foi possível montar a lista.</div>';
             }
 
             if (autoApply) {
@@ -844,13 +1055,12 @@ ${JSON.stringify(data, null, 2)}
             }
 
             toggle.classList.add("pgOk");
-            notify("Leitura e análise concluídas!", 2800);
+            notify("Análise concluída!", 2800);
 
         } catch (error) {
             $("pgAnswer").value =
                 "Não foi possível concluir a análise.\n\n" + (error.message || String(error));
-            $("pgFields").innerHTML =
-                '<div class="pgHint">Falha na leitura ou na consulta.</div>';
+            $("pgFields").innerHTML = '<div class="pgHint">Falha na leitura ou na consulta.</div>';
             toggle.classList.add("pgErr");
             notify("Erro na leitura ou consulta à IA.", 2800);
             console.error("[PortugaIA]", error);
@@ -860,7 +1070,7 @@ ${JSON.stringify(data, null, 2)}
         }
     };
 
-    /* ============ COPIAR / FECHAR ============ */
+    /* ===================== COPIAR / FECHAR ===================== */
 
     $("pgCopy").onclick = async () => {
         const text = $("pgAnswer").value;
@@ -880,7 +1090,7 @@ ${JSON.stringify(data, null, 2)}
         gui.remove(); toggle.remove(); notifyBox.remove(); style.remove();
     };
 
-    /* ============ ARRASTAR ÍCONE ============ */
+    /* ===================== ARRASTAR ÍCONE ===================== */
 
     let iconDrag = null, iconMoved = false;
 
@@ -926,7 +1136,7 @@ ${JSON.stringify(data, null, 2)}
     });
     toggle.addEventListener("click", e => { e.preventDefault(); e.stopPropagation(); });
 
-    /* ============ ARRASTAR PAINEL ============ */
+    /* ===================== ARRASTAR PAINEL ===================== */
 
     let panelDrag = null;
 
@@ -957,7 +1167,7 @@ ${JSON.stringify(data, null, 2)}
     $("pgHead").addEventListener("pointerup", finishPanel);
     $("pgHead").addEventListener("pointercancel", finishPanel);
 
-    /* ============ ATALHOS ============ */
+    /* ===================== ATALHOS ===================== */
 
     function toggleHiddenMode() {
         hidden = !hidden;
