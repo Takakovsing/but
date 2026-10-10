@@ -25,6 +25,8 @@
     let report = null;
     let lastFields = [];
     let lastChoices = [];
+    let lastBlanks = [];
+    let lastDraggables = [];
     let lastType = "";
     let autoApply = true;
 
@@ -243,7 +245,7 @@
         }
     }
 
-    /* ===================== DROPDOWNS ===================== */
+    /* ===================== DROPDOWNS (V/F) ===================== */
 
     function getDropdowns() {
         const results = [];
@@ -388,7 +390,7 @@
         return fields;
     }
 
-    /* ===================== ALTERNATIVAS CLICÁVEIS ===================== */
+    /* ===================== ALTERNATIVAS (A/B/C/D) ===================== */
 
     function getChoices() {
         const specificSelectors = [
@@ -496,16 +498,169 @@
         return out;
     }
 
+    /* ===================== DRAG-AND-DROP ===================== */
+
+    function getDroppableBlanks() {
+        const list = [
+            ...document.querySelectorAll('[data-cy^="droppable-blank"]'),
+            ...document.querySelectorAll('[class*="droppable-blank"]'),
+            ...document.querySelectorAll('[class*="drag-and-drop-blank"]')
+        ];
+        const seen = new Set();
+        const out = [];
+        for (const el of list) {
+            if (!el || seen.has(el)) continue;
+            if (el.closest("#pgFloat")) continue;
+            if (!isVisible(el)) continue;
+            seen.add(el);
+            out.push(el);
+        }
+        // Ordena por posição na tela (topo → base, esquerda → direita)
+        out.sort((a, b) => {
+            const ra = a.getBoundingClientRect();
+            const rb = b.getBoundingClientRect();
+            if (Math.abs(ra.top - rb.top) > 8) return ra.top - rb.top;
+            return ra.left - rb.left;
+        });
+        return out;
+    }
+
+    function getDraggableItems() {
+        const specificSelectors = [
+            '[data-cy*="drag-item"]',
+            '[data-cy*="dragItem"]',
+            '[data-cy*="drag-option"]',
+            '[draggable="true"]',
+            '[class*="drag-item"]',
+            '[class*="DragItem"]',
+            '[class*="draggable"]',
+            '[class*="option-item"]'
+        ];
+
+        const candidates = [];
+        const seen = new Set();
+
+        for (const sel of specificSelectors) {
+            let list;
+            try { list = document.querySelectorAll(sel); } catch { continue; }
+            for (const el of list) {
+                if (!el || seen.has(el)) continue;
+                if (el.closest("#pgFloat")) continue;
+                if (!isVisible(el)) continue;
+                if (el.matches('[data-cy^="droppable-blank"]')) continue;
+
+                const text = clean(el.innerText || el.textContent);
+                if (!text || text.length > 300) continue;
+                if (/^(enviar|submit|undo|menu|bars|bônus|bonus)/i.test(text)) continue;
+                if (/^\d+$/.test(text)) continue;
+                if (/^placeholder$/i.test(text)) continue;
+
+                seen.add(el);
+                candidates.push({ element: el, text });
+            }
+            if (candidates.length >= 2) break;
+        }
+
+        // Fallback: botões/divs que pareçam "opções" e não são dropdown nem blank
+        if (candidates.length < 2) {
+            for (const el of document.querySelectorAll('button, [role="button"], [draggable]')) {
+                if (seen.has(el)) continue;
+                if (el.closest("#pgFloat")) continue;
+                if (!isVisible(el)) continue;
+                if (el.matches("button.options-dropdown, [data-cy^='dropdown-'], [data-cy^='droppable-blank'], [aria-label='Enviar'], [aria-label='undo'], [aria-label='bars']")) continue;
+
+                const text = clean(el.innerText || el.textContent);
+                if (!text || text.length > 60) continue;
+                if (/^(enviar|submit|undo|menu|bars|bônus|bonus|placeholder)$/i.test(text)) continue;
+                if (/^\d+$/.test(text)) continue;
+
+                seen.add(el);
+                candidates.push({ element: el, text });
+            }
+        }
+
+        // Dedup por texto (mantém o primeiro)
+        const byText = new Map();
+        for (const c of candidates) {
+            const k = c.text.toLowerCase();
+            if (!byText.has(k)) byText.set(k, c);
+        }
+        const out = [...byText.values()];
+
+        out.sort((a, b) => {
+            const ra = a.element.getBoundingClientRect();
+            const rb = b.element.getBoundingClientRect();
+            if (Math.abs(ra.top - rb.top) > 8) return ra.top - rb.top;
+            return ra.left - rb.left;
+        });
+
+        return out;
+    }
+
+    function simulateDragDrop(source, target) {
+        try {
+            const dt = new DataTransfer();
+            const opts = { bubbles: true, cancelable: true, dataTransfer: dt };
+
+            source.dispatchEvent(new DragEvent("dragstart", opts));
+            source.dispatchEvent(new DragEvent("drag", opts));
+            target.dispatchEvent(new DragEvent("dragenter", opts));
+            target.dispatchEvent(new DragEvent("dragover", opts));
+            target.dispatchEvent(new DragEvent("drop", opts));
+            source.dispatchEvent(new DragEvent("dragend", opts));
+            return true;
+        } catch (e) {
+            return false;
+        }
+    }
+
+    async function applyDragDropAnswer(itemText, blankIndex) {
+        if (!itemText) return { ok: false, motivo: "Sem item para arrastar." };
+
+        const blanks = getDroppableBlanks();
+        if (blanks.length === 0) return { ok: false, motivo: "Nenhum blank encontrado." };
+        const blank = blanks[blankIndex];
+        if (!blank || !isVisible(blank)) return { ok: false, motivo: "Blank não está visível." };
+
+        const items = getDraggableItems();
+        const target = items.find(it => normalize(it.text) === normalize(itemText))
+            || items.find(it => {
+                const a = normalize(it.text);
+                const b = normalize(itemText);
+                return a.length >= 3 && b.length >= 3 && (a.includes(b) || b.includes(a));
+            });
+
+        if (!target) return { ok: false, motivo: "Item não encontrado: " + itemText };
+
+        // Estratégia 1: clique no item → clique no blank
+        const ok1 = await clickEl(target.element);
+        if (ok1) {
+            await wait(200);
+            const ok2 = await clickEl(blank);
+            if (ok2) {
+                await wait(400);
+                return { ok: true };
+            }
+        }
+
+        // Estratégia 2: simular HTML5 drag-and-drop
+        const ok3 = simulateDragDrop(target.element, blank);
+        if (ok3) {
+            await wait(400);
+            return { ok: true };
+        }
+
+        return { ok: false, motivo: "Nenhuma estratégia de drop funcionou." };
+    }
+
     /* ===================== BOTÃO ENVIAR ===================== */
 
     function findSubmitButton() {
         const candidatos = [];
 
-        // Específicos do Wayground
         document.querySelectorAll('[data-cy="submit-button"], button[aria-label="Enviar"], button[aria-label="Submit"]')
             .forEach(el => candidatos.push(el));
 
-        // Genéricos: texto "Enviar" / "Submit" / "Confirmar"
         if (candidatos.length === 0) {
             for (const el of document.querySelectorAll('button, [role="button"]')) {
                 if (el.closest("#pgFloat")) continue;
@@ -517,7 +672,6 @@
             }
         }
 
-        // Filtra desabilitados (a não ser que fiquem habilitados por um instante)
         for (const el of candidatos) {
             if (el.closest("#pgFloat")) continue;
             if (!isVisible(el)) continue;
@@ -527,20 +681,14 @@
     }
 
     async function clickSubmit() {
-        // Espera o botão habilitar (o site habilita depois que todos os campos são preenchidos)
         let submit = null;
         for (let i = 0; i < 15; i++) {
             submit = findSubmitButton();
             if (submit && !submit.disabled) break;
             await wait(200);
         }
-        if (!submit) {
-            return { ok: false, motivo: "Botão Enviar não encontrado." };
-        }
-        if (submit.disabled) {
-            return { ok: false, motivo: "Botão Enviar ainda desabilitado." };
-        }
-
+        if (!submit) return { ok: false, motivo: "Botão Enviar não encontrado." };
+        if (submit.disabled) return { ok: false, motivo: "Botão Enviar ainda desabilitado." };
         const ok = await clickEl(submit);
         if (ok) {
             notify("Resposta enviada!");
@@ -630,6 +778,8 @@
         const type = data.tipoQuestao;
         const fields = data.menus || [];
         const choices = data.alternativas || [];
+        const blanks = data.blanks || [];
+        const draggables = data.itensArrastaveis || [];
 
         const instructions = {
             vf: `\nAnalise cada afirmação separadamente.\nOrganize na ordem em que aparecem: número, sugestão (Verdadeira/Falsa/Indeterminada)\ne uma justificativa curta.\n`,
@@ -653,7 +803,6 @@ Regras:
 - Uma linha por campo, formato "<número>. <texto>".
 - O texto deve ser copiado LITERALMENTE de "opcoesDetectadas".
 - Se não houver dados, escreva "INDETERMINADO".
-- Sem aspas, sem "Campo N", sem "Resposta".
 `;
         } else if (type === "choices" && choices.length > 0) {
             extra_instructions = `
@@ -661,7 +810,24 @@ ATENÇÃO: a página tem ${choices.length} alternativa(s) clicável(is).
 Você DEVE responder com LETRA e TEXTO EXATO da(s) alternativa(s) correta(s).
 ${modo === "multi" ? "Se houver mais de uma correta, responda em linhas numeradas:\n1. A) <texto>\n2. C) <texto>\n" : "Responda em UMA linha: LETRA) TEXTO. Ex.: \"B) Falso\".\n"}
 - O texto deve ser copiado LITERALMENTE de "alternativas".
-- Sem explicações na primeira parte.
+`;
+        } else if (type === "dragdrop" && blanks.length > 0) {
+            extra_instructions = `
+ATENÇÃO: a página tem ${blanks.length} espaço(s) em branco para preencher
+(arrastar e soltar). Existem ${draggables.length} itens disponíveis para arrastar:
+${JSON.stringify(draggables)}
+
+Você DEVE responder CADA BLANK, na ordem em que aparecem no texto da pergunta.
+
+FORMATO OBRIGATÓRIO (sem texto adicional):
+1. <texto exato de um dos itens arrastáveis>
+2. <texto exato de um dos itens arrastáveis>
+...
+
+Regras:
+- Uma linha por blank, formato "<número>. <texto>".
+- O texto deve ser copiado LITERALMENTE de "itensArrastaveis".
+- Se não houver dados, escreva "INDETERMINADO".
 `;
         }
 
@@ -691,79 +857,37 @@ ${JSON.stringify(data, null, 2)}
         if (!container) return;
         container.innerHTML = "";
 
-        if (lastType === "dropdown" && lastFields.length > 0) {
-            const parsed = parseNumberedAnswers($("pgAnswer").value);
-            const byNumber = {};
-            parsed.forEach(item => { byNumber[item.n] = item.text; });
+        const parsed = parseNumberedAnswers($("pgAnswer").value);
+        const byNumber = {};
+        parsed.forEach(item => { byNumber[item.n] = item.text; });
 
+        if (lastType === "dropdown" && lastFields.length > 0) {
             lastFields.forEach(field => {
                 const suggestion = byNumber[field.campo] || "";
                 const matched = matchOption(suggestion, field.opcoesDetectadas);
+                container.appendChild(buildFieldCard(field, suggestion, matched, field.opcoesDetectadas));
+            });
+            return;
+        }
 
-                const row = document.createElement("div");
-                row.className = "pgField";
-
-                const title = document.createElement("div");
-                title.className = "pgFieldTitle";
-                title.textContent = `CAMPO ${field.campo}`;
-
-                const sug = document.createElement("div");
-                sug.className = "pgFieldSug";
-                sug.textContent = suggestion || "(sem sugestão da IA)";
-
-                const matchLine = document.createElement("div");
-                matchLine.className = "pgFieldMatch";
-                if (field.erro && (!field.opcoesDetectadas || field.opcoesDetectadas.length === 0)) {
-                    matchLine.textContent = "⚠ " + field.erro;
-                } else if (matched) {
-                    matchLine.classList.add("pgOk");
-                    matchLine.textContent = "✓ Corresponde: " + matched;
-                } else if (suggestion) {
-                    matchLine.classList.add("pgBad");
-                    matchLine.textContent = "✗ Sem correspondência exata.";
-                } else {
-                    matchLine.textContent = "Opções: " +
-                        (field.opcoesDetectadas.slice(0, 4).join(" | ") || "(nenhuma)") +
-                        (field.opcoesDetectadas.length > 4 ? " ..." : "");
-                }
-
-                const btn = document.createElement("button");
-                btn.type = "button";
-                btn.className = "pgApply";
-                btn.textContent = "APLICAR ESTA OPÇÃO";
-                btn.disabled = !matched;
-
-                btn.addEventListener("click", async () => {
-                    if (!matched) return;
-                    btn.disabled = true;
-                    const oldText = btn.textContent;
-                    btn.textContent = "APLICANDO...";
-                    const result = await applyFieldAnswer(field, matched);
-                    if (result.ok) {
-                        btn.textContent = "✓ APLICADO";
-                        btn.classList.add("pgDone");
-                        notify("Campo " + field.campo + " preenchido.");
-                    } else {
-                        btn.textContent = oldText;
-                        btn.disabled = false;
-                        matchLine.classList.remove("pgOk");
-                        matchLine.classList.add("pgBad");
-                        matchLine.textContent = "✗ " + (result.motivo || "Falha ao aplicar.");
-                        notify("Falha no campo " + field.campo + ".", 2600);
-                    }
-                });
-
-                row.appendChild(title);
-                row.appendChild(sug);
-                row.appendChild(matchLine);
-                row.appendChild(btn);
-                container.appendChild(row);
+        if (lastType === "dragdrop" && lastBlanks.length > 0) {
+            const opts = lastDraggables.map(d => d.text);
+            lastBlanks.forEach((blank, i) => {
+                const campo = i + 1;
+                const suggestion = byNumber[campo] || "";
+                const matched = matchOption(suggestion, opts);
+                container.appendChild(buildFieldCard(
+                    { campo, valorAtual: "(vazio)" },
+                    suggestion,
+                    matched,
+                    opts,
+                    "dragdrop"
+                ));
             });
             return;
         }
 
         if (lastType === "choices" && lastChoices.length > 0) {
-            const parsed = parseNumberedAnswers($("pgAnswer").value);
             const answer = parsed.length > 0
                 ? parsed.map(p => p.text).join(" ")
                 : $("pgAnswer").value;
@@ -820,6 +944,74 @@ ${JSON.stringify(data, null, 2)}
         hint.className = "pgHint";
         hint.textContent = "Nenhum campo/dropdown/alternativa detectado nesta página.";
         container.appendChild(hint);
+    }
+
+    function buildFieldCard(field, suggestion, matched, options, tipo) {
+        const row = document.createElement("div");
+        row.className = "pgField";
+
+        const title = document.createElement("div");
+        title.className = "pgFieldTitle";
+        title.textContent = `CAMPO ${field.campo}`;
+
+        const sug = document.createElement("div");
+        sug.className = "pgFieldSug";
+        sug.textContent = suggestion || "(sem sugestão da IA)";
+
+        const matchLine = document.createElement("div");
+        matchLine.className = "pgFieldMatch";
+        if (field.erro && (!options || options.length === 0)) {
+            matchLine.textContent = "⚠ " + field.erro;
+        } else if (matched) {
+            matchLine.classList.add("pgOk");
+            matchLine.textContent = "✓ Corresponde: " + matched;
+        } else if (suggestion) {
+            matchLine.classList.add("pgBad");
+            matchLine.textContent = "✗ Sem correspondência exata.";
+        } else {
+            matchLine.textContent = "Opções: " +
+                (options.slice(0, 4).join(" | ") || "(nenhuma)") +
+                (options.length > 4 ? " ..." : "");
+        }
+
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "pgApply";
+        btn.textContent = "APLICAR ESTA OPÇÃO";
+        btn.disabled = !matched;
+
+        btn.addEventListener("click", async () => {
+            if (!matched) return;
+            btn.disabled = true;
+            const oldText = btn.textContent;
+            btn.textContent = "APLICANDO...";
+
+            let result;
+            if (tipo === "dragdrop") {
+                result = await applyDragDropAnswer(matched, field.campo - 1);
+            } else {
+                result = await applyFieldAnswer(field, matched);
+            }
+
+            if (result.ok) {
+                btn.textContent = "✓ APLICADO";
+                btn.classList.add("pgDone");
+                notify("Campo " + field.campo + " preenchido.");
+            } else {
+                btn.textContent = oldText;
+                btn.disabled = false;
+                matchLine.classList.remove("pgOk");
+                matchLine.classList.add("pgBad");
+                matchLine.textContent = "✗ " + (result.motivo || "Falha ao aplicar.");
+                notify("Falha no campo " + field.campo + ".", 2600);
+            }
+        });
+
+        row.appendChild(title);
+        row.appendChild(sug);
+        row.appendChild(matchLine);
+        row.appendChild(btn);
+        return row;
     }
 
     /* ===================== APLICAR DROPDOWN ===================== */
@@ -972,12 +1164,33 @@ ${JSON.stringify(data, null, 2)}
                 await wait(250);
             }
 
-            // === AUTO-SUBMIT === (só V/F com dropdowns, só se autoApply ligado)
             await wait(400);
             const sub = await clickSubmit();
-            if (!sub.ok) {
-                notify("Auto-envio: " + sub.motivo, 2600);
+            if (!sub.ok) notify("Auto-envio: " + sub.motivo, 2600);
+            return;
+        }
+
+        if (lastType === "dragdrop" && lastBlanks.length > 0) {
+            const parsed = parseNumberedAnswers(aiText);
+            const byNumber = {};
+            parsed.forEach(item => { byNumber[item.n] = item.text; });
+
+            const opts = lastDraggables.map(d => d.text);
+
+            for (let i = 0; i < lastBlanks.length; i++) {
+                const campo = i + 1;
+                const suggestion = byNumber[campo] || "";
+                if (!suggestion) continue;
+                const matched = matchOption(suggestion, opts);
+                if (!matched) continue;
+                const r = await applyDragDropAnswer(matched, i);
+                if (r.ok) notify("Blank " + campo + " preenchido.");
+                await wait(300);
             }
+
+            await wait(400);
+            const sub = await clickSubmit();
+            if (!sub.ok) notify("Auto-envio: " + sub.motivo, 2600);
             return;
         }
 
@@ -1010,14 +1223,21 @@ ${JSON.stringify(data, null, 2)}
             $("pgAnswer").value = "① Página lida.\n② Identificando tipo de questão...";
 
             const dropdowns = getDropdowns();
+            const blanks = getDroppableBlanks();
+
             let fields = [];
             let choices = [];
+            let draggables = [];
             let type = "";
 
             if (dropdowns.length > 0) {
                 type = "dropdown";
                 $("pgAnswer").value = "① Página lida.\n② Dropdowns detectados.\n③ Lendo opções...";
                 fields = await scanDropdowns();
+            } else if (blanks.length > 0) {
+                type = "dragdrop";
+                draggables = getDraggableItems();
+                $("pgAnswer").value = "① Página lida.\n② Drag-and-drop detectado.\n③ Lendo itens arrastáveis...";
             } else {
                 choices = getChoices();
                 if (choices.length > 0) type = "choices";
@@ -1026,6 +1246,8 @@ ${JSON.stringify(data, null, 2)}
             lastType = type;
             lastFields = fields;
             lastChoices = choices;
+            lastBlanks = blanks;
+            lastDraggables = draggables;
 
             report = {
                 modo: modeNames[modo],
@@ -1038,7 +1260,9 @@ ${JSON.stringify(data, null, 2)}
                     opcoesDetectadas: f.opcoesDetectadas,
                     erro: f.erro || ""
                 })),
-                alternativas: choices.map(c => c.text)
+                alternativas: choices.map(c => c.text),
+                blanks: blanks.map((b, i) => ({ campo: i + 1, valorAtual: "" })),
+                itensArrastaveis: draggables.map(d => d.text)
             };
 
             $("pgAnswer").value = `① Tipo: ${type || "desconhecido"}.\n② Consultando a IA...`;
@@ -1058,7 +1282,8 @@ ${JSON.stringify(data, null, 2)}
                                 "Você é um assistente de estudos. Analise o conteúdo recebido. " +
                                 "Não invente perguntas nem opções. Se houver dropdowns, responda " +
                                 "com lista numerada. Se houver alternativas clicáveis, responda " +
-                                "com LETRA e TEXTO exato da correta."
+                                "com LETRA e TEXTO exato da correta. Se houver blanks de drag-and-drop, " +
+                                "responda com lista numerada indicando o item exato para cada blank."
                         },
                         {
                             role: "user",
