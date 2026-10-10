@@ -42,8 +42,6 @@
     apiKey = store.get("apikey", "");
     autoApply = store.get("autoapply", "1") !== "0";
 
-    /* FAVICON */
-
     let favicon = document.querySelector('link[rel~="icon"]');
     if (!favicon) {
         favicon = document.createElement("link");
@@ -52,294 +50,84 @@
     }
     favicon.href = ICONE;
 
-    /* CSS PREMIUM (idêntico ao seu) */
-
     const style = document.createElement("style");
     style.textContent = `
-        #pgFloat,#pgToggle,#pgNotify{box-sizing:border-box}
-        #pgFloat{
-            position:fixed;top:80px;left:50%;
-            width:min(350px,calc(100vw - 24px));
-            max-height:calc(100dvh - 35px);overflow-y:auto;
-            padding:16px;color:#eee;
-            background:radial-gradient(ellipse at 50% 0%,#ffffff17,transparent 65%),rgba(12,12,16,.97);
-            backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);
-            border:1px solid #ffffff30;border-radius:20px;
-            z-index:2147483640;
-            font-family:"Trebuchet MS",Arial,sans-serif;
-            box-shadow:0 15px 50px #000b,0 0 20px #ffffff08;
-            transform:translateX(-50%);isolation:isolate;
-            scrollbar-width:thin;scrollbar-color:#444 transparent;
-            transition:opacity .2s,transform .2s;
-        }
-        #pgFloat:before{
-            content:"";position:absolute;inset:-100%;
-            background:conic-gradient(transparent,#ffffff0b,transparent,#ffffff08,transparent);
-            animation:pgPanelGlow 8s linear infinite;
-            pointer-events:none;z-index:-1;
-        }
-        @keyframes pgPanelGlow{to{transform:rotate(360deg)}}
-        #pgFloat.pgMini{
-            opacity:0;visibility:hidden;pointer-events:none;
-            transform:translateX(-50%) scale(.82);
-        }
-        #pgHead{
-            position:relative;min-height:32px;display:flex;
-            align-items:center;justify-content:center;
-            font-size:18px;font-weight:900;letter-spacing:1.5px;
-            cursor:grab;margin-bottom:12px;touch-action:none;
-        }
-        #pgEditApi{
-            position:absolute;right:0;top:-3px;width:31px;height:31px;
-            padding:0;border:1px solid #ffffff30;border-radius:9px;
-            background:#ffffff10;color:#fff;font-size:18px;cursor:pointer;
-        }
-        #pgLine{
-            height:1px;margin-bottom:14px;
-            background:linear-gradient(90deg,transparent,#ffffff55,transparent)
-        }
-        .pgLabel{
-            display:block;color:#a8a8b3;font-size:10px;font-weight:bold;
-            letter-spacing:1.3px;margin:13px 0 8px;
-        }
-        #pgModes{display:grid;grid-template-columns:1fr;gap:7px}
-        #pgFloat button.pgMode{
-            width:100%;min-height:39px;padding:10px 12px;
-            display:flex;align-items:center;justify-content:space-between;
-            text-align:left;background:linear-gradient(135deg,#ffffff0d,#ffffff05);
-            color:#bdbdc6;border:1px solid #ffffff17;border-radius:11px;
-            font-family:inherit;font-size:12px;font-weight:bold;cursor:pointer;
-        }
-        #pgFloat button.pgMode.pgSelected{
-            color:#fff;background:linear-gradient(110deg,#ffffff20,#ffffff09);
-            border-color:#ffffff70;box-shadow:inset 0 0 15px #ffffff08,0 0 12px #ffffff06;
-        }
-        .pgModeMark{
-            width:8px;height:8px;flex-shrink:0;border-radius:50%;background:#444
-        }
-        .pgMode.pgSelected .pgModeMark{
-            background:#fff;box-shadow:0 0 9px #fff9
-        }
-        .pgToggleRow{
-            display:flex;align-items:center;gap:9px;
-            padding:10px 12px;margin-top:10px;
-            background:linear-gradient(135deg,#ffffff0a,#ffffff03);
-            border:1px solid #ffffff18;border-radius:11px;
-            font-size:12px;color:#ddd;font-weight:bold;
-            cursor:pointer;user-select:none;-webkit-user-select:none;
-        }
-        .pgToggleRow input{
-            width:16px;height:16px;margin:0;flex-shrink:0;
-            accent-color:#39ff78;cursor:pointer;
-        }
-        .pgToggleRow.pgOn{
-            border-color:#39ff7850;
-            background:linear-gradient(135deg,#39ff780f,#39ff7803);
-            color:#c8ffdc;
-        }
-        #pgFloat textarea,#pgFloat input[type=text]{
-            display:block;width:100%;box-sizing:border-box;
-            background:rgba(0,0,0,.38);color:#eee;
-            border:1px solid #ffffff20;border-radius:12px;
-            padding:12px;outline:none;font-family:inherit;
-            font-size:13px;line-height:1.5;
-            user-select:text;-webkit-user-select:text;
-        }
-        #pgQuestion{
-            height:75px;resize:vertical;min-height:55px;max-height:140px
-        }
-        #pgAnswer{
-            height:200px;resize:vertical;min-height:100px;max-height:350px;
-            margin-top:8px;
-        }
-        #pgFloat textarea:focus,#pgFloat input:focus{
-            border-color:#ffffff65;box-shadow:0 0 15px #ffffff0c
-        }
-        #pgFloat button.pgAction{
-            display:block;width:100%;min-height:43px;
-            border:1px solid #ffffff20;border-radius:12px;
-            padding:12px;margin-top:9px;
-            background:linear-gradient(135deg,#ffffff18,#ffffff08);
-            color:#eee;font-family:inherit;font-weight:bold;
-            font-size:12px;cursor:pointer;
-            transition:background .2s,transform .2s,box-shadow .2s;
-        }
-        #pgFloat button.pgAction:active{transform:scale(.98)}
-        #pgFloat button.pgAction:disabled{opacity:.55;cursor:wait}
-        #pgGo{
-            background:linear-gradient(110deg,#fff,#c7c7d0)!important;
-            color:#101014!important;
-            box-shadow:0 0 16px #ffffff12;
-        }
-        #pgCopy{background:#ffffff09!important}
-
-        #pgFields{display:flex;flex-direction:column;gap:8px;margin-bottom:6px}
-        .pgHint{color:#8a8a93;font-size:11px;padding:6px 2px;line-height:1.5}
-        .pgField{
-            background:linear-gradient(135deg,#ffffff0a,#ffffff04);
-            border:1px solid #ffffff18;border-radius:11px;
-            padding:10px;font-size:12px;color:#ccc;
-        }
-        .pgField .pgFieldTitle{
-            color:#a8a8b3;font-size:10px;letter-spacing:1.3px;
-            font-weight:bold;margin-bottom:5px;
-        }
-        .pgField .pgFieldSug{
-            color:#eee;font-weight:bold;margin-bottom:5px;
-            word-break:break-word;line-height:1.4;
-        }
-        .pgField .pgFieldMatch{
-            font-size:11px;color:#9a9aa3;margin-bottom:7px;
-            word-break:break-word;line-height:1.4;
-        }
-        .pgField .pgFieldMatch.pgOk{color:#7fdca0}
-        .pgField .pgFieldMatch.pgBad{color:#ff8a8a}
-        .pgField button.pgApply{
-            width:100%;min-height:34px;padding:8px 10px;
-            border:1px solid #ffffff20;border-radius:9px;
-            background:linear-gradient(135deg,#ffffff14,#ffffff06);
-            color:#eee;font-family:inherit;font-weight:bold;
-            font-size:11px;cursor:pointer;letter-spacing:.5px;
-            transition:background .2s,transform .2s;
-        }
-        .pgField button.pgApply:active{transform:scale(.98)}
-        .pgField button.pgApply:disabled{opacity:.55;cursor:not-allowed}
-        .pgField button.pgApply.pgDone{
-            background:linear-gradient(135deg,#00ff7014,#00ff7006);
-            border-color:#00ff7030;color:#9affb8;
-        }
-
-        #pgToggle{
-            position:fixed;right:20px;bottom:25px;
-            width:62px;height:62px;padding:4px;
-            border:1px solid #000;border-radius:50%;
-            background:#050505;z-index:2147483641;
-            cursor:grab;display:flex;align-items:center;justify-content:center;
-            isolation:isolate;touch-action:none;
-            box-shadow:0 5px 20px #000b;
-            user-select:none;-webkit-user-select:none;
-        }
-        #pgToggle:before{
-            content:"";position:absolute;inset:-4px;border-radius:50%;
-            background:conic-gradient(#101010,#44444a,#bdbdc8,#fff,#65656d,#171717,#aaaab4,#101010);
-            animation:pgRingRotate 2.2s linear infinite;
-            z-index:-1;pointer-events:none;
-            transition:inset .25s ease,box-shadow .25s ease;
-        }
-        #pgToggle:after{
-            content:"";position:absolute;inset:0;border:1px solid #000;
-            border-radius:50%;pointer-events:none
-        }
-        #pgToggle img{
-            width:100%;height:100%;object-fit:cover;
-            border-radius:50%;pointer-events:none
-        }
-        @keyframes pgRingRotate{to{transform:rotate(360deg)}}
-        #pgToggle.pgAura{animation:pgAura 3s ease-in-out infinite}
-        @keyframes pgAura{
-            0%,100%{box-shadow:0 0 7px #ffffff18,0 8px 25px #000b}
-            50%{box-shadow:0 0 18px #ffffff50,0 0 30px #ffffff16,0 8px 25px #000b}
-        }
-        #pgToggle.pgPressed{transform:scale(.9);filter:brightness(1.3)}
-        #pgToggle.pgWorking:before{
-            inset:-8px;
-            background:conic-gradient(#003b19,#006b2b,#00a83b,#39ff78,#008f35,#004d20,#20e85b,#003b19);
-            animation:pgRingRotate .8s linear infinite;
-            box-shadow:0 0 8px #00ff5570,0 0 18px #00ff5545;
-        }
-        #pgToggle.pgOk:before{
-            background:conic-gradient(#003b19,#00ff70,#b0ffc9,#00a83b,#003b19);
-            box-shadow:0 0 12px #00ff7070
-        }
-        #pgToggle.pgErr:before{
-            background:conic-gradient(#450000,#ff4545,#ffaaaa,#a00000,#450000);
-            box-shadow:0 0 12px #ff454570
-        }
-        #pgNotify{
-            position:fixed;top:25px;left:50%;
-            transform:translateX(-50%) translateY(-20px);
-            background:rgba(18,18,21,.97);color:#fff;
-            padding:11px 18px;border:1px solid #ffffff30;border-radius:11px;
-            font-family:"Trebuchet MS",Arial,sans-serif;
-            font-weight:bold;font-size:13px;z-index:2147483642;
-            opacity:0;transition:opacity .3s,transform .35s;
-            box-shadow:0 8px 25px #0008;pointer-events:none;
-            max-width:85vw;text-align:center;
-        }
-        @media(max-width:360px){
-            #pgFloat{padding:13px}
-            #pgHead{font-size:16px}
-        }
+#pgFloat,#pgToggle,#pgNotify{box-sizing:border-box}
+#pgFloat{position:fixed;top:80px;left:50%;width:min(350px,calc(100vw - 24px));max-height:calc(100dvh - 35px);overflow-y:auto;padding:16px;color:#eee;background:radial-gradient(ellipse at 50% 0%,#ffffff17,transparent 65%),rgba(12,12,16,.97);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);border:1px solid #ffffff30;border-radius:20px;z-index:2147483640;font-family:"Trebuchet MS",Arial,sans-serif;box-shadow:0 15px 50px #000b,0 0 20px #ffffff08;transform:translateX(-50%);isolation:isolate;scrollbar-width:thin;scrollbar-color:#444 transparent;transition:opacity .2s,transform .2s}
+#pgFloat:before{content:"";position:absolute;inset:-100%;background:conic-gradient(transparent,#ffffff0b,transparent,#ffffff08,transparent);animation:pgPanelGlow 8s linear infinite;pointer-events:none;z-index:-1}
+@keyframes pgPanelGlow{to{transform:rotate(360deg)}}
+#pgFloat.pgMini{opacity:0;visibility:hidden;pointer-events:none;transform:translateX(-50%) scale(.82)}
+#pgHead{position:relative;min-height:32px;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:900;letter-spacing:1.5px;cursor:grab;margin-bottom:12px;touch-action:none}
+#pgEditApi{position:absolute;right:0;top:-3px;width:31px;height:31px;padding:0;border:1px solid #ffffff30;border-radius:9px;background:#ffffff10;color:#fff;font-size:18px;cursor:pointer}
+#pgLine{height:1px;margin-bottom:14px;background:linear-gradient(90deg,transparent,#ffffff55,transparent)}
+.pgLabel{display:block;color:#a8a8b3;font-size:10px;font-weight:bold;letter-spacing:1.3px;margin:13px 0 8px}
+#pgModes{display:grid;grid-template-columns:1fr;gap:7px}
+#pgFloat button.pgMode{width:100%;min-height:39px;padding:10px 12px;display:flex;align-items:center;justify-content:space-between;text-align:left;background:linear-gradient(135deg,#ffffff0d,#ffffff05);color:#bdbdc6;border:1px solid #ffffff17;border-radius:11px;font-family:inherit;font-size:12px;font-weight:bold;cursor:pointer}
+#pgFloat button.pgMode.pgSelected{color:#fff;background:linear-gradient(110deg,#ffffff20,#ffffff09);border-color:#ffffff70;box-shadow:inset 0 0 15px #ffffff08,0 0 12px #ffffff06}
+.pgModeMark{width:8px;height:8px;flex-shrink:0;border-radius:50%;background:#444}
+.pgMode.pgSelected .pgModeMark{background:#fff;box-shadow:0 0 9px #fff9}
+.pgToggleRow{display:flex;align-items:center;gap:9px;padding:10px 12px;margin-top:10px;background:linear-gradient(135deg,#ffffff0a,#ffffff03);border:1px solid #ffffff18;border-radius:11px;font-size:12px;color:#ddd;font-weight:bold;cursor:pointer;user-select:none;-webkit-user-select:none}
+.pgToggleRow input{width:16px;height:16px;margin:0;flex-shrink:0;accent-color:#39ff78;cursor:pointer}
+.pgToggleRow.pgOn{border-color:#39ff7850;background:linear-gradient(135deg,#39ff780f,#39ff7803);color:#c8ffdc}
+#pgFloat textarea,#pgFloat input[type=text]{display:block;width:100%;box-sizing:border-box;background:rgba(0,0,0,.38);color:#eee;border:1px solid #ffffff20;border-radius:12px;padding:12px;outline:none;font-family:inherit;font-size:13px;line-height:1.5;user-select:text;-webkit-user-select:text}
+#pgQuestion{height:75px;resize:vertical;min-height:55px;max-height:140px}
+#pgAnswer{height:200px;resize:vertical;min-height:100px;max-height:350px;margin-top:8px}
+#pgFloat textarea:focus,#pgFloat input:focus{border-color:#ffffff65;box-shadow:0 0 15px #ffffff0c}
+#pgFloat button.pgAction{display:block;width:100%;min-height:43px;border:1px solid #ffffff20;border-radius:12px;padding:12px;margin-top:9px;background:linear-gradient(135deg,#ffffff18,#ffffff08);color:#eee;font-family:inherit;font-weight:bold;font-size:12px;cursor:pointer;transition:background .2s,transform .2s,box-shadow .2s}
+#pgFloat button.pgAction:active{transform:scale(.98)}
+#pgFloat button.pgAction:disabled{opacity:.55;cursor:wait}
+#pgGo{background:linear-gradient(110deg,#fff,#c7c7d0)!important;color:#101014!important;box-shadow:0 0 16px #ffffff12}
+#pgCopy{background:#ffffff09!important}
+#pgFields{display:flex;flex-direction:column;gap:8px;margin-bottom:6px}
+.pgHint{color:#8a8a93;font-size:11px;padding:6px 2px;line-height:1.5}
+.pgField{background:linear-gradient(135deg,#ffffff0a,#ffffff04);border:1px solid #ffffff18;border-radius:11px;padding:10px;font-size:12px;color:#ccc}
+.pgField .pgFieldTitle{color:#a8a8b3;font-size:10px;letter-spacing:1.3px;font-weight:bold;margin-bottom:5px}
+.pgField .pgFieldSug{color:#eee;font-weight:bold;margin-bottom:5px;word-break:break-word;line-height:1.4}
+.pgField .pgFieldMatch{font-size:11px;color:#9a9aa3;margin-bottom:7px;word-break:break-word;line-height:1.4}
+.pgField .pgFieldMatch.pgOk{color:#7fdca0}
+.pgField .pgFieldMatch.pgBad{color:#ff8a8a}
+.pgField button.pgApply{width:100%;min-height:34px;padding:8px 10px;border:1px solid #ffffff20;border-radius:9px;background:linear-gradient(135deg,#ffffff14,#ffffff06);color:#eee;font-family:inherit;font-weight:bold;font-size:11px;cursor:pointer;letter-spacing:.5px;transition:background .2s,transform .2s}
+.pgField button.pgApply:active{transform:scale(.98)}
+.pgField button.pgApply:disabled{opacity:.55;cursor:not-allowed}
+.pgField button.pgApply.pgDone{background:linear-gradient(135deg,#00ff7014,#00ff7006);border-color:#00ff7030;color:#9affb8}
+#pgToggle{position:fixed;right:20px;bottom:25px;width:62px;height:62px;padding:4px;border:1px solid #000;border-radius:50%;background:#050505;z-index:2147483641;cursor:grab;display:flex;align-items:center;justify-content:center;isolation:isolate;touch-action:none;box-shadow:0 5px 20px #000b;user-select:none;-webkit-user-select:none}
+#pgToggle:before{content:"";position:absolute;inset:-4px;border-radius:50%;background:conic-gradient(#101010,#44444a,#bdbdc8,#fff,#65656d,#171717,#aaaab4,#101010);animation:pgRingRotate 2.2s linear infinite;z-index:-1;pointer-events:none;transition:inset .25s ease,box-shadow .25s ease}
+#pgToggle:after{content:"";position:absolute;inset:0;border:1px solid #000;border-radius:50%;pointer-events:none}
+#pgToggle img{width:100%;height:100%;object-fit:cover;border-radius:50%;pointer-events:none}
+@keyframes pgRingRotate{to{transform:rotate(360deg)}}
+#pgToggle.pgAura{animation:pgAura 3s ease-in-out infinite}
+@keyframes pgAura{0%,100%{box-shadow:0 0 7px #ffffff18,0 8px 25px #000b}50%{box-shadow:0 0 18px #ffffff50,0 0 30px #ffffff16,0 8px 25px #000b}}
+#pgToggle.pgPressed{transform:scale(.9);filter:brightness(1.3)}
+#pgToggle.pgWorking:before{inset:-8px;background:conic-gradient(#003b19,#006b2b,#00a83b,#39ff78,#008f35,#004d20,#20e85b,#003b19);animation:pgRingRotate .8s linear infinite;box-shadow:0 0 8px #00ff5570,0 0 18px #00ff5545}
+#pgToggle.pgOk:before{background:conic-gradient(#003b19,#00ff70,#b0ffc9,#00a83b,#003b19);box-shadow:0 0 12px #00ff7070}
+#pgToggle.pgErr:before{background:conic-gradient(#450000,#ff4545,#ffaaaa,#a00000,#450000);box-shadow:0 0 12px #ff454570}
+#pgNotify{position:fixed;top:25px;left:50%;transform:translateX(-50%) translateY(-20px);background:rgba(18,18,21,.97);color:#fff;padding:11px 18px;border:1px solid #ffffff30;border-radius:11px;font-family:"Trebuchet MS",Arial,sans-serif;font-weight:bold;font-size:13px;z-index:2147483642;opacity:0;transition:opacity .3s,transform .35s;box-shadow:0 8px 25px #0008;pointer-events:none;max-width:85vw;text-align:center}
+@media(max-width:360px){#pgFloat{padding:13px}#pgHead{font-size:16px}}
     `;
     document.head.appendChild(style);
 
-    /* HTML DO GUI */
-
     const gui = document.createElement("div");
     gui.id = "pgFloat";
-
     gui.innerHTML = `
-        <div id="pgHead">
-            <span>PORTUGA IA</span>
-            <button id="pgEditApi" type="button" title="Configurar API">✎</button>
-        </div>
-
-        <div id="pgLine"></div>
-
-        <span class="pgLabel">MODO DE ANÁLISE</span>
-
-        <div id="pgModes">
-            <button type="button" class="pgMode" data-mode="vf">
-                <span>VERDADEIRO OU FALSO</span>
-                <span class="pgModeMark"></span>
-            </button>
-
-            <button type="button" class="pgMode pgSelected" data-mode="alternativa">
-                <span>ALTERNATIVA</span>
-                <span class="pgModeMark"></span>
-            </button>
-
-            <button type="button" class="pgMode" data-mode="multi">
-                <span>MULTISSELEÇÃO</span>
-                <span class="pgModeMark"></span>
-            </button>
-        </div>
-
-        <label class="pgToggleRow pgOn" id="pgAutoRow">
-            <input type="checkbox" id="pgAuto" ${autoApply ? "checked" : ""}>
-            <span>RESPONDER AUTOMATICAMENTE</span>
-        </label>
-
-        <span class="pgLabel">ORIENTAÇÃO EXTRA (OPCIONAL)</span>
-
-        <textarea id="pgQuestion"
-            placeholder="Ex.: explique os conceitos envolvidos na pergunta..."></textarea>
-
-        <button id="pgGo" class="pgAction" type="button">
-            ✦ LER E PERGUNTAR À IA
-        </button>
-
-        <span class="pgLabel">CAMPOS DETECTADOS</span>
-
-        <div id="pgFields">
-            <div class="pgHint">Clique em LER E PERGUNTAR À IA para detectar os campos.</div>
-        </div>
-
-        <span class="pgLabel">RESULTADO</span>
-
-        <textarea id="pgAnswer"
-            placeholder="A leitura e a análise aparecerão aqui..."
-            readonly></textarea>
-
-        <button id="pgCopy" class="pgAction" type="button">
-            COPIAR RESULTADO
-        </button>
-
-        <button id="pgClose" class="pgAction" type="button">
-            FECHAR PAINEL
-        </button>
+<div id="pgHead"><span>PORTUGA IA</span><button id="pgEditApi" type="button" title="Configurar API">✎</button></div>
+<div id="pgLine"></div>
+<span class="pgLabel">MODO DE ANÁLISE</span>
+<div id="pgModes">
+  <button type="button" class="pgMode" data-mode="vf"><span>VERDADEIRO OU FALSO</span><span class="pgModeMark"></span></button>
+  <button type="button" class="pgMode pgSelected" data-mode="alternativa"><span>ALTERNATIVA</span><span class="pgModeMark"></span></button>
+  <button type="button" class="pgMode" data-mode="multi"><span>MULTISSELEÇÃO</span><span class="pgModeMark"></span></button>
+</div>
+<label class="pgToggleRow pgOn" id="pgAutoRow"><input type="checkbox" id="pgAuto" ${autoApply ? "checked" : ""}><span>RESPONDER AUTOMATICAMENTE</span></label>
+<span class="pgLabel">ORIENTAÇÃO EXTRA (OPCIONAL)</span>
+<textarea id="pgQuestion" placeholder="Ex.: explique os conceitos envolvidos na pergunta..."></textarea>
+<button id="pgGo" class="pgAction" type="button">✦ LER E PERGUNTAR À IA</button>
+<span class="pgLabel">CAMPOS DETECTADOS</span>
+<div id="pgFields"><div class="pgHint">Clique em LER E PERGUNTAR À IA para detectar os campos.</div></div>
+<span class="pgLabel">RESULTADO</span>
+<textarea id="pgAnswer" placeholder="A leitura e a análise aparecerão aqui..." readonly></textarea>
+<button id="pgCopy" class="pgAction" type="button">COPIAR RESULTADO</button>
+<button id="pgClose" class="pgAction" type="button">FECHAR PAINEL</button>
     `;
-
     document.body.appendChild(gui);
 
     const toggle = document.createElement("button");
@@ -353,8 +141,6 @@
     const notifyBox = document.createElement("div");
     notifyBox.id = "pgNotify";
     document.body.appendChild(notifyBox);
-
-    /* NOTIFICAÇÕES */
 
     function notify(message, ms = 2300) {
         notifyBox.textContent = message;
@@ -372,9 +158,7 @@
         toggle.classList.toggle("pgWorking", value);
         toggle.classList.toggle("pgAura", !value);
         $("pgGo").disabled = value;
-        $("pgGo").textContent = value
-            ? "PROCESSANDO..."
-            : "✦ LER E PERGUNTAR À IA";
+        $("pgGo").textContent = value ? "PROCESSANDO..." : "✦ LER E PERGUNTAR À IA";
     }
 
     function setMinimized(value) {
@@ -382,13 +166,7 @@
         gui.classList.toggle("pgMini", value);
     }
 
-    /* MODOS */
-
-    const modeNames = {
-        vf: "Verdadeiro ou Falso",
-        alternativa: "Alternativa",
-        multi: "Multisseleção"
-    };
+    const modeNames = { vf: "Verdadeiro ou Falso", alternativa: "Alternativa", multi: "Multisseleção" };
 
     document.querySelectorAll("#pgModes .pgMode").forEach(button => {
         button.addEventListener("click", () => {
@@ -401,8 +179,6 @@
         });
     });
 
-    /* AUTO-APPLY TOGGLE */
-
     $("pgAuto").addEventListener("change", () => {
         autoApply = $("pgAuto").checked;
         store.set("autoapply", autoApply ? "1" : "0");
@@ -410,10 +186,7 @@
         notify(autoApply ? "Resposta automática ATIVADA." : "Resposta automática DESATIVADA.");
     });
 
-    /* API KEY */
-
     $("pgEditApi").addEventListener("pointerdown", e => e.stopPropagation());
-
     $("pgEditApi").onclick = event => {
         event.stopPropagation();
         const value = prompt("Cole sua chave da OpenRouter:", apiKey);
@@ -424,17 +197,13 @@
         }
     };
 
-    /* UTILITÁRIOS */
-
     function clean(v) { return (v || "").replace(/\s+/g, " ").trim(); }
-
     function isVisible(el) {
         if (!el) return false;
         const rect = el.getBoundingClientRect();
         const css = getComputedStyle(el);
         return rect.width > 0 && rect.height > 0 &&
-            css.display !== "none" &&
-            css.visibility !== "hidden" &&
+            css.display !== "none" && css.visibility !== "hidden" &&
             Number(css.opacity) !== 0;
     }
 
@@ -442,57 +211,30 @@
         const clone = document.body.cloneNode(true);
         ["#pgFloat","#pgToggle","#pgNotify","script","style","noscript","svg","iframe"]
             .forEach(sel => clone.querySelectorAll(sel).forEach(el => el.remove()));
-        return (clone.innerText || "")
-            .replace(/\n{3,}/g, "\n\n").trim().slice(0, 30000);
+        return (clone.innerText || "").replace(/\n{3,}/g, "\n\n").trim().slice(0, 30000);
     }
 
-    /* ============================================================
-       EXTRAÇÃO DE LETRA — CORRIGIDO
-       Só aceita:
-         - "B" (letra isolada)
-         - "B) ..." / "B. ..." / "B - ..." / "B: ..." (letra + separador + texto)
-       NUNCA aceita "Bolo" como letra "B".
-    ============================================================ */
-
+    /* ------- LETRA ------- */
     function extractLetter(v) {
         const s = clean(v);
         if (!s) return null;
-
-        // Letra isolada
-        if (/^[a-eA-E]$/.test(s)) {
-            return { letter: s.toLowerCase(), rest: "" };
-        }
-        // Letra + separador + resto
+        if (/^[a-eA-E]$/.test(s)) return { letter: s.toLowerCase(), rest: "" };
         const m = s.match(/^([a-eA-E])\s*[\.\)\-:]\s*(.*)$/);
-        if (m) {
-            return { letter: m[1].toLowerCase(), rest: (m[2] || "").trim() };
-        }
+        if (m) return { letter: m[1].toLowerCase(), rest: (m[2] || "").trim() };
         return null;
     }
-
-    /* ============================================================
-       NORMALIZAÇÃO — mantém semântica de "texto puro sem letra"
-    ============================================================ */
-
     function stripLetterPrefix(v) {
         const s = clean(v);
         const m = s.match(/^([a-eA-E])\s*[\.\)\-:]\s*(.*)$/);
         if (m) return (m[2] || "").trim();
         return s;
     }
-
     function normalizeForMatch(v) {
-        return stripLetterPrefix(v)
-            .toLowerCase()
-            .replace(/[“”"']/g, "")
-            .replace(/\s+/g, " ")
-            .trim();
+        return stripLetterPrefix(v).toLowerCase()
+            .replace(/[“”"']/g, "").replace(/\s+/g, " ").trim();
     }
 
-    /* ============================================================
-       DETECÇÃO DE DROPDOWNS
-    ============================================================ */
-
+    /* ------- DROPDOWNS ------- */
     function isSelectAnswerText(t) {
         return /^\s*selecione(\s+a\s+resposta)?\s*$/i.test(t) ||
                /^\s*select\s*(an?\s*answer|a\s*resposta)?\s*$/i.test(t) ||
@@ -504,10 +246,8 @@
         const seen = new Set();
 
         document.querySelectorAll("select").forEach(el => {
-            if (!isVisible(el) || seen.has(el)) return;
-            if (el.closest("#pgFloat")) return;
-            seen.add(el);
-            results.push(el);
+            if (!isVisible(el) || seen.has(el) || el.closest("#pgFloat")) return;
+            seen.add(el); results.push(el);
         });
 
         const semantic = [
@@ -515,159 +255,114 @@
             '[aria-haspopup="listbox"]',
             "button.options-dropdown",
             '[data-cy*="dropdown"] button'
-        ].flatMap(sel => {
-            try { return [...document.querySelectorAll(sel)]; }
-            catch { return []; }
-        });
+        ].flatMap(sel => { try { return [...document.querySelectorAll(sel)]; } catch { return []; } });
 
         semantic.forEach(el => {
-            if (!isVisible(el) || seen.has(el)) return;
-            if (el.closest("#pgFloat")) return;
-            const text = clean(el.innerText || el.textContent);
-            const hasListbox = el.getAttribute("aria-haspopup") === "listbox";
-            const hasCombo = el.getAttribute("role") === "combobox";
-            const looksSelect = isSelectAnswerText(text) || /selecione|select|escolha/i.test(text);
-            if (!hasListbox && !hasCombo && !looksSelect) return;
-            seen.add(el);
-            results.push(el);
+            if (!isVisible(el) || seen.has(el) || el.closest("#pgFloat")) return;
+            seen.add(el); results.push(el);
         });
 
+        if (results.length === 0) {
+            document.querySelectorAll('button,[role="button"]').forEach(el => {
+                if (!isVisible(el) || seen.has(el) || el.closest("#pgFloat")) return;
+                const text = clean(el.innerText || el.textContent);
+                if (isSelectAnswerText(text)) { seen.add(el); results.push(el); }
+            });
+        }
         return results;
     }
 
-    /* ============================================================
-       DETECÇÃO DE OPÇÕES CLICÁVEIS (assinalar) — REESCRITA
-       Ordem de prioridade: pára no primeiro seletor que devolver ≥2.
-       Deduplica por texto normalizado. Ordena por posição no DOM.
-    ============================================================ */
-
+    /* ------- OPÇÕES CLICÁVEIS ------- */
     function getAnswerChoiceElements() {
         const selectors = [
-            '[data-cy*="option"]',
-            '[data-cy*="answer"]',
-            '[role="radio"]',
-            '[role="checkbox"]',
-            'button[aria-checked]',
-            '[class*="AnswerOption"]',
-            '[class*="answer-option"]',
+            '[data-cy*="option"]','[data-cy*="answer"]',
+            '[role="radio"]','[role="checkbox"]','button[aria-checked]',
+            '[class*="AnswerOption"]','[class*="answer-option"]',
             '[class*="option"][role="button"]'
         ];
-
         for (const sel of selectors) {
-            let list;
-            try { list = document.querySelectorAll(sel); }
-            catch { continue; }
-
-            const items = [];
-            const seen = new Set();
+            let list; try { list = document.querySelectorAll(sel); } catch { continue; }
+            const items = []; const seen = new Set();
             for (const el of list) {
-                if (!isVisible(el) || seen.has(el)) continue;
-                if (el.closest("#pgFloat")) continue;
+                if (!isVisible(el) || seen.has(el) || el.closest("#pgFloat")) continue;
+                if (el.matches('select,[role="combobox"],[aria-haspopup="listbox"],button.options-dropdown')) continue;
                 const text = clean(el.innerText || el.textContent);
                 if (!text || text.length > 500) continue;
-                seen.add(el);
-                items.push({ element: el, text });
+                seen.add(el); items.push({ element: el, text });
             }
             if (items.length >= 2) {
                 const deduped = dedupeChoices(items);
                 if (deduped.length >= 2) return deduped;
             }
         }
-
-        /* Fallback: botões/role=button com prefixo de letra A–E */
         const letterRe = /^\s*([a-eA-E])\s*[\.\)\-:]\s*(.+)$/;
-        const buttons = [...document.querySelectorAll('button, [role="button"], [role="radio"], [role="checkbox"]')]
+        const buttons = [...document.querySelectorAll('button,[role="button"],[role="radio"],[role="checkbox"]')]
             .filter(b => {
-                if (!isVisible(b)) return false;
-                if (b.closest("#pgFloat")) return false;
+                if (!isVisible(b) || b.closest("#pgFloat")) return false;
                 const t = clean(b.innerText || b.textContent);
                 return t && t.length < 500 && letterRe.test(t);
             });
-
-        const seen = new Set();
-        const items = [];
+        const seen = new Set(); const items = [];
         for (const b of buttons) {
             if (seen.has(b)) continue;
             seen.add(b);
             items.push({ element: b, text: clean(b.innerText || b.textContent) });
         }
-
         return dedupeChoices(items);
     }
 
     function dedupeChoices(items) {
         if (!items.length) return items;
-
-        // Remove elementos que contêm outro item (wrappers/containers).
-        // Se A contém B e ambos têm o mesmo texto normalizado,
-        // mantemos apenas B (o mais interno).
-        let filtered = items.filter(item => {
-            return !items.some(other =>
-                other !== item &&
-                item.element.contains(other.element) &&
+        const filtered = items.filter(item =>
+            !items.some(other =>
+                other !== item && item.element.contains(other.element) &&
                 normalizeForMatch(other.text) === normalizeForMatch(item.text)
-            );
-        });
-
-        // Deduplica por texto normalizado (guarda o primeiro em ordem DOM).
+            )
+        );
         const byText = new Map();
         for (const it of filtered) {
             const k = normalizeForMatch(it.text) || it.text;
             if (!byText.has(k)) byText.set(k, it);
         }
         const out = [...byText.values()];
-
-        // Ordena por posição no DOM.
         out.sort((a, b) => {
             const pos = a.element.compareDocumentPosition(b.element);
             if (pos & Node.DOCUMENT_POSITION_FOLLOWING) return -1;
             if (pos & Node.DOCUMENT_POSITION_PRECEDING) return 1;
             return 0;
         });
-
         return out;
     }
 
-    /* MENU DE OPÇÕES (para dropdowns) */
-
+    /* ------- OPÇÕES DE MENU ------- */
     function getVisibleLeaves() {
         return [...document.querySelectorAll("body *")].filter(el => {
-            if (!isVisible(el)) return false;
-            if (el.closest("#pgFloat")) return false;
+            if (!isVisible(el) || el.closest("#pgFloat")) return false;
             const text = clean(el.innerText || el.textContent);
             if (!text || text.length > 180) return false;
             return ![...el.children].some(child =>
-                isVisible(child) && clean(child.innerText || child.textContent) === text
-            );
+                isVisible(child) && clean(child.innerText || child.textContent) === text);
         });
     }
 
     function findMenuOptionElements(before) {
-        const results = [];
-        const seen = new Set();
+        const results = []; const seen = new Set();
         const selectors = [
             '[role="option"]','[role="menuitem"]','[role="menuitemradio"]',
-            'ul[role="listbox"] > li',
-            '[class*="option"]','[class*="Option"]',
+            'ul[role="listbox"] > li','[class*="option"]','[class*="Option"]',
             '[class*="popper"] button','[class*="menu"] button'
         ];
         const candidates = selectors.flatMap(sel => {
-            try { return [...document.querySelectorAll(sel)]; }
-            catch { return []; }
+            try { return [...document.querySelectorAll(sel)]; } catch { return []; }
         });
-
         for (const el of candidates) {
-            if (!isVisible(el) || seen.has(el)) continue;
-            if (before.has(el)) continue;
-            if (el.closest("#pgFloat")) continue;
+            if (!isVisible(el) || seen.has(el) || before.has(el) || el.closest("#pgFloat")) continue;
             const text = clean(el.innerText || el.textContent);
             if (!text || text.length > 200) continue;
             if (isSelectAnswerText(text)) continue;
             if (/^carregando/i.test(text)) continue;
-            seen.add(el);
-            results.push({ text, element: el });
+            seen.add(el); results.push({ text, element: el });
         }
-
         if (results.length === 0) {
             for (const el of getVisibleLeaves()) {
                 if (before.has(el) || seen.has(el)) continue;
@@ -675,8 +370,7 @@
                 if (!text || text.length > 200) continue;
                 if (isSelectAnswerText(text)) continue;
                 if (/^carregando/i.test(text)) continue;
-                seen.add(el);
-                results.push({ text, element: el });
+                seen.add(el); results.push({ text, element: el });
             }
         }
         return results.slice(0, 30);
@@ -685,12 +379,15 @@
     async function scanDropdowns() {
         const buttons = getDropdowns();
         if (buttons.length === 0) {
-            return { aviso: "Nenhum dropdown \"Selecione a resposta\" encontrado.", campos: [] };
+            return { aviso: 'Nenhum dropdown "Selecione a resposta" encontrado.', campos: [] };
         }
         const fields = [];
         for (let i = 0; i < buttons.length; i++) {
             const button = buttons[i];
             if (!button.isConnected || !isVisible(button)) continue;
+
+            const pgid = "pgd_" + i + "_" + Math.random().toString(36).slice(2, 8);
+            try { button.setAttribute("data-pgid", pgid); } catch {}
 
             const currentLabel = clean(button.innerText || button.textContent);
             const before = new Set(getVisibleLeaves());
@@ -699,7 +396,7 @@
             catch {
                 fields.push({
                     campo: i + 1, valorAtual: currentLabel || "(sem texto)",
-                    opcoesDetectadas: [], element: button,
+                    opcoesDetectadas: [], element: button, pgid,
                     erro: "Não foi possível abrir o menu."
                 });
                 continue;
@@ -714,6 +411,7 @@
                 valorAtual: currentLabel || "(sem texto)",
                 opcoesDetectadas: options,
                 element: button,
+                pgid,
                 erro: options.length === 0 ? "Nenhuma opção detectada." : ""
             });
 
@@ -723,44 +421,30 @@
         return fields;
     }
 
-    /* ============================================================
-       MATCH DE DROPDOWN — prioriza LETRA, depois texto, depois índice
-    ============================================================ */
-
+    /* ------- MATCH DE DROPDOWN ------- */
     function matchOption(suggestion, options) {
         if (!suggestion || !Array.isArray(options) || options.length === 0) return "";
-
         const raw = clean(suggestion);
-        if (!raw) return "";
-        if (/^indeterminado$/i.test(raw)) return "";
+        if (!raw || /^indeterminado$/i.test(raw)) return "";
 
         const letterInfo = extractLetter(raw);
         if (letterInfo) {
             const targetLetter = letterInfo.letter;
-
-            // 1) Procura opção com a MESMA letra
             for (const opt of options) {
                 const ol = extractLetter(opt);
                 if (ol && ol.letter === targetLetter) return opt;
             }
-            // 2) Só cai em índice se a sugestão for letra isolada E
-            //    nenhuma opção tiver letra
             const anyOptionHasLetter = options.some(opt => extractLetter(opt));
             if (!anyOptionHasLetter && !letterInfo.rest) {
                 const idx = targetLetter.charCodeAt(0) - 97;
                 if (idx >= 0 && idx < options.length) return options[idx];
             }
         }
-
-        // 3) Comparação por texto puro
         const s = normalizeForMatch(raw);
         if (!s) return "";
-        for (const opt of options) {
-            if (normalizeForMatch(opt) === s) return opt;
-        }
+        for (const opt of options) if (normalizeForMatch(opt) === s) return opt;
         for (const opt of options) {
             const o = normalizeForMatch(opt);
-            if (!o) continue;
             if (o.length >= 3 && s.length >= 3 && (s.includes(o) || o.includes(s))) return opt;
         }
         for (const opt of options) {
@@ -771,45 +455,29 @@
         return "";
     }
 
-    /* ============================================================
-       MATCH DE OPÇÃO CLICÁVEL (assinalar) — REESCRITO
-       Letra é a chave primária. Nunca usa índice se a opção tem letra.
-    ============================================================ */
-
+    /* ------- MATCH DE ESCOLHA CLICÁVEL ------- */
     function matchChoiceAnswer(aiText, choiceText, choiceIndex) {
         const cleanAi = clean(aiText);
         const aiLetter = extractLetter(cleanAi);
         const choiceLetter = extractLetter(choiceText);
 
-        /* 1) Se AMBOS têm letra, compara só a letra. */
-        if (aiLetter && choiceLetter) {
-            return aiLetter.letter === choiceLetter.letter;
-        }
+        if (aiLetter && choiceLetter) return aiLetter.letter === choiceLetter.letter;
 
-        /* 2) IA só devolveu letra ("B"), opção não tem letra:
-              usa índice A=0, B=1, ... */
         if (aiLetter && !aiLetter.rest && !choiceLetter) {
             const idx = aiLetter.letter.charCodeAt(0) - 97;
             return idx === choiceIndex;
         }
 
-        /* 3) Caso contrário, compara TEXTO (ignorando letra). */
         const aiPart = aiLetter ? aiLetter.rest : cleanAi;
         const choicePart = choiceLetter ? choiceLetter.rest : choiceText;
-
         const aiNorm = normalizeForMatch(aiPart);
         const choiceNorm = normalizeForMatch(choicePart);
-
         if (aiNorm && choiceNorm && aiNorm.length >= 2 && choiceNorm.length >= 2) {
             if (aiNorm === choiceNorm) return true;
             if (aiNorm.includes(choiceNorm) || choiceNorm.includes(aiNorm)) return true;
         }
         return false;
     }
-
-    /* ============================================================
-       PARSE DAS RESPOSTAS NUMERADAS
-    ============================================================ */
 
     function parseNumberedAnswers(text) {
         if (!text) return [];
@@ -826,29 +494,14 @@
             .map(n => ({ n, text: map[n] }));
     }
 
-    /* PROMPT PARA A IA */
-
     function buildPrompt(data, extra) {
         const fields = (data && data.menus) || [];
         const hasFields = fields.length > 0;
-
         const instructions = {
-            vf: `
-Analise cada afirmação separadamente.
-Organize na ordem em que aparecem: número, sugestão (Verdadeira/Falsa/Indeterminada)
-e uma justificativa curta.
-`,
-            alternativa: `
-Identifique a pergunta e as alternativas.
-Responda com a LETRA e o TEXTO da alternativa correta.
-Exemplo: "B) Falso".
-`,
-            multi: `
-Analise cada opção uma por uma. Diga quais devem ser marcadas.
-Use a LETRA e o TEXTO de cada opção que deve ser assinalada.
-`
+            vf: `\nAnalise cada afirmação separadamente.\nOrganize na ordem em que aparecem: número, sugestão (Verdadeira/Falsa/Indeterminada)\ne uma justificativa curta.\n`,
+            alternativa: `\nIdentifique a pergunta e as alternativas.\nResponda com a LETRA e o TEXTO da alternativa correta.\nExemplo: "B) Falso".\n`,
+            multi: `\nAnalise cada opção uma por uma. Diga quais devem ser marcadas.\nUse a LETRA e o TEXTO de cada opção que deve ser assinalada.\n`
         };
-
         let fieldInstructions = "";
         if (hasFields) {
             fieldInstructions = `
@@ -856,7 +509,7 @@ ATENÇÃO: a página possui ${fields.length} campo(s) "Selecione a resposta".
 Você DEVE responder CADA CAMPO, na ordem.
 
 FORMATO OBRIGATÓRIO DA PRIMEIRA PARTE (sem texto adicional):
-1. <LETRA e TEXTO exato, ex.: "B) Falso">
+1. <LETRA e TEXTO exato, ex.: "B) Falsa">
 2. <LETRA e TEXTO exato>
 
 Regras:
@@ -867,7 +520,6 @@ Regras:
 Depois, se quiser, uma seção "EXPLICAÇÃO:" (não usada para preencher).
 `;
         }
-
         return `
 Você é um assistente de estudos.
 Responda em português do Brasil.
@@ -887,8 +539,6 @@ ${JSON.stringify(data, null, 2)}
 `;
     }
 
-    /* RENDERIZA OS CAMPOS NA INTERFACE */
-
     function renderFields(fields) {
         const container = $("pgFields");
         if (!container) return;
@@ -898,7 +548,7 @@ ${JSON.stringify(data, null, 2)}
         if (!lastFields.length) {
             const hint = document.createElement("div");
             hint.className = "pgHint";
-            hint.textContent = "Nenhum campo \"Selecione a resposta\" detectado nesta página.";
+            hint.textContent = 'Nenhum campo "Selecione a resposta" detectado nesta página.';
             container.appendChild(hint);
             return;
         }
@@ -924,7 +574,6 @@ ${JSON.stringify(data, null, 2)}
 
             const matchLine = document.createElement("div");
             matchLine.className = "pgFieldMatch";
-
             if (field.erro && (!field.opcoesDetectadas || field.opcoesDetectadas.length === 0)) {
                 matchLine.textContent = "⚠ " + field.erro;
             } else if (matched) {
@@ -934,8 +583,7 @@ ${JSON.stringify(data, null, 2)}
                 matchLine.classList.add("pgBad");
                 matchLine.textContent = "✗ Sem correspondência exata.";
             } else {
-                matchLine.textContent =
-                    "Opções: " +
+                matchLine.textContent = "Opções: " +
                     (field.opcoesDetectadas.slice(0, 4).join(" | ") || "(nenhuma)") +
                     (field.opcoesDetectadas.length > 4 ? " ..." : "");
             }
@@ -974,21 +622,34 @@ ${JSON.stringify(data, null, 2)}
         });
     }
 
-    /* APLICAR RESPOSTA EM UM DROPDOWN */
-
+    /* ------- APLICAR EM DROPDOWN (usa o elemento original) ------- */
     async function applyFieldAnswer(field, targetText) {
         if (!targetText) return { ok: false, motivo: "Sem texto para aplicar." };
 
-        const all = getDropdowns();
-        let button = all[(field.campo - 1)] || null;
-        if (!button) button = field.element;
+        // 1) elemento original do scan
+        let button = field.element;
+
+        // 2) se sumiu, tenta por data-pgid
+        if (!button || !button.isConnected || !isVisible(button)) {
+            if (field.pgid) {
+                try { button = document.querySelector(`[data-pgid="${field.pgid}"]`); } catch {}
+            }
+        }
+
+        // 3) último recurso: re-scan por índice
+        if (!button || !button.isConnected || !isVisible(button)) {
+            const all = getDropdowns();
+            button = all[field.campo - 1] || null;
+        }
+
         if (!button || !button.isConnected || !isVisible(button)) {
             return { ok: false, motivo: "Campo não está mais na página." };
         }
 
+        // <select> nativo
         if (button.tagName === "SELECT") {
             const target = normalizeForMatch(targetText);
-            const targetLetter = extractLetter(targetText);
+            const tLetter = (extractLetter(targetText) || {}).letter || "";
             for (const opt of button.options) {
                 if (normalizeForMatch(opt.text) === target) {
                     button.value = opt.value;
@@ -996,9 +657,9 @@ ${JSON.stringify(data, null, 2)}
                     button.dispatchEvent(new Event("change", { bubbles: true }));
                     return { ok: true };
                 }
-                if (targetLetter) {
+                if (tLetter) {
                     const ol = extractLetter(opt.text);
-                    if (ol && ol.letter === targetLetter.letter) {
+                    if (ol && ol.letter === tLetter) {
                         button.value = opt.value;
                         button.dispatchEvent(new Event("input", { bubbles: true }));
                         button.dispatchEvent(new Event("change", { bubbles: true }));
@@ -1009,29 +670,34 @@ ${JSON.stringify(data, null, 2)}
             return { ok: false, motivo: "Opção não encontrada no select." };
         }
 
+        // Dropdown custom
         const before = new Set(getVisibleLeaves());
         try { button.click(); }
         catch { return { ok: false, motivo: "Não foi possível abrir o menu." }; }
-
         await wait(420);
 
         const optionEls = findMenuOptionElements(before);
-        const targetNormalized = normalizeForMatch(targetText);
-        const targetLetter = (extractLetter(targetText) || {}).letter || "";
+        const targetNorm = normalizeForMatch(targetText);
+        const tLetter = (extractLetter(targetText) || {}).letter || "";
 
-        let chosen = optionEls.find(o => normalizeForMatch(o.text) === targetNormalized);
-        if (!chosen && targetLetter) {
+        let chosen = optionEls.find(o => normalizeForMatch(o.text) === targetNorm);
+
+        if (!chosen && tLetter) {
             chosen = optionEls.find(o => {
                 const ol = extractLetter(o.text);
-                return ol && ol.letter === targetLetter;
+                return ol && ol.letter === tLetter;
             });
         }
         if (!chosen) {
             chosen = optionEls.find(o => {
                 const o2 = normalizeForMatch(o.text);
-                return o2.length >= 3 && targetNormalized.length >= 3 &&
-                    (o2.includes(targetNormalized) || targetNormalized.includes(o2));
+                return o2.length >= 3 && targetNorm.length >= 3 &&
+                    (o2.includes(targetNorm) || targetNorm.includes(o2));
             });
+        }
+        if (!chosen && tLetter) {
+            const idx = tLetter.charCodeAt(0) - 97;
+            if (idx >= 0 && idx < optionEls.length) chosen = optionEls[idx];
         }
 
         if (!chosen) {
@@ -1046,24 +712,21 @@ ${JSON.stringify(data, null, 2)}
             await wait(150);
             return { ok: false, motivo: "Falha ao clicar na opção." };
         }
-
         await wait(220);
         document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
         await wait(120);
         return { ok: true };
     }
 
-    /* ============================================================
-       AUTO-APLICAR — agora com match por LETRA priorizado
-    ============================================================ */
-
+    /* ------- AUTO-APLICAR ------- */
     async function autoApplyAnswers(aiText) {
         if (!autoApply) return;
 
         const parsed = parseNumberedAnswers(aiText);
         const answers = parsed.map(p => p.text).filter(Boolean);
+        const targetAnswers = answers.length > 0 ? answers : [clean(aiText)];
 
-        /* 1) Dropdowns "Selecione a resposta" */
+        // === 1) Dropdowns "Selecione a resposta" ===
         if (lastFields.length > 0) {
             const byNumber = {};
             parsed.forEach(item => { byNumber[item.n] = item.text; });
@@ -1074,41 +737,39 @@ ${JSON.stringify(data, null, 2)}
                 const matched = matchOption(suggestion, field.opcoesDetectadas);
                 if (!matched) continue;
                 const r = await applyFieldAnswer(field, matched);
-                if (r.ok) notify("Campo " + field.campo + " preenchido automaticamente.");
-                await wait(320);
+                if (r.ok) notify("Campo " + field.campo + " preenchido.");
+                await wait(300);
             }
+            // Se haviam dropdowns, NÃO caça os clicáveis: eles seriam os mesmos botões.
+            return;
         }
 
-        /* 2) Opções clicáveis (assinalar) */
+        // === 2) Opções clicáveis (assinalar) ===
         const choices = getAnswerChoiceElements();
-        console.log("[PortugaIA] Opções clicáveis detectadas:", choices.map(c => c.text));
+        console.log("[PortugaIA] Opções clicáveis:", choices.map(c => c.text));
 
-        if (choices.length >= 2) {
-            // Se houver mais de uma resposta, usa as parsed. Senão, usa o texto todo.
-            const targetAnswers = answers.length > 0 ? answers : [clean(aiText)];
-            console.log("[PortugaIA] Respostas alvo:", targetAnswers);
+        if (choices.length < 2) return;
 
-            for (const ans of targetAnswers) {
-                let bestIndex = -1;
-                let bestText = "";
-                for (let i = 0; i < choices.length; i++) {
-                    if (matchChoiceAnswer(ans, choices[i].text, i)) {
-                        bestIndex = i;
-                        bestText = choices[i].text;
-                        break;
-                    }
+        const consumed = new Set(); // <-- AQUI ESTAVA O BUG
+
+        for (const ans of targetAnswers) {
+            let bestIdx = -1;
+            for (let i = 0; i < choices.length; i++) {
+                if (consumed.has(i)) continue; // <-- evita repetir o mesmo botão
+                if (matchChoiceAnswer(ans, choices[i].text, i)) {
+                    bestIdx = i;
+                    break;
                 }
-                console.log(`[PortugaIA] "${ans}" → match índice ${bestIndex} (${bestText || "-"})`);
-                if (bestIndex >= 0) {
-                    try { choices[bestIndex].element.click(); }
-                    catch (e) { console.error("[PortugaIA] Falha ao clicar:", e); }
-                    await wait(220);
-                }
+            }
+            console.log(`[PortugaIA] "${ans}" → índice ${bestIdx}`);
+            if (bestIdx >= 0) {
+                consumed.add(bestIdx);
+                try { choices[bestIdx].element.click(); }
+                catch (e) { console.error("[PortugaIA] click", e); }
+                await wait(240);
             }
         }
     }
-
-    /* BOTÃO ÚNICO: LER E CONSULTAR */
 
     $("pgGo").onclick = async () => {
         if (busy) return;
@@ -1125,8 +786,7 @@ ${JSON.stringify(data, null, 2)}
 
         try {
             $("pgAnswer").value = "① Lendo o conteúdo da página...\nAguarde.";
-            $("pgFields").innerHTML =
-                '<div class="pgHint">Analisando campos e opções...</div>';
+            $("pgFields").innerHTML = '<div class="pgHint">Analisando campos e opções...</div>';
 
             const pageText = readPage();
             $("pgAnswer").value = "① Página lida.\n② Identificando menus e opções...";
@@ -1139,10 +799,8 @@ ${JSON.stringify(data, null, 2)}
                 textoDaPagina: pageText,
                 menus: Array.isArray(fields)
                     ? fields.map(f => ({
-                        campo: f.campo,
-                        valorAtual: f.valorAtual,
-                        opcoesDetectadas: f.opcoesDetectadas,
-                        erro: f.erro || ""
+                        campo: f.campo, valorAtual: f.valorAtual,
+                        opcoesDetectadas: f.opcoesDetectadas, erro: f.erro || ""
                     }))
                     : fields
             };
@@ -1167,10 +825,7 @@ ${JSON.stringify(data, null, 2)}
                                 "Para alternativas e múltipla escolha, inclua a LETRA e o TEXTO " +
                                 "da opção correta."
                         },
-                        {
-                            role: "user",
-                            content: buildPrompt(report, $("pgQuestion").value.trim())
-                        }
+                        { role: "user", content: buildPrompt(report, $("pgQuestion").value.trim()) }
                     ],
                     temperature: 0.2
                 })
@@ -1199,7 +854,6 @@ ${JSON.stringify(data, null, 2)}
                     '<div class="pgHint">Não foi possível montar a lista de campos.</div>';
             }
 
-            // AUTO-APLICAR
             if (autoApply) {
                 try { await autoApplyAnswers(answer.trim()); }
                 catch (err) { console.error("[PortugaIA] autoApply", err); }
@@ -1211,8 +865,7 @@ ${JSON.stringify(data, null, 2)}
         } catch (error) {
             $("pgAnswer").value =
                 "Não foi possível concluir a análise.\n\n" + (error.message || String(error));
-            $("pgFields").innerHTML =
-                '<div class="pgHint">Falha na leitura ou na consulta.</div>';
+            $("pgFields").innerHTML = '<div class="pgHint">Falha na leitura ou na consulta.</div>';
             toggle.classList.add("pgErr");
             notify("Erro na leitura ou consulta à IA.", 2800);
             console.error("[PortugaIA]", error);
@@ -1222,8 +875,6 @@ ${JSON.stringify(data, null, 2)}
         }
     };
 
-    /* COPIAR RESULTADO */
-
     $("pgCopy").onclick = async () => {
         const text = $("pgAnswer").value;
         if (!text) { notify("Não há resultado para copiar."); return; }
@@ -1231,29 +882,22 @@ ${JSON.stringify(data, null, 2)}
             await navigator.clipboard.writeText(text);
             notify("Resultado copiado!");
         } catch {
-            $("pgAnswer").focus();
-            $("pgAnswer").select();
+            $("pgAnswer").focus(); $("pgAnswer").select();
             notify("Texto selecionado. Copie manualmente.");
         }
     };
-
-    /* FECHAR GUI */
 
     $("pgClose").onclick = () => {
         clearTimeout(notifyTimer);
         gui.remove(); toggle.remove(); notifyBox.remove(); style.remove();
     };
 
-    /* ARRASTAR ÍCONE FLUTUANTE */
-
     let iconDrag = null, iconMoved = false;
-
     toggle.addEventListener("pointerdown", event => {
         if (event.button !== undefined && event.button !== 0) return;
         const rect = toggle.getBoundingClientRect();
         iconDrag = {
-            id: event.pointerId,
-            startX: event.clientX, startY: event.clientY,
+            id: event.pointerId, startX: event.clientX, startY: event.clientY,
             offsetX: event.clientX - rect.left, offsetY: event.clientY - rect.top
         };
         iconMoved = false;
@@ -1261,7 +905,6 @@ ${JSON.stringify(data, null, 2)}
         try { toggle.setPointerCapture(event.pointerId); } catch {}
         event.preventDefault();
     });
-
     toggle.addEventListener("pointermove", event => {
         if (!iconDrag || event.pointerId !== iconDrag.id) return;
         const dx = event.clientX - iconDrag.startX;
@@ -1270,12 +913,9 @@ ${JSON.stringify(data, null, 2)}
         if (!iconMoved) return;
         const x = Math.max(0, Math.min(innerWidth - toggle.offsetWidth, event.clientX - iconDrag.offsetX));
         const y = Math.max(0, Math.min(innerHeight - toggle.offsetHeight, event.clientY - iconDrag.offsetY));
-        toggle.style.left = x + "px";
-        toggle.style.top = y + "px";
-        toggle.style.right = "auto";
-        toggle.style.bottom = "auto";
+        toggle.style.left = x + "px"; toggle.style.top = y + "px";
+        toggle.style.right = "auto"; toggle.style.bottom = "auto";
     });
-
     function finishIcon(event) {
         if (!iconDrag || event.pointerId !== iconDrag.id) return;
         const wasMoved = iconMoved;
@@ -1283,17 +923,13 @@ ${JSON.stringify(data, null, 2)}
         toggle.classList.remove("pgPressed");
         if (!wasMoved) setMinimized(!minimized);
     }
-
     toggle.addEventListener("pointerup", finishIcon);
     toggle.addEventListener("pointercancel", () => {
         iconDrag = null; iconMoved = false; toggle.classList.remove("pgPressed");
     });
     toggle.addEventListener("click", e => { e.preventDefault(); e.stopPropagation(); });
 
-    /* ARRASTAR PAINEL */
-
     let panelDrag = null;
-
     $("pgHead").addEventListener("pointerdown", event => {
         if (event.target.closest("button")) return;
         const rect = gui.getBoundingClientRect();
@@ -1305,23 +941,17 @@ ${JSON.stringify(data, null, 2)}
         try { $("pgHead").setPointerCapture(event.pointerId); } catch {}
         event.preventDefault();
     });
-
     $("pgHead").addEventListener("pointermove", event => {
         if (!panelDrag || event.pointerId !== panelDrag.id) return;
         const x = Math.max(0, Math.min(innerWidth - gui.offsetWidth, event.clientX - panelDrag.offsetX));
         const y = Math.max(0, Math.min(innerHeight - gui.offsetHeight, event.clientY - panelDrag.offsetY));
-        gui.style.left = x + "px";
-        gui.style.top = y + "px";
-        gui.style.transform = "none";
+        gui.style.left = x + "px"; gui.style.top = y + "px"; gui.style.transform = "none";
     });
-
     function finishPanel(event) {
         if (panelDrag && event.pointerId === panelDrag.id) panelDrag = null;
     }
     $("pgHead").addEventListener("pointerup", finishPanel);
     $("pgHead").addEventListener("pointercancel", finishPanel);
-
-    /* ATALHOS */
 
     function toggleHiddenMode() {
         hidden = !hidden;
@@ -1334,15 +964,12 @@ ${JSON.stringify(data, null, 2)}
         if (event.key === "Escape") setMinimized(!minimized);
         if (event.key === "Alt" && !event.repeat) toggleHiddenMode();
         if (event.altKey && event.key.toLowerCase() === "q") {
-            event.preventDefault();
-            $("pgGo").click();
+            event.preventDefault(); $("pgGo").click();
         }
     });
-
     document.addEventListener("mousedown", event => {
         if (event.button === 1) { event.preventDefault(); toggleHiddenMode(); }
     });
-
     window.addEventListener("resize", () => {
         const rect = toggle.getBoundingClientRect();
         if (rect.right > innerWidth) {
