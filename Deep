@@ -770,111 +770,237 @@ $("pgGerar").onclick=async()=>{
 
     try{
 
-        const resposta=
-            await fetch(
-                "https://openrouter.ai/api/v1/chat/completions",
-                {
+        // ==========================
+        // LISTA DE MODELOS
+        // ==========================
 
-                    method:"POST",
+        const modelos=[
 
-                    headers:{
+            "nvidia/nemotron-3-ultra-550b-a55b:free",
+            "meta-llama/llama-3.3-70b-instruct:free",
+            "deepseek/deepseek-chat-v3-0324:free",
+            "qwen/qwen3-next-80b-a3b-instruct:free",
+            "arcee-ai/trinity-large-preview:free",
+            "openrouter/free"
 
-                        "Authorization":
-                            "Bearer "+apiKey,
+        ];
 
-                        "Content-Type":
-                            "application/json"
 
-                    },
+        // ==========================
+        // FILTRO DE RESPOSTAS RUINS
+        // ==========================
 
-                    body:JSON.stringify({
+        const lixo=[
 
-                        model:
-                            "google/gemini-2.0-flash-exp:free",
+            "user safe",
+            "user_safe",
+            "safe: safe",
+            "i'm sorry",
+            "i am sorry",
+            "as an ai",
+            "i cannot",
+            "i can't",
+            "não posso ajudar",
+            "desculpe",
+            "sorry,"
 
-                        messages:[
+        ];
 
-                            {
+        function respostaRuim(t){
 
-                                role:"system",
+            if(!t || t.length < 200)return true;
 
-                                content:
-                                    "Você é um especialista em redações. "+
-                                    "PRIMEIRO identifique o TEMA da redação a partir do conteúdo da página. "+
-                                    "DEPOIS escreva uma redação completa em português sobre esse tema. "+
-                                    "NÍVEL DE COMPLEXIDADE DESEJADO: "+
-                                    descNivel[nivel]+" "+
-                                    "REGRAS IMPORTANTES: responda APENAS com o texto final da redação, "+
-                                    "SEM títulos, SEM explicações, SEM marcadores, SEM introdução do tipo "+
-                                    "'aqui está sua redação'. Apenas o texto puro. "+
-                                    "Parágrafos separados por uma linha em branco. "+
-                                    "Tamanho aproximado: entre 25 e 35 linhas."
+            const m=
+                t.toLowerCase().trim();
 
-                            },
-
-                            {
-
-                                role:"user",
-
-                                content:
-                                    "CONTEÚDO DA PÁGINA:\n\n"+
-                                    pageText
-
-                            }
-
-                        ]
-
-                    })
-
-                }
+            return lixo.some(p=>
+                m.startsWith(p)
             );
-
-
-        const dados=
-            await resposta.json();
-
-
-        if(!resposta.ok){
-
-            if(
-                resposta.status===401 ||
-                resposta.status===403
-            ){
-
-                apiKey="";
-            }
-
-            throw new Error(
-                dados?.error?.message ||
-                "Erro HTTP "+
-                resposta.status
-            );
-
         }
 
 
-        let texto=
-            dados
-            ?.choices
-            ?.[0]
-            ?.message
-            ?.content;
+        // ==========================
+        // LOOP PELOS MODELOS
+        // ==========================
+
+        let texto=null;
+        let ultimoErro=null;
+
+        for(let i=0;i<modelos.length;i++){
+
+            const modelo=modelos[i];
+
+            try{
+
+                $("pgGerar").textContent=
+                    "GERANDO ("+
+                    (i+1)+
+                    "/"+
+                    modelos.length+
+                    ")...";
+
+                notify(
+                    "Tentando modelo "+
+                    (i+1)+
+                    "...",
+                    true
+                );
+
+
+                const resposta=
+                    await fetch(
+                        "https://openrouter.ai/api/v1/chat/completions",
+                        {
+
+                            method:"POST",
+
+                            headers:{
+
+                                "Authorization":
+                                    "Bearer "+apiKey,
+
+                                "Content-Type":
+                                    "application/json"
+
+                            },
+
+                            body:JSON.stringify({
+
+                                model:
+                                    modelo,
+
+                                messages:[
+
+                                    {
+
+                                        role:"system",
+
+                                        content:
+                                            "Você é um especialista em redações. "+
+                                            "PRIMEIRO identifique o TEMA da redação a partir do conteúdo da página. "+
+                                            "DEPOIS escreva uma redação completa em português sobre esse tema. "+
+                                            "NÍVEL DE COMPLEXIDADE DESEJADO: "+
+                                            descNivel[nivel]+" "+
+                                            "REGRAS IMPORTANTES: responda APENAS com o texto final da redação, "+
+                                            "SEM títulos, SEM explicações, SEM marcadores, SEM introdução do tipo "+
+                                            "'aqui está sua redação'. Apenas o texto puro. "+
+                                            "Parágrafos separados por uma linha em branco. "+
+                                            "Tamanho aproximado: entre 25 e 35 linhas."
+
+                                    },
+
+                                    {
+
+                                        role:"user",
+
+                                        content:
+                                            "CONTEÚDO DA PÁGINA:\n\n"+
+                                            pageText
+
+                                    }
+
+                                ]
+
+                            })
+
+                        }
+                    );
+
+
+                const dados=
+                    await resposta.json();
+
+
+                if(!resposta.ok){
+
+                    if(
+                        resposta.status===401 ||
+                        resposta.status===403
+                    ){
+
+                        apiKey="";
+
+                        throw new Error(
+                            "Chave da API inválida. Reabra o script."
+                        );
+                    }
+
+                    ultimoErro=
+                        new Error(
+                            dados?.error?.message ||
+                            "Erro HTTP "+
+                            resposta.status
+                        );
+
+                    continue;
+                }
+
+
+                let t=
+                    dados
+                    ?.choices
+                    ?.[0]
+                    ?.message
+                    ?.content;
+
+
+                if(!t){
+
+                    ultimoErro=
+                        new Error("Resposta vazia");
+
+                    continue;
+                }
+
+
+                t=
+                    t
+                    .replace(/^```[\w]*\n?/,"")
+                    .replace(/```$/,"")
+                    .trim();
+
+
+                if(respostaRuim(t)){
+
+                    ultimoErro=
+                        new Error(
+                            "Resposta ruim do modelo "+
+                            modelo
+                        );
+
+                    continue;
+                }
+
+
+                texto=t;
+
+                break;
+
+
+            }catch(e){
+
+                if(
+                    e.message &&
+                    e.message.includes("Chave da API inválida")
+                ){
+
+                    throw e;
+                }
+
+                ultimoErro=e;
+
+                continue;
+            }
+        }
 
 
         if(!texto){
 
-            throw new Error(
-                "A IA não retornou uma resposta."
-            );
-
+            throw ultimoErro ||
+                new Error(
+                    "Todos os modelos falharam. Tente novamente mais tarde."
+                );
         }
-
-
-        texto=
-            texto
-            .replace(/^```[\w]*\n?/,"")
-            .replace(/```$/,"")
-            .trim();
 
 
         $("pgGerar").textContent=
@@ -887,11 +1013,6 @@ $("pgGerar").onclick=async()=>{
 
         notify("Redação pronta!");
 
-        $("pgGerar").textContent=
-            "GERAR REDAÇÃO";
-
-        $("pgGerar").disabled=false;
-
 
     }catch(erro){
 
@@ -903,11 +1024,12 @@ $("pgGerar").onclick=async()=>{
         );
 
 
+    }finally{
+
         $("pgGerar").textContent=
             "GERAR REDAÇÃO";
 
         $("pgGerar").disabled=false;
-
     }
 
 };
