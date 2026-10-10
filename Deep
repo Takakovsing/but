@@ -635,12 +635,6 @@ async function digitar(campo,texto){
 
     campo.focus();
 
-    // ==========================
-    // 1) SIMULA PASTE REAL
-    // ==========================
-
-    let pasteTratado=false;
-
     try{
 
         const dt=new DataTransfer();
@@ -662,20 +656,12 @@ async function digitar(campo,texto){
         if(naoCancelado){
 
             aplicarTexto(campo,texto);
-
-        }else{
-
-            pasteTratado=true;
         }
 
     }catch(e){
 
         aplicarTexto(campo,texto);
     }
-
-    // ==========================
-    // 2) EVENTOS EXTRAS
-    // ==========================
 
     campo.dispatchEvent(
         new Event("input",{bubbles:true})
@@ -692,10 +678,6 @@ async function digitar(campo,texto){
             ctrlKey:true
         })
     );
-
-    // ==========================
-    // 3) VERIFICA SE COLOU
-    // ==========================
 
     const conteudo=
         campo.tagName==="TEXTAREA" ||
@@ -808,7 +790,7 @@ $("pgGerar").onclick=async()=>{
                     body:JSON.stringify({
 
                         model:
-                            "openrouter/free",
+                            "google/gemini-2.0-flash-exp:free",
 
                         messages:[
 
