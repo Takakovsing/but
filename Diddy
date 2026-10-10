@@ -1,12 +1,21 @@
 (async () => {
     "use strict";
 
+    /* ===== LIMPA QUALQUER INSTÂNCIA ANTERIOR ===== */
+    ["pgFloat","pgToggle","pgNotify","pgStyle"].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.remove();
+    });
+    document.querySelectorAll("style").forEach(s => {
+        try {
+            if (s.textContent && s.textContent.indexOf("#pgFloat{position:fixed") !== -1) s.remove();
+        } catch {}
+    });
+
     const KEY_CORRETA = "rzinmodder";
     const ICONE = "https://media.tenor.com/m11vauEEbcUAAAAM/meow-neko-arc.gif";
     const API_URL = "https://openrouter.ai/api/v1/chat/completions";
     const MODEL = "openrouter/free";
-
-    if (document.getElementById("pgFloat")) return;
 
     if (prompt("Digite a Key:") !== KEY_CORRETA) {
         alert("Key inválida!");
@@ -58,10 +67,11 @@
     /* ===================== CSS ===================== */
 
     const style = document.createElement("style");
+    style.id = "pgStyle";
     style.textContent = `
 #pgFloat,#pgToggle,#pgNotify{box-sizing:border-box}
-#pgFloat{position:fixed;top:80px;left:50%;width:min(350px,calc(100vw - 24px));max-height:calc(100dvh - 35px);overflow-y:auto;padding:16px;color:#eee;background:radial-gradient(ellipse at 50% 0%,#ffffff17,transparent 65%),rgba(12,12,16,.97);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);border:1px solid #ffffff30;border-radius:20px;z-index:2147483640;font-family:"Trebuchet MS",Arial,sans-serif;box-shadow:0 15px 50px #000b,0 0 20px #ffffff08;transform:translateX(-50%);isolation:isolate;scrollbar-width:thin;scrollbar-color:#444 transparent;transition:opacity .2s,transform .2s}
-#pgFloat:before{content:"";position:absolute;inset:-100%;background:conic-gradient(transparent,#ffffff0b,transparent,#ffffff08,transparent);animation:pgPanelGlow 8s linear infinite;pointer-events:none;z-index:-1}
+#pgFloat{position:fixed;top:60px;left:50%;width:min(350px,calc(100vw - 24px));max-height:calc(100dvh - 80px);overflow-y:auto;overflow-x:hidden;padding:16px;color:#eee;background:radial-gradient(ellipse at 50% 0%,#ffffff17,transparent 65%),rgba(12,12,16,.97);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);border:1px solid #ffffff30;border-radius:20px;z-index:2147483640;font-family:"Trebuchet MS",Arial,sans-serif;box-shadow:0 15px 50px #000b,0 0 20px #ffffff08;transform:translateX(-50%);isolation:isolate;scrollbar-width:thin;scrollbar-color:#444 transparent;transition:opacity .2s,transform .2s}
+#pgFloat:before{content:"";position:absolute;inset:0;border-radius:20px;background:conic-gradient(transparent,#ffffff0b,transparent,#ffffff08,transparent);animation:pgPanelGlow 8s linear infinite;pointer-events:none;z-index:-1}
 @keyframes pgPanelGlow{to{transform:rotate(360deg)}}
 #pgFloat.pgMini{opacity:0;visibility:hidden;pointer-events:none;transform:translateX(-50%) scale(.82)}
 #pgHead{position:relative;min-height:32px;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:900;letter-spacing:1.5px;margin-bottom:12px}
@@ -116,7 +126,7 @@
     gui.id = "pgFloat";
     gui.innerHTML = `
 <div id="pgHead">
-    <span id="pgDragHandle">PORTUGA IA</span>
+    <span id="pgDragHandle">PORTUGA IA <span style="font-size:9px;opacity:.55;letter-spacing:1px">v3</span></span>
     <button id="pgEditApi" type="button" title="Configurar API">✎</button>
 </div>
 <div id="pgLine"></div>
@@ -915,7 +925,7 @@ Regras:
 - O texto deve ser copiado LITERALMENTE de "opcoesDetectadas".
 - Se não houver dados, escreva "INDETERMINADO".
 `;
-        } else if ((type === "choices" || type === "alternativa" || type === "multi") && choices.length > 0) {
+        } else if ((type === "alternativa" || type === "multi") && choices.length > 0) {
             extra_instructions = `
 ATENÇÃO: a página tem ${choices.length} alternativa(s) clicável(is).
 Você DEVE responder com LETRA e TEXTO EXATO da(s) alternativa(s) correta(s).
@@ -1207,7 +1217,7 @@ ${JSON.stringify(data, null, 2)}
             return;
         }
 
-        if ((lastType === "choices" || lastType === "alternativa" || lastType === "multi") && lastChoices.length > 0) {
+        if ((lastType === "alternativa" || lastType === "multi") && lastChoices.length > 0) {
             const r = await applyChoiceAnswer();
             if (r.ok) notify("Alternativa clicada automaticamente.");
         }
@@ -1263,7 +1273,7 @@ ${JSON.stringify(data, null, 2)}
                 }
             }
 
-            modo = type === "choices" ? "alternativa" : type;
+            modo = type;
             lastType = type;
             lastFields = fields;
             lastChoices = choices;
@@ -1487,5 +1497,5 @@ ${JSON.stringify(data, null, 2)}
         }
     });
 
-    notify("PORTUGA IA Premium carregada!");
+    notify("PORTUGA IA Premium v3 carregada!");
 })();
