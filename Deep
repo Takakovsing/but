@@ -1,1076 +1,1002 @@
 
-(async () => {
-    "use strict";
+javascript:(async()=>{
 
-    const KEY_CORRETA = "rzinmodder";
+"use strict";
 
-    if (document.getElementById("pgFloat")) return;
+const KEY_CORRETA = "rzinmodder";
+const ICONE_PORTUGA = "https://media.tenor.com/m11vauEEbcUAAAAM/meow-neko-arc.gif";
 
-    if (prompt("Digite a Key:") !== KEY_CORRETA) {
-        alert("Key inválida!");
-        return;
+if(document.getElementById("pgFloat")) return;
+
+if(prompt("Digite a Key:") !== KEY_CORRETA){
+    alert("Key inválida!");
+    return;
+}
+
+let apiKey = "";
+let nivel = "medio";
+let busy = false;
+let minimized = false;
+let hidden = false;
+let notifyTimer;
+let panelDrag = null;
+let togglePointer = null;
+
+const $ = id => document.getElementById(id);
+
+const niveis = ["baixo", "medio", "alto"];
+
+const nomesNivel = {
+    baixo: "BAIXO",
+    medio: "MÉDIO",
+    alto: "ALTO"
+};
+
+const descNivel = {
+    baixo: "Use linguagem simples, frases curtas e vocabulário básico.",
+    medio: "Use vocabulário intermediário, boa coesão e argumentação equilibrada.",
+    alto: "Use argumentação aprofundada, repertório sociocultural, conectivos variados e excelente coesão."
+};
+
+/* Ícone da aba do site */
+let favicon = document.querySelector('link[rel~="icon"]');
+
+if(!favicon){
+    favicon = document.createElement("link");
+    favicon.rel = "icon";
+    document.head.appendChild(favicon);
+}
+
+favicon.href = ICONE_PORTUGA;
+
+/* ESTILO */
+const style = document.createElement("style");
+
+style.textContent = `
+    #pgFloat, #pgToggle, #pgNotify, #pgEditApi {
+        box-sizing: border-box;
     }
 
-    let apiKey = "";
-    let nivel = "medio";
-    let busy = false;
-    let minimized = false;
-    let hidden = false;
-    let notifyTimer;
-    let panelDrag = null;
-    let togglePointer = null;
-
-    const $ = id => document.getElementById(id);
-
-    const niveis = ["baixo", "medio", "alto"];
-
-    const nomesNivel = {
-        baixo: "BAIXO",
-        medio: "MÉDIO",
-        alto: "ALTO"
-    };
-
-    const descNivel = {
-        baixo: "Use linguagem simples, frases curtas e vocabulário básico.",
-        medio: "Use vocabulário intermediário, boa coesão e argumentação equilibrada.",
-        alto: "Use argumentação aprofundada, repertório sociocultural, conectivos variados e excelente coesão."
-    };
-
-    // Ícone SVG usado no botão flutuante e no favicon.
-    const iconeSVG = `
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-        <defs>
-            <linearGradient id="pgGradient" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0%" stop-color="#ffffff"/>
-                <stop offset="50%" stop-color="#ded5ff"/>
-                <stop offset="100%" stop-color="#8d72ff"/>
-            </linearGradient>
-        </defs>
-        <circle cx="50" cy="50" r="48" fill="#08080e"/>
-        <circle cx="50" cy="50" r="44" fill="none"
-            stroke="url(#pgGradient)" stroke-width="1.5"/>
-        <path d="M23 42 L20 17 L42 30 Q50 27 58 30 L80 17 L77 42
-            Q87 53 81 68 Q74 86 50 86 Q26 86 19 68 Q13 53 23 42Z"
-            fill="#141320" stroke="url(#pgGradient)" stroke-width="3"
-            stroke-linejoin="round"/>
-        <path d="M26 37 L25 24 L39 33Z M74 37 L75 24 L61 33Z"
-            fill="#9d85ff"/>
-        <path d="M31 54 Q38 45 45 55 Q38 64 31 54Z" fill="#b8a5ff"/>
-        <path d="M55 55 Q62 45 69 54 Q62 64 55 55Z" fill="#b8a5ff"/>
-        <circle cx="39" cy="54" r="2.3" fill="#fff"/>
-        <circle cx="63" cy="54" r="2.3" fill="#fff"/>
-        <path d="M46 66 Q50 70 54 66 M50 63 L50 66"
-            fill="none" stroke="#e7ddff" stroke-width="2"
-            stroke-linecap="round"/>
-        <path d="M20 61 L8 58 M20 68 L8 70 M80 61 L92 58 M80 68 L92 70"
-            stroke="#c8bbff" stroke-width="1.6" stroke-linecap="round"/>
-    </svg>`;
-
-    const iconeURL = "data:image/svg+xml;charset=utf-8," +
-        encodeURIComponent(iconeSVG);
-
-    let favicon = document.querySelector('link[rel~="icon"]');
-
-    if (!favicon) {
-        favicon = document.createElement("link");
-        favicon.rel = "icon";
-        document.head.appendChild(favicon);
+    #pgFloat {
+        position: fixed;
+        top: 80px;
+        left: 50%;
+        width: min(350px, calc(100vw - 24px));
+        aspect-ratio: 1 / 1;
+        padding: 17px;
+        color: #f5f5f5;
+        font: 14px "Trebuchet MS", Arial, sans-serif;
+        background:
+            radial-gradient(ellipse at 50% -20%, #ffffff18, transparent 65%),
+            linear-gradient(145deg, rgba(30,30,35,.97), rgba(7,7,10,.97));
+        border: 1px solid #ffffff38;
+        border-radius: 21px;
+        backdrop-filter: blur(22px);
+        -webkit-backdrop-filter: blur(22px);
+        box-shadow: 0 22px 65px #000c, 0 0 25px #ffffff09;
+        z-index: 2147483640;
+        transform: translateX(-50%) scale(1);
+        opacity: 1;
+        visibility: visible;
+        transform-origin: top center;
+        transition:
+            opacity .24s ease,
+            transform .32s cubic-bezier(.2,.85,.25,1),
+            visibility 0s;
+        overflow: hidden;
+        user-select: none;
+        -webkit-user-select: none;
+        display: flex;
+        flex-direction: column;
     }
 
-    favicon.href = iconeURL;
-    favicon.type = "image/svg+xml";
+    #pgFloat:before {
+        content: "";
+        position: absolute;
+        inset: -100%;
+        background: conic-gradient(
+            transparent, #ffffff16, transparent, #ffffff0a, transparent
+        );
+        animation: pgGlow 7s linear infinite;
+        pointer-events: none;
+    }
 
-    const style = document.createElement("style");
-    style.id = "pgPremiumStyle";
+    #pgFloat:after {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 12%;
+        width: 76%;
+        height: 1px;
+        background: linear-gradient(90deg, transparent, #fff9, transparent);
+        pointer-events: none;
+    }
 
-    style.textContent = `
-        #pgFloat, #pgFloat *, #pgToggle, #pgNotify {
-            box-sizing: border-box;
-        }
+    @keyframes pgGlow {
+        to { transform: rotate(360deg); }
+    }
 
+    #pgFloat > * {
+        position: relative;
+    }
+
+    #pgFloat.pgMini {
+        opacity: 0;
+        visibility: hidden;
+        transform: translateX(-50%) translateY(18px) scale(.76);
+        pointer-events: none;
+        transition:
+            opacity .2s ease,
+            transform .28s cubic-bezier(.4,0,.8,.3),
+            visibility 0s linear .28s;
+    }
+
+    #pgHead {
+        position: relative;
+        min-height: 43px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 8px;
+        font-size: 17px;
+        font-weight: 900;
+        letter-spacing: 1.8px;
+        cursor: grab;
+        touch-action: none;
+        border-radius: 12px;
+        flex-shrink: 0;
+    }
+
+    #pgHead:active {
+        cursor: grabbing;
+    }
+
+    #pgHead .pgStar {
+        color: #fff;
+        font-size: 19px;
+        text-shadow: 0 0 13px #ffffffaa;
+    }
+
+    #pgEditApi {
+        position: absolute;
+        top: 4px;
+        right: 0;
+        width: 34px;
+        height: 34px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0;
+        margin: 0;
+        border: 1px solid #ffffff30;
+        border-radius: 10px;
+        color: #fff;
+        background: #ffffff12;
+        font-size: 19px;
+        cursor: pointer;
+        z-index: 5;
+        touch-action: manipulation;
+    }
+
+    #pgEditApi:hover {
+        background: #ffffff28;
+        border-color: #ffffff80;
+    }
+
+    #pgEditApi:active {
+        transform: scale(.92);
+    }
+
+    #pgLine {
+        height: 1px;
+        margin: 0 0 13px;
+        background: linear-gradient(90deg, transparent, #ffffff35, transparent);
+        flex-shrink: 0;
+    }
+
+    #pgActions {
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        justify-content: center;
+        gap: 10px;
+        width: 100%;
+        flex: 1;
+        min-height: 0;
+    }
+
+    #pgFloat button:not(#pgEditApi) {
+        color: #eee;
+        background: linear-gradient(135deg, #ffffff13, #ffffff07);
+        border: 1px solid #ffffff25;
+        border-radius: 12px;
+        font: bold 13px "Trebuchet MS", Arial, sans-serif;
+        cursor: pointer;
+        transition:
+            background .2s ease,
+            border-color .2s ease,
+            transform .2s ease,
+            box-shadow .2s ease;
+    }
+
+    #pgActions button {
+        display: flex;
+        width: 100%;
+        min-height: 46px;
+        padding: 12px;
+        margin: 0;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        flex-shrink: 0;
+    }
+
+    #pgFloat button:not(#pgEditApi):hover {
+        background: #ffffff24;
+        border-color: #ffffff70;
+        box-shadow: 0 0 18px #ffffff0b;
+    }
+
+    #pgFloat button:not(#pgEditApi):active {
+        transform: scale(.975);
+    }
+
+    #pgFloat button:disabled {
+        opacity: .72;
+        cursor: wait;
+    }
+
+    #pgGerar {
+        color: #101014 !important;
+        background: linear-gradient(115deg, #fff, #c9c9d1) !important;
+        border-color: #fff !important;
+        box-shadow: 0 4px 18px #ffffff12;
+    }
+
+    #pgToggle {
+        position: fixed;
+        right: 20px;
+        bottom: 25px;
+        width: 68px;
+        height: 68px;
+        padding: 4px;
+        border: 0;
+        border-radius: 50%;
+        background: transparent;
+        box-shadow: 0 8px 30px #000b, 0 0 17px #ffffff13;
+        z-index: 2147483641;
+        cursor: grab;
+        overflow: visible;
+        touch-action: none;
+        user-select: none;
+        -webkit-user-select: none;
+        isolation: isolate;
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    #pgToggle:active {
+        cursor: grabbing;
+    }
+
+    /* Borda branca restaurada */
+    #pgToggle:before {
+        content: "";
+        position: absolute;
+        inset: -3px;
+        border-radius: 50%;
+        background: conic-gradient(
+            #ffffff, #dcdce3, #ffffff, #777782, #ffffff
+        );
+        animation: pgIdleSpin 4s linear infinite;
+        z-index: -2;
+        opacity: 1;
+    }
+
+    /* Borda preta ultrafina entre o anel e o ícone */
+    #pgToggle img {
+        display: block;
+        width: 100%;
+        height: 100%;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 1px solid #000;
+        box-sizing: border-box;
+        background: #000;
+        pointer-events: none;
+    }
+
+    /* Anel mais chamativo durante a geração */
+    #pgToggle.pgWorking:before {
+        inset: -3px;
+        background: conic-gradient(
+            #48ff8b,
+            #d9ffe5,
+            #13ce68,
+            #ffffff,
+            #21ff81,
+            #087d3b,
+            #48ff8b
+        );
+        opacity: 1;
+        filter: drop-shadow(0 0 7px #29ff82);
+        animation: pgWorkSpin .8s linear infinite;
+    }
+
+    #pgToggle.pgWorking {
+        animation: pgWorkPulse 1s ease-in-out infinite alternate;
+    }
+
+    #pgToggle.pgPop {
+        animation: pgPop .42s cubic-bezier(.18,.9,.3,1.35);
+    }
+
+    @keyframes pgIdleSpin {
+        to { transform: rotate(360deg); }
+    }
+
+    @keyframes pgWorkSpin {
+        to { transform: rotate(360deg); }
+    }
+
+    @keyframes pgWorkPulse {
+        from { filter: drop-shadow(0 0 2px #22ff7040); }
+        to { filter: drop-shadow(0 0 12px #22ff70aa); }
+    }
+
+    @keyframes pgPop {
+        0% { transform: scale(.55) rotate(-20deg); }
+        70% { transform: scale(1.13) rotate(5deg); }
+        100% { transform: scale(1) rotate(0); }
+    }
+
+    #pgNotify {
+        position: fixed;
+        top: 22px;
+        left: 50%;
+        transform: translate(-50%, -15px) scale(.97);
+        padding: 12px 18px;
+        color: #fff;
+        background: rgba(13,13,17,.97);
+        border: 1px solid #ffffff38;
+        border-radius: 13px;
+        font: bold 13px Arial, sans-serif;
+        box-shadow: 0 8px 30px #0008;
+        z-index: 2147483642;
+        opacity: 0;
+        transition: opacity .25s, transform .25s;
+        pointer-events: none;
+        max-width: 85vw;
+        overflow-wrap: anywhere;
+        text-align: center;
+    }
+
+    @media (max-width: 380px) {
         #pgFloat {
-            position: fixed;
-            top: 75px;
-            left: 50%;
-            width: min(360px, calc(100vw - 24px));
-            aspect-ratio: 1 / 1;
-            padding: 18px;
-            color: #f7f5ff;
-            font-family: "Trebuchet MS", Arial, sans-serif;
-            background:
-                radial-gradient(ellipse at 50% -15%, #a78bfa24, transparent 60%),
-                radial-gradient(ellipse at 100% 100%, #6250b918, transparent 55%),
-                linear-gradient(145deg, #171722f5, #08080efc 70%);
-            border: 1px solid #ffffff55;
-            border-radius: 24px;
-            backdrop-filter: blur(24px);
-            -webkit-backdrop-filter: blur(24px);
-            box-shadow:
-                0 24px 65px #000b,
-                0 0 35px #9b83ff16,
-                inset 0 1px 0 #ffffff17;
-            z-index: 2147483640;
-            transform: translateX(-50%) scale(1);
-            transform-origin: top center;
-            opacity: 1;
-            visibility: visible;
-            overflow: hidden;
-            user-select: none;
-            -webkit-user-select: none;
-            transition:
-                opacity .24s ease,
-                transform .3s cubic-bezier(.2,.8,.2,1),
-                visibility 0s;
-        }
-
-        #pgFloat:before {
-            content: "";
-            position: absolute;
-            inset: -100%;
-            background: conic-gradient(
-                from 0deg,
-                transparent,
-                #a994ff12,
-                transparent 35%,
-                #ffffff09,
-                transparent 75%
-            );
-            animation: pgBackgroundSpin 12s linear infinite;
-            pointer-events: none;
-        }
-
-        #pgFloat:after {
-            content: "";
-            position: absolute;
-            left: 10%;
-            right: 10%;
-            top: 0;
-            height: 1px;
-            background: linear-gradient(
-                90deg, transparent, #ffffffd0, #b5a0ff, transparent
-            );
-            box-shadow: 0 0 12px #a78bfa55;
-            pointer-events: none;
-        }
-
-        @keyframes pgBackgroundSpin {
-            to { transform: rotate(360deg); }
-        }
-
-        #pgFloat > * {
-            position: relative;
-        }
-
-        #pgFloat.pgMini {
-            opacity: 0;
-            visibility: hidden;
-            transform: translateX(-50%) translateY(15px) scale(.78);
-            pointer-events: none;
-            transition:
-                opacity .2s ease,
-                transform .28s cubic-bezier(.4,0,.8,.3),
-                visibility 0s linear .28s;
+            padding: 13px;
         }
 
         #pgHead {
-            position: relative;
-            min-height: 43px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            gap: 7px;
-            padding: 0 39px 0 0;
-            color: #fff;
-            font-size: clamp(15px, 4.5vw, 18px);
-            font-weight: 900;
+            font-size: 15px;
             letter-spacing: 1.3px;
-            text-shadow: 0 0 18px #a78bfa55;
-            cursor: grab;
-            touch-action: none;
         }
 
-        #pgHead:active { cursor: grabbing; }
-
-        #pgHead .pgStar {
-            color: #c9b8ff;
-            font-size: 19px;
-            text-shadow: 0 0 13px #b5a0ff;
+        #pgActions button {
+            min-height: 42px;
+            padding: 9px;
         }
+    }
 
-        #pgEditApi {
-            position: absolute;
-            right: 0;
-            top: 4px;
-            width: 32px;
-            height: 32px;
-            padding: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border: 1px solid #b9a9ff65;
-            border-radius: 10px;
-            color: #f5f0ff;
-            background: linear-gradient(145deg, #ffffff16, #ffffff05);
-            font-size: 19px;
-            cursor: pointer;
-            touch-action: manipulation;
-            z-index: 3;
-            transition: .2s ease;
-        }
-
-        #pgEditApi:hover {
-            border-color: #fff;
-            background: #a78bfa25;
-            box-shadow: 0 0 15px #a78bfa22;
-        }
-
-        #pgEditApi:active { transform: scale(.92); }
-
-        #pgLine {
-            height: 1px;
-            margin: 9px 0 18px;
-            background: linear-gradient(
-                90deg, transparent, #a994ff9c, #ffffff80, #a994ff9c, transparent
-            );
-            box-shadow: 0 0 9px #a78bfa20;
-        }
-
-        #pgFloat button.pgAction {
-            position: relative;
-            width: 100%;
-            min-height: 52px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-            padding: 13px 14px;
-            margin: 0 0 12px;
-            border: 1px solid #ffffff27;
-            border-radius: 14px;
-            font-family: "Trebuchet MS", Arial, sans-serif;
-            font-size: 13px;
-            font-weight: 800;
-            letter-spacing: .6px;
-            cursor: pointer;
-            touch-action: manipulation;
-            transition:
-                transform .18s ease,
-                background .2s ease,
-                border-color .2s ease,
-                box-shadow .2s ease;
-        }
-
-        #pgFloat button.pgAction:hover {
-            transform: translateY(-1px);
-            border-color: #c6b8ffb0;
-            box-shadow: 0 6px 22px #a78bfa15;
-        }
-
-        #pgFloat button.pgAction:active { transform: scale(.98); }
-
-        #pgFloat button.pgAction:disabled {
-            cursor: wait;
-            opacity: .75;
-            transform: none;
-        }
-
-        #pgNivel {
-            color: #f5f1ff;
-            background: linear-gradient(110deg, #ffffff0d, #a78bfa13, #ffffff06);
-            box-shadow: inset 0 1px 0 #ffffff0c;
-        }
-
-        #pgNivel .pgButtonIcon {
-            color: #c8b7ff;
-            font-size: 17px;
-        }
-
-        #pgGerar {
-            color: #11101b;
-            border: 1px solid #fff !important;
-            background: linear-gradient(115deg, #fff, #e2dcff 55%, #bdaaff);
-            box-shadow: 0 5px 22px #a78bfa24, inset 0 1px 0 #fff;
-        }
-
-        #pgGerar:hover {
-            box-shadow: 0 7px 28px #b5a0ff4d, inset 0 1px 0 #fff !important;
-        }
-
-        #pgGerar .pgButtonIcon { font-size: 18px; }
-
-        #pgStatus {
-            min-height: 26px;
-            margin-top: 5px;
-            padding: 6px 4px 0;
-            color: #aaa5bd;
-            font-size: 11px;
-            text-align: center;
-            letter-spacing: .25px;
-            overflow-wrap: anywhere;
-        }
-
-        #pgStatus.pgStatusWorking {
-            color: #c7b7ff;
-            text-shadow: 0 0 10px #a78bfa35;
-        }
-
-        #pgToggle {
-            position: fixed;
-            right: 20px;
-            bottom: 25px;
-            width: 68px;
-            height: 68px;
-            padding: 4px;
-            border: 0;
-            border-radius: 50%;
-            background: #050509;
-            box-shadow: 0 8px 30px #000b, 0 0 18px #ffffff12;
-            z-index: 2147483641;
-            cursor: grab;
-            overflow: visible;
-            touch-action: none;
-            user-select: none;
-            -webkit-user-select: none;
-            isolation: isolate;
-            -webkit-tap-highlight-color: transparent;
-        }
-
-        #pgToggle:active { cursor: grabbing; }
-
-        /* Borda branca maior. */
-        #pgToggle:before {
-            content: "";
-            position: absolute;
-            inset: -3px;
-            border-radius: 50%;
-            background: conic-gradient(
-                from 0deg,
-                #fff 0deg,
-                #dcd4ff 65deg,
-                #fff 125deg,
-                #9992ad 190deg,
-                #fff 255deg,
-                #d8ceff 315deg,
-                #fff 360deg
-            );
-            animation: pgIdleSpin 3s linear infinite;
-            z-index: -1;
-            opacity: 1;
-            box-shadow: 0 0 10px #b7a4ff32;
-        }
-
-        /* Borda preta ultrafina entre o branco e o ícone. */
-        #pgToggle:after {
-            content: "";
-            position: absolute;
-            inset: 1px;
-            border: 1px solid #000;
-            border-radius: 50%;
-            pointer-events: none;
-            z-index: 2;
-        }
-
-        #pgToggle .pgToggleIcon {
-            display: block;
-            width: 100%;
-            height: 100%;
-            border-radius: 50%;
-            overflow: hidden;
-            background: #08080e;
-            border: 1px solid #000;
-            box-shadow: inset 0 0 0 1px #000;
-        }
-
-        #pgToggle .pgToggleIcon svg {
-            display: block;
-            width: 100%;
-            height: 100%;
-        }
-
-        #pgToggle.pgWorking:before {
-            inset: -6px;
-            background: conic-gradient(
-                from 0deg,
-                #fff 0deg,
-                #d7caff 45deg,
-                #8e70ff 95deg,
-                #fff 145deg,
-                #c3aaff 220deg,
-                #fff 285deg,
-                #8e70ff 330deg,
-                #fff 360deg
-            );
-            filter: drop-shadow(0 0 7px #a78bfa);
-            animation: pgWorkSpin .75s linear infinite;
-        }
-
+    @media (prefers-reduced-motion: reduce) {
+        #pgFloat:before,
+        #pgToggle:before,
         #pgToggle.pgWorking {
-            animation: pgWorkPulse 1s ease-in-out infinite alternate;
-        }
-
-        #pgToggle.pgPop { animation: pgPop .4s cubic-bezier(.18,.9,.3,1.35); }
-
-        @keyframes pgIdleSpin { to { transform: rotate(360deg); } }
-        @keyframes pgWorkSpin { to { transform: rotate(360deg); } }
-
-        @keyframes pgWorkPulse {
-            from { filter: drop-shadow(0 0 2px #a78bfa35); }
-            to { filter: drop-shadow(0 0 12px #a78bfa); }
-        }
-
-        @keyframes pgPop {
-            0% { transform: scale(.6) rotate(-12deg); }
-            70% { transform: scale(1.12) rotate(4deg); }
-            100% { transform: scale(1) rotate(0); }
-        }
-
-        #pgNotify {
-            position: fixed;
-            top: 20px;
-            left: 50%;
-            width: max-content;
-            max-width: 88vw;
-            padding: 12px 17px;
-            color: #f7f4ff;
-            background: linear-gradient(135deg, #1c1a2bf5, #090910fa);
-            border: 1px solid #b9a9ff66;
-            border-radius: 13px;
-            font: bold 13px Arial, sans-serif;
-            text-align: center;
-            overflow-wrap: anywhere;
-            box-shadow: 0 8px 30px #0008, 0 0 18px #a78bfa12;
-            z-index: 2147483642;
-            opacity: 0;
-            transform: translate(-50%, -12px) scale(.97);
-            transition: opacity .25s, transform .25s;
-            pointer-events: none;
-        }
-
-        @media (max-width: 380px) {
-            #pgFloat { padding: 14px; }
-            #pgLine { margin-bottom: 13px; }
-            #pgFloat button.pgAction {
-                min-height: 47px;
-                padding: 10px;
-                font-size: 12px;
-            }
-        }
-
-        @media (prefers-reduced-motion: reduce) {
-            #pgFloat:before, #pgToggle:before {
-                animation-duration: 6s;
-            }
-        }
-    `;
-
-    document.head.appendChild(style);
-
-    // GUI: sem botão de menos no canto.
-    const gui = document.createElement("div");
-    gui.id = "pgFloat";
-
-    gui.innerHTML = `
-        <div id="pgHead">
-            <span class="pgStar">✦</span>
-            <span>PORTUGA IA</span>
-            <span class="pgStar">✦</span>
-            <button id="pgEditApi" type="button"
-                title="Alterar API Key"
-                aria-label="Alterar API Key">✎</button>
-        </div>
-
-        <div id="pgLine"></div>
-
-        <button id="pgNivel" class="pgAction" type="button">
-            <span class="pgButtonIcon">✧</span>
-            <span>NÍVEL: MÉDIO</span>
-        </button>
-
-        <button id="pgGerar" class="pgAction" type="button">
-            <span class="pgButtonIcon">✦</span>
-            <span>GERAR REDAÇÃO</span>
-        </button>
-
-        <div id="pgStatus">Pronto para começar</div>
-    `;
-
-    document.body.appendChild(gui);
-
-    // Ícone flutuante usado para minimizar/reabrir.
-    const toggle = document.createElement("button");
-    toggle.id = "pgToggle";
-    toggle.type = "button";
-    toggle.setAttribute("aria-label", "Minimizar ou abrir PORTUGA IA");
-    toggle.innerHTML = `<span class="pgToggleIcon">${iconeSVG}</span>`;
-    document.body.appendChild(toggle);
-
-    const notifyBox = document.createElement("div");
-    notifyBox.id = "pgNotify";
-    document.body.appendChild(notifyBox);
-
-    function notify(message, persist = false) {
-        notifyBox.textContent = message;
-        notifyBox.style.opacity = "1";
-        notifyBox.style.transform = "translate(-50%,0) scale(1)";
-
-        clearTimeout(notifyTimer);
-
-        if (!persist) {
-            notifyTimer = setTimeout(() => {
-                notifyBox.style.opacity = "0";
-                notifyBox.style.transform =
-                    "translate(-50%,-12px) scale(.97)";
-            }, 2800);
+            animation-duration: 3s;
         }
     }
+`;
 
-    function setStatus(message, working = false) {
-        $("pgStatus").textContent = message;
-        $("pgStatus").classList.toggle("pgStatusWorking", working);
+document.head.appendChild(style);
+
+/* PAINEL */
+const gui = document.createElement("div");
+gui.id = "pgFloat";
+
+gui.innerHTML = `
+    <div id="pgHead">
+        <span class="pgStar">✦</span>
+        <span>PORTUGA IA</span>
+        <span class="pgStar">✦</span>
+        <button id="pgEditApi" type="button"
+            title="Alterar API Key"
+            aria-label="Alterar API Key">✎</button>
+    </div>
+
+    <div id="pgLine"></div>
+
+    <div id="pgActions">
+        <button id="pgNivel">NÍVEL: MÉDIO</button>
+        <button id="pgGerar">✧ GERAR REDAÇÃO</button>
+    </div>
+`;
+
+document.body.appendChild(gui);
+
+/* BOTÃO FLUTUANTE */
+const toggle = document.createElement("button");
+toggle.id = "pgToggle";
+toggle.type = "button";
+toggle.setAttribute("aria-label", "Abrir ou minimizar PORTUGA IA");
+
+toggle.innerHTML = `
+    <img alt="PORTUGA IA" src="${ICONE_PORTUGA}">
+`;
+
+document.body.appendChild(toggle);
+
+/* NOTIFICAÇÕES */
+const notifyBox = document.createElement("div");
+notifyBox.id = "pgNotify";
+document.body.appendChild(notifyBox);
+
+function notify(msg, persist = false){
+    notifyBox.textContent = msg;
+    notifyBox.style.opacity = "1";
+    notifyBox.style.transform = "translate(-50%,0) scale(1)";
+
+    clearTimeout(notifyTimer);
+
+    if(!persist){
+        notifyTimer = setTimeout(()=>{
+            notifyBox.style.opacity = "0";
+            notifyBox.style.transform = "translate(-50%,-15px) scale(.97)";
+        }, 2800);
     }
+}
 
-    function animarToggle() {
-        toggle.classList.remove("pgPop");
-        void toggle.offsetWidth;
-        toggle.classList.add("pgPop");
-    }
+function animarToggle(){
+    toggle.classList.remove("pgPop");
+    void toggle.offsetWidth;
+    toggle.classList.add("pgPop");
+}
 
-    function definirMinimizado(valor) {
-        minimized = Boolean(valor);
-        gui.classList.toggle("pgMini", minimized);
-        if (minimized) animarToggle();
-    }
+function definirMinimizado(valor){
+    minimized = Boolean(valor);
+    gui.classList.toggle("pgMini", minimized);
 
-    function definirGeracao(ativa) {
-        toggle.classList.toggle("pgWorking", ativa);
-    }
+    if(minimized) animarToggle();
+}
 
-    // Trocar API Key pelo lápis.
-    $("pgEditApi").addEventListener("pointerdown", e => {
-        e.stopPropagation();
+function definirGeracao(ativa){
+    toggle.classList.toggle("pgWorking", ativa);
+}
+
+/* ALTERAR API */
+$("pgEditApi").addEventListener("pointerdown", e=>{
+    e.stopPropagation();
+});
+
+$("pgEditApi").addEventListener("click", e=>{
+    e.stopPropagation();
+
+    const novaChave = prompt(
+        "Alterar API Key\n\nCole sua chave da OpenRouter (sk-or-v1-...) ou da OpenAI (sk-...)."
+    );
+
+    if(!novaChave || !novaChave.trim()) return;
+
+    apiKey = novaChave.trim();
+    notify("API Key alterada nesta sessão!");
+});
+
+/* NÍVEL */
+$("pgNivel").addEventListener("click", ()=>{
+    nivel = niveis[(niveis.indexOf(nivel) + 1) % niveis.length];
+    $("pgNivel").textContent = "NÍVEL: " + nomesNivel[nivel];
+    notify("Nível selecionado: " + nomesNivel[nivel]);
+});
+
+/* LER CONTEÚDO DA PÁGINA */
+function lerPagina(){
+    const clone = document.body.cloneNode(true);
+
+    [
+        "#pgFloat",
+        "#pgToggle",
+        "#pgNotify",
+        "script",
+        "style",
+        "noscript"
+    ].forEach(selector=>{
+        clone.querySelectorAll(selector).forEach(el=>el.remove());
     });
 
-    $("pgEditApi").addEventListener("click", e => {
-        e.stopPropagation();
+    return (clone.innerText || "")
+        .replace(/\n{3,}/g, "\n\n")
+        .trim()
+        .slice(0, 30000);
+}
 
-        const novaChave = prompt(
-            "Alterar API Key\n\n" +
-            "OpenRouter: sk-or-v1-...\n" +
-            "OpenAI: sk-..."
+/* ENCONTRAR CAMPO EDITÁVEL */
+function acharCampo(){
+    const seletores = [
+        'textarea[name*="redac" i]',
+        'textarea[id*="redac" i]',
+        'textarea[placeholder*="redac" i]',
+        'textarea[placeholder*="escreva" i]',
+        'textarea[placeholder*="digite" i]',
+        'textarea[placeholder*="resposta" i]'
+    ];
+
+    for(const selector of seletores){
+        try{
+            const el = document.querySelector(selector);
+
+            if(el && el.getClientRects().length &&
+                !el.disabled && !el.readOnly){
+                return el;
+            }
+        }catch(_){}
+    }
+
+    const areas = [...document.querySelectorAll("textarea")]
+        .filter(el=>
+            el.getClientRects().length &&
+            !el.disabled &&
+            !el.readOnly
         );
 
-        if (!novaChave || !novaChave.trim()) return;
+    if(areas.length){
+        return areas.sort((a,b)=>
+            b.clientWidth * b.clientHeight -
+            a.clientWidth * a.clientHeight
+        )[0];
+    }
 
-        apiKey = novaChave.trim();
-        notify("API Key alterada nesta sessão!");
-        setStatus("Nova chave configurada");
-    });
+    return [...document.querySelectorAll('[contenteditable="true"]')]
+        .find(el=>el.getClientRects().length) || null;
+}
 
-    // Troca de nível.
-    $("pgNivel").addEventListener("click", () => {
-        nivel = niveis[(niveis.indexOf(nivel) + 1) % niveis.length];
+/* PREENCHER REDAÇÃO */
+function aplicarTexto(campo, texto){
+    campo.focus();
 
-        $("pgNivel").innerHTML =
-            `<span class="pgButtonIcon">✧</span>` +
-            `<span>NÍVEL: ${nomesNivel[nivel]}</span>`;
+    if(
+        campo instanceof HTMLTextAreaElement ||
+        campo instanceof HTMLInputElement
+    ){
+        const proto = campo instanceof HTMLTextAreaElement
+            ? HTMLTextAreaElement.prototype
+            : HTMLInputElement.prototype;
 
-        notify("Nível: " + nomesNivel[nivel]);
-        setStatus("Nível " + nomesNivel[nivel] + " selecionado");
-    });
+        const setter = Object.getOwnPropertyDescriptor(
+            proto,
+            "value"
+        ).set;
 
-    function lerPagina() {
-        const clone = document.body.cloneNode(true);
+        setter.call(campo, texto);
 
-        [
-            "#pgFloat", "#pgToggle", "#pgNotify",
-            "script", "style", "noscript"
-        ].forEach(selector => {
-            clone.querySelectorAll(selector).forEach(el => el.remove());
+        campo.dispatchEvent(new Event("input", {bubbles:true}));
+        campo.dispatchEvent(new Event("change", {bubbles:true}));
+    }else{
+        campo.replaceChildren();
+
+        texto.split(/\n{2,}/).forEach(paragrafo=>{
+            const p = document.createElement("p");
+            p.textContent = paragrafo;
+            campo.appendChild(p);
         });
 
-        return (clone.innerText || "")
-            .replace(/\n{3,}/g, "\n\n")
-            .trim()
-            .slice(0, 30000);
+        campo.dispatchEvent(new InputEvent("input", {
+            bubbles:true,
+            inputType:"insertText",
+            data:texto
+        }));
+    }
+}
+
+/* API */
+function identificarProvedor(chave){
+    return /^sk-or-v1-/i.test(chave) ? "openrouter" : "openai";
+}
+
+function erroApi(mensagem, codigo){
+    const erro = new Error(mensagem);
+    erro.codigoApi = codigo;
+    return erro;
+}
+
+async function gerarRedacao(chave, pageText){
+    const provedor = identificarProvedor(chave);
+
+    const endpoint = provedor === "openrouter"
+        ? "https://openrouter.ai/api/v1/chat/completions"
+        : "https://api.openai.com/v1/chat/completions";
+
+    const modelo = provedor === "openrouter"
+        ? "openrouter/auto"
+        : "gpt-4o-mini";
+
+    let response;
+
+    try{
+        response = await fetch(endpoint, {
+            method:"POST",
+            headers:{
+                "Authorization":"Bearer " + chave,
+                "Content-Type":"application/json",
+                ...(provedor === "openrouter"
+                    ? {"X-OpenRouter-Title":"PORTUGA IA"}
+                    : {})
+            },
+            body:JSON.stringify({
+                model:modelo,
+                messages:[
+                    {
+                        role:"system",
+                        content:
+                            "Você é especialista em redações escolares em português. " +
+                            "Identifique o tema do material e escreva uma redação original, " +
+                            "coerente e adequada ao nível solicitado. " +
+                            descNivel[nivel] +
+                            " Responda apenas com a redação, sem comentários adicionais. " +
+                            "Separe os parágrafos com uma linha em branco."
+                    },
+                    {
+                        role:"user",
+                        content:"Material da atividade:\n\n" + pageText
+                    }
+                ],
+                temperature:0.7,
+                max_tokens:2500
+            })
+        });
+    }catch(_){
+        throw erroApi(
+            "Falha de conexão. Verifique a internet e tente novamente.",
+            "CONEXAO"
+        );
     }
 
-    function acharCampo() {
-        const seletores = [
-            'textarea[name*="redac" i]',
-            'textarea[id*="redac" i]',
-            'textarea[placeholder*="redac" i]',
-            'textarea[placeholder*="escreva" i]',
-            'textarea[placeholder*="digite" i]',
-            'textarea[placeholder*="resposta" i]'
-        ];
+    let dados;
 
-        for (const selector of seletores) {
-            try {
-                const el = document.querySelector(selector);
-
-                if (
-                    el &&
-                    el.getClientRects().length &&
-                    !el.disabled &&
-                    !el.readOnly
-                ) return el;
-            } catch (_) {}
-        }
-
-        const areas = [...document.querySelectorAll("textarea")]
-            .filter(el =>
-                el.getClientRects().length &&
-                !el.disabled &&
-                !el.readOnly
-            );
-
-        if (areas.length) {
-            return areas.sort((a, b) =>
-                b.clientWidth * b.clientHeight -
-                a.clientWidth * a.clientHeight
-            )[0];
-        }
-
-        return [...document.querySelectorAll('[contenteditable="true"]')]
-            .find(el => el.getClientRects().length) || null;
+    try{
+        dados = await response.json();
+    }catch(_){
+        throw erroApi("A API retornou uma resposta inválida.", "RESPOSTA");
     }
 
-    function aplicarTexto(campo, texto) {
-        campo.focus();
+    if(!response.ok || dados.error){
+        console.error("Erro da API:", dados);
 
-        if (
-            campo instanceof HTMLTextAreaElement ||
-            campo instanceof HTMLInputElement
-        ) {
-            const proto = campo instanceof HTMLTextAreaElement
-                ? HTMLTextAreaElement.prototype
-                : HTMLInputElement.prototype;
-
-            const setter =
-                Object.getOwnPropertyDescriptor(proto, "value").set;
-
-            setter.call(campo, texto);
-            campo.dispatchEvent(new Event("input", { bubbles: true }));
-            campo.dispatchEvent(new Event("change", { bubbles: true }));
-        } else {
-            campo.replaceChildren();
-
-            texto.split(/\n{2,}/).forEach(paragrafo => {
-                const p = document.createElement("p");
-                p.textContent = paragrafo;
-                campo.appendChild(p);
-            });
-
-            campo.dispatchEvent(new InputEvent("input", {
-                bubbles: true,
-                inputType: "insertText",
-                data: texto
-            }));
-        }
-    }
-
-    function identificarProvedor(chave) {
-        return /^sk-or-v1-/i.test(chave) ? "openrouter" : "openai";
-    }
-
-    function erroApi(mensagem, codigo) {
-        const erro = new Error(mensagem);
-        erro.codigoApi = codigo;
-        return erro;
-    }
-
-    async function gerarRedacao(chave, pageText) {
-        const provedor = identificarProvedor(chave);
-
-        const endpoint = provedor === "openrouter"
-            ? "https://openrouter.ai/api/v1/chat/completions"
-            : "https://api.openai.com/v1/chat/completions";
-
-        const modelo = provedor === "openrouter"
-            ? "openrouter/auto"
-            : "gpt-4o-mini";
-
-        let response;
-
-        try {
-            response = await fetch(endpoint, {
-                method: "POST",
-                headers: {
-                    "Authorization": "Bearer " + chave,
-                    "Content-Type": "application/json",
-                    ...(provedor === "openrouter"
-                        ? { "X-OpenRouter-Title": "PORTUGA IA" }
-                        : {})
-                },
-                body: JSON.stringify({
-                    model: modelo,
-                    messages: [
-                        {
-                            role: "system",
-                            content:
-                                "Você é especialista em redações escolares em português. " +
-                                "Identifique o tema do material e escreva uma redação original, " +
-                                "coerente e adequada ao nível solicitado. " +
-                                descNivel[nivel] +
-                                " Responda apenas com a redação, sem comentários adicionais. " +
-                                "Separe os parágrafos com uma linha em branco."
-                        },
-                        {
-                            role: "user",
-                            content: "Material da atividade:\n\n" + pageText
-                        }
-                    ],
-                    temperature: 0.7,
-                    max_tokens: 2500
-                })
-            });
-        } catch (_) {
-            throw erroApi(
-                "Falha de conexão. Verifique a internet e tente novamente.",
-                "CONEXAO"
-            );
-        }
-
-        let dados;
-
-        try {
-            dados = await response.json();
-        } catch (_) {
-            throw erroApi("A API retornou uma resposta inválida.", "RESPOSTA");
-        }
-
-        if (!response.ok || dados.error) {
-            const erro = dados?.error || {};
-            const mensagem = String(
-                erro.message || dados?.message || "Erro HTTP " + response.status
-            );
-
-            const textoErro =
-                (mensagem + " " + String(erro.code || erro.type || ""))
-                    .toLowerCase();
-
-            if (
-                response.status === 401 ||
-                /invalid_api_key|incorrect api key|invalid.*key|authentication/i
-                    .test(textoErro)
-            ) {
-                throw erroApi(
-                    "A chave da API é inválida ou foi recusada.",
-                    "CHAVE_INVALIDA"
-                );
-            }
-
-            if (
-                response.status === 402 ||
-                /insufficient_quota|quota.*(exceed|exhaust|insufficient)|billing|credit balance|credits exhausted|payment required|spend limit|monthly limit|out of credits|no credits/i
-                    .test(textoErro)
-            ) {
-                throw erroApi(
-                    "O saldo ou a cota dessa API acabou.",
-                    "COTA"
-                );
-            }
-
-            if (response.status === 429) {
-                throw erroApi(
-                    "Limite temporário de requisições atingido. Aguarde e tente novamente.",
-                    "RATE_LIMIT"
-                );
-            }
-
-            if (/user safety|safety|moderation|content.filter/i.test(mensagem)) {
-                throw erroApi(
-                    "O provedor ou modelo recusou a solicitação por uma regra de segurança. " +
-                    mensagem,
-                    "SEGURANCA"
-                );
-            }
-
-            throw erroApi(mensagem, "OUTRO");
-        }
-
-        let texto = dados?.choices?.[0]?.message?.content;
-
-        if (Array.isArray(texto)) {
-            texto = texto.map(item =>
-                typeof item === "string" ? item : item?.text || ""
-            ).join("\n");
-        }
-
-        if (typeof texto !== "string" || !texto.trim()) {
-            throw erroApi("O modelo não retornou uma redação.", "SEM_TEXTO");
-        }
-
-        return texto
-            .replace(/^```[\w-]*\s*/, "")
-            .replace(/\s*```$/, "")
-            .trim();
-    }
-
-    async function solicitarChave(motivo) {
-        const mensagem = motivo === "COTA"
-            ? "O saldo ou a cota da chave atual acabou."
-            : "A chave atual foi recusada.";
-
-        const entrada = prompt(
-            mensagem +
-            "\n\nCole outra API Key da OpenRouter (sk-or-v1-...) " +
-            "ou da OpenAI (sk-...)."
+        const erro = dados?.error || {};
+        const mensagem = String(
+            erro.message || dados?.message || "Erro HTTP " + response.status
         );
 
-        if (!entrada || !entrada.trim()) {
-            throw erroApi("Troca de API cancelada.", "CANCELADO");
+        const textoErro =
+            (mensagem + " " + String(erro.code || erro.type || "")).toLowerCase();
+
+        if(
+            response.status === 401 ||
+            /invalid_api_key|incorrect api key|invalid.*key|authentication/i.test(textoErro)
+        ){
+            throw erroApi("A chave da API é inválida ou foi recusada.", "CHAVE_INVALIDA");
         }
+
+        if(
+            response.status === 402 ||
+            /insufficient_quota|quota.*(exceed|exhaust|insufficient)|billing|credit balance|credits exhausted|payment required|spend limit|monthly limit|out of credits|no credits/i.test(textoErro)
+        ){
+            throw erroApi("O saldo ou a cota dessa API acabou.", "COTA");
+        }
+
+        if(response.status === 429){
+            throw erroApi(
+                "Limite temporário de requisições atingido. Aguarde e tente novamente. " + mensagem,
+                "RATE_LIMIT"
+            );
+        }
+
+        if(/user safety|safety|moderation|content.filter/i.test(mensagem)){
+            throw erroApi(
+                "O provedor ou modelo recusou a solicitação por uma regra de segurança. Detalhe: " + mensagem,
+                "SEGURANCA"
+            );
+        }
+
+        throw erroApi(mensagem, "OUTRO");
+    }
+
+    let texto = dados?.choices?.[0]?.message?.content;
+
+    if(Array.isArray(texto)){
+        texto = texto.map(item=>
+            typeof item === "string" ? item : item?.text || ""
+        ).join("\n");
+    }
+
+    if(typeof texto !== "string" || !texto.trim()){
+        throw erroApi("O modelo não retornou uma redação.", "SEM_TEXTO");
+    }
+
+    return texto
+        .replace(/^```[\w-]*\s*/, "")
+        .replace(/\s*```$/, "")
+        .trim();
+}
+
+async function solicitarChave(motivo){
+    const mensagem = motivo === "COTA"
+        ? "O saldo ou a cota da chave atual acabou."
+        : "A chave atual foi recusada.";
+
+    const entrada = prompt(
+        mensagem +
+        "\n\nCole outra API Key da OpenRouter (sk-or-v1-...) ou da OpenAI (sk-...)."
+    );
+
+    if(!entrada || !entrada.trim()){
+        throw erroApi("Troca de API cancelada.", "CANCELADO");
+    }
+
+    apiKey = entrada.trim();
+}
+
+/* GERAR REDAÇÃO */
+$("pgGerar").addEventListener("click", async ()=>{
+    if(busy) return;
+
+    const campo = acharCampo();
+
+    if(!campo){
+        alert("Não encontrei um campo de texto editável nesta página.");
+        return;
+    }
+
+    const pageText = lerPagina();
+
+    if(!pageText){
+        alert("Não consegui ler o conteúdo da página.");
+        return;
+    }
+
+    if(!apiKey){
+        const entrada = prompt(
+            "Cole sua API Key da OpenRouter ou da OpenAI:"
+        );
+
+        if(!entrada || !entrada.trim()) return;
 
         apiKey = entrada.trim();
     }
 
-    $("pgGerar").addEventListener("click", async () => {
-        if (busy) return;
+    busy = true;
 
-        const campo = acharCampo();
+    const btn = $("pgGerar");
+    btn.disabled = true;
+    btn.textContent = "GERANDO REDAÇÃO...";
+    definirGeracao(true);
+    notify("A IA está preparando sua redação...", true);
 
-        if (!campo) {
-            alert("Não encontrei um campo de texto editável nesta página.");
-            return;
+    try{
+        let texto;
+        let tentativas = 0;
+
+        while(true){
+            try{
+                texto = await gerarRedacao(apiKey, pageText);
+                break;
+            }catch(erro){
+                const podeTrocar =
+                    erro.codigoApi === "COTA" ||
+                    erro.codigoApi === "CHAVE_INVALIDA";
+
+                if(!podeTrocar || tentativas >= 2) throw erro;
+
+                tentativas++;
+
+                notify("É necessário trocar a API Key.", true);
+                await solicitarChave(erro.codigoApi);
+
+                notify("Nova chave inserida. Tentando novamente...", true);
+            }
         }
 
-        const pageText = lerPagina();
+        btn.textContent = "PREENCHENDO...";
+        aplicarTexto(campo, texto);
+        notify("Redação gerada e preenchida com sucesso!");
+    }catch(erro){
+        console.error("[PORTUGA IA]", erro);
 
-        if (!pageText) {
-            alert("Não consegui ler o conteúdo da página.");
-            return;
-        }
+        if(erro.codigoApi === "CANCELADO"){
+            notify("Troca de API cancelada.");
+        }else{
+            notify("Não foi possível gerar a redação.");
 
-        if (!apiKey) {
-            const entrada = prompt(
-                "Cole sua API Key da OpenRouter ou da OpenAI:"
+            alert(
+                "Erro ao gerar redação:\n\n" +
+                (erro?.message || "Erro desconhecido") +
+                "\n\nConfira a chave, a cota e o modelo."
             );
-
-            if (!entrada || !entrada.trim()) return;
-            apiKey = entrada.trim();
         }
+    }finally{
+        busy = false;
+        btn.disabled = false;
+        btn.textContent = "✧ GERAR REDAÇÃO";
+        definirGeracao(false);
+    }
+});
 
-        busy = true;
+/* ARRASTAR O BOTÃO FLUTUANTE */
+toggle.addEventListener("pointerdown", e=>{
+    if(e.button !== undefined && e.button !== 0) return;
 
-        const btn = $("pgGerar");
-        btn.disabled = true;
-        btn.innerHTML =
-            `<span class="pgButtonIcon">✦</span><span>GERANDO...</span>`;
+    togglePointer = {
+        id:e.pointerId,
+        x:e.clientX,
+        y:e.clientY,
+        left:toggle.getBoundingClientRect().left,
+        top:toggle.getBoundingClientRect().top,
+        moved:false
+    };
 
-        definirGeracao(true);
-        setStatus("Preparando sua redação...", true);
-        notify("A IA está preparando sua redação...", true);
+    try{
+        toggle.setPointerCapture(e.pointerId);
+    }catch(_){}
 
-        try {
-            let texto;
-            let tentativas = 0;
+    e.preventDefault();
+});
 
-            while (true) {
-                try {
-                    texto = await gerarRedacao(apiKey, pageText);
-                    break;
-                } catch (erro) {
-                    const podeTrocar =
-                        erro.codigoApi === "COTA" ||
-                        erro.codigoApi === "CHAVE_INVALIDA";
+toggle.addEventListener("pointermove", e=>{
+    if(!togglePointer || togglePointer.id !== e.pointerId) return;
 
-                    if (!podeTrocar || tentativas >= 2) throw erro;
+    const dx = e.clientX - togglePointer.x;
+    const dy = e.clientY - togglePointer.y;
 
-                    tentativas++;
-                    await solicitarChave(erro.codigoApi);
-                    notify("Testando a nova API Key...", true);
-                }
-            }
-
-            aplicarTexto(campo, texto);
-            notify("Redação gerada e preenchida!");
-            setStatus("Redação preenchida com sucesso");
-        } catch (erro) {
-            console.error("[PORTUGA IA]", erro);
-
-            if (erro.codigoApi === "CANCELADO") {
-                notify("Troca de API cancelada.");
-                setStatus("Operação cancelada");
-            } else {
-                notify("Não foi possível gerar a redação.");
-                setStatus("Erro ao gerar redação");
-
-                alert(
-                    "Erro ao gerar redação:\n\n" +
-                    (erro?.message || "Erro desconhecido") +
-                    "\n\nConfira sua API Key, a cota e o modelo."
-                );
-            }
-        } finally {
-            busy = false;
-            btn.disabled = false;
-            btn.innerHTML =
-                `<span class="pgButtonIcon">✦</span><span>GERAR REDAÇÃO</span>`;
-            definirGeracao(false);
-        }
-    });
-
-    // Arrastar o ícone flutuante. Um toque simples minimiza/reabre.
-    toggle.addEventListener("pointerdown", e => {
-        if (e.button !== undefined && e.button !== 0) return;
-
-        togglePointer = {
-            id: e.pointerId,
-            x: e.clientX,
-            y: e.clientY,
-            left: toggle.getBoundingClientRect().left,
-            top: toggle.getBoundingClientRect().top,
-            moved: false
-        };
-
-        try { toggle.setPointerCapture(e.pointerId); } catch (_) {}
-        e.preventDefault();
-    });
-
-    toggle.addEventListener("pointermove", e => {
-        if (!togglePointer || togglePointer.id !== e.pointerId) return;
-
-        const dx = e.clientX - togglePointer.x;
-        const dy = e.clientY - togglePointer.y;
-
-        if (Math.abs(dx) > 5 || Math.abs(dy) > 5) {
-            togglePointer.moved = true;
-        }
-
-        if (!togglePointer.moved) return;
-
-        const left = Math.max(
-            4,
-            Math.min(
-                window.innerWidth - toggle.offsetWidth - 4,
-                togglePointer.left + dx
-            )
-        );
-
-        const top = Math.max(
-            4,
-            Math.min(
-                window.innerHeight - toggle.offsetHeight - 4,
-                togglePointer.top + dy
-            )
-        );
-
-        toggle.style.left = left + "px";
-        toggle.style.top = top + "px";
-        toggle.style.right = "auto";
-        toggle.style.bottom = "auto";
-    });
-
-    toggle.addEventListener("pointerup", e => {
-        if (!togglePointer || togglePointer.id !== e.pointerId) return;
-
-        const arrastou = togglePointer.moved;
-        togglePointer = null;
-
-        if (!arrastou) definirMinimizado(!minimized);
-    });
-
-    toggle.addEventListener("pointercancel", () => {
-        togglePointer = null;
-    });
-
-    // Arrastar o painel pela barra do título.
-    const head = $("pgHead");
-
-    head.addEventListener("pointerdown", e => {
-        if (e.button !== undefined && e.button !== 0) return;
-        if (e.target.closest("#pgEditApi")) return;
-
-        const rect = gui.getBoundingClientRect();
-
-        panelDrag = {
-            id: e.pointerId,
-            x: e.clientX,
-            y: e.clientY,
-            left: rect.left,
-            top: rect.top
-        };
-
-        gui.style.left = rect.left + "px";
-        gui.style.top = rect.top + "px";
-        gui.style.transform = "none";
-
-        try { head.setPointerCapture(e.pointerId); } catch (_) {}
-        e.preventDefault();
-    });
-
-    head.addEventListener("pointermove", e => {
-        if (!panelDrag || panelDrag.id !== e.pointerId) return;
-
-        const dx = e.clientX - panelDrag.x;
-        const dy = e.clientY - panelDrag.y;
-
-        gui.style.left = Math.max(
-            4,
-            Math.min(
-                window.innerWidth - gui.offsetWidth - 4,
-                panelDrag.left + dx
-            )
-        ) + "px";
-
-        gui.style.top = Math.max(
-            4,
-            Math.min(
-                window.innerHeight - gui.offsetHeight - 4,
-                panelDrag.top + dy
-            )
-        ) + "px";
-    });
-
-    function pararArrastePainel() {
-        panelDrag = null;
+    if(Math.abs(dx) > 5 || Math.abs(dy) > 5){
+        togglePointer.moved = true;
     }
 
-    head.addEventListener("pointerup", pararArrastePainel);
-    head.addEventListener("pointercancel", pararArrastePainel);
+    if(!togglePointer.moved) return;
 
-    // Redimensionamento responsivo.
-    window.addEventListener("resize", () => {
-        const limitar = elemento => {
-            const rect = elemento.getBoundingClientRect();
+    const left = Math.max(
+        4,
+        Math.min(
+            window.innerWidth - toggle.offsetWidth - 4,
+            togglePointer.left + dx
+        )
+    );
 
-            elemento.style.left = Math.max(
-                4,
-                Math.min(window.innerWidth - rect.width - 4, rect.left)
-            ) + "px";
+    const top = Math.max(
+        4,
+        Math.min(
+            window.innerHeight - toggle.offsetHeight - 4,
+            togglePointer.top + dy
+        )
+    );
 
-            elemento.style.top = Math.max(
-                4,
-                Math.min(window.innerHeight - rect.height - 4, rect.top)
-            ) + "px";
-        };
+    toggle.style.left = left + "px";
+    toggle.style.top = top + "px";
+    toggle.style.right = "auto";
+    toggle.style.bottom = "auto";
+});
 
-        if (gui.style.transform === "none") limitar(gui);
-        if (toggle.style.left) limitar(toggle);
-    });
+toggle.addEventListener("pointerup", e=>{
+    if(!togglePointer || togglePointer.id !== e.pointerId) return;
 
-    // Atalhos: Esc minimiza/reabre; Alt esconde/mostra tudo.
-    document.addEventListener("keydown", e => {
-        if (e.key === "Escape") definirMinimizado(!minimized);
+    const arrastou = togglePointer.moved;
+    togglePointer = null;
 
-        if (e.key === "Alt" && !e.repeat) {
-            hidden = !hidden;
-            gui.style.display = hidden ? "none" : "";
-            toggle.style.display = hidden ? "none" : "";
-            notifyBox.style.display = hidden ? "none" : "";
-        }
-    });
+    if(!arrastou) definirMinimizado(!minimized);
+});
 
-    document.addEventListener("mousedown", e => {
-        if (e.button !== 1) return;
+toggle.addEventListener("pointercancel", ()=>{
+    togglePointer = null;
+});
 
-        e.preventDefault();
+/* ARRASTAR O PAINEL PELO TÍTULO */
+const head = $("pgHead");
+
+head.addEventListener("pointerdown", e=>{
+    if(e.button !== undefined && e.button !== 0) return;
+    if(e.target.closest("#pgEditApi")) return;
+
+    const rect = gui.getBoundingClientRect();
+
+    panelDrag = {
+        id:e.pointerId,
+        x:e.clientX,
+        y:e.clientY,
+        left:rect.left,
+        top:rect.top
+    };
+
+    gui.style.left = rect.left + "px";
+    gui.style.top = rect.top + "px";
+    gui.style.transform = "none";
+
+    try{
+        head.setPointerCapture(e.pointerId);
+    }catch(_){}
+
+    e.preventDefault();
+});
+
+head.addEventListener("pointermove", e=>{
+    if(!panelDrag || panelDrag.id !== e.pointerId) return;
+
+    const dx = e.clientX - panelDrag.x;
+    const dy = e.clientY - panelDrag.y;
+
+    gui.style.left = Math.max(
+        4,
+        Math.min(
+            window.innerWidth - gui.offsetWidth - 4,
+            panelDrag.left + dx
+        )
+    ) + "px";
+
+    gui.style.top = Math.max(
+        4,
+        Math.min(
+            window.innerHeight - gui.offsetHeight - 4,
+            panelDrag.top + dy
+        )
+    ) + "px";
+});
+
+function pararArrastePainel(){
+    panelDrag = null;
+}
+
+head.addEventListener("pointerup", pararArrastePainel);
+head.addEventListener("pointercancel", pararArrastePainel);
+
+/* AJUSTE PARA MUDANÇAS NA TELA */
+window.addEventListener("resize", ()=>{
+    const limitar = elemento=>{
+        const rect = elemento.getBoundingClientRect();
+
+        elemento.style.left = Math.max(
+            4,
+            Math.min(window.innerWidth - rect.width - 4, rect.left)
+        ) + "px";
+
+        elemento.style.top = Math.max(
+            4,
+            Math.min(window.innerHeight - rect.height - 4, rect.top)
+        ) + "px";
+    };
+
+    if(gui.style.transform === "none") limitar(gui);
+    if(toggle.style.left) limitar(toggle);
+});
+
+/* ATALHOS */
+document.addEventListener("keydown", e=>{
+    if(e.key === "Escape"){
+        definirMinimizado(!minimized);
+    }
+
+    if(e.key === "Alt" && !e.repeat){
         hidden = !hidden;
         gui.style.display = hidden ? "none" : "";
         toggle.style.display = hidden ? "none" : "";
         notifyBox.style.display = hidden ? "none" : "";
-    });
+    }
+});
 
-    notify("PORTUGA IA Premium V2 iniciada!");
+document.addEventListener("mousedown", e=>{
+    if(e.button !== 1) return;
+
+    e.preventDefault();
+
+    hidden = !hidden;
+    gui.style.display = hidden ? "none" : "";
+    toggle.style.display = hidden ? "none" : "";
+    notifyBox.style.display = hidden ? "none" : "";
+});
+
+notify("PORTUGA IA iniciada!");
+
 })();
