@@ -499,6 +499,8 @@ criarGaveta(gNum,"VISUAL",{
     {tipo="switch",nome="ESP",key="espSwitch"},
     {tipo="switch",nome="ESP NAME",key="espNameSwitch"},
     {tipo="switch",nome="HOLOGRAM ESP",key="holoSwitch"},
+    {tipo="switch",nome="HIDE FOV CIRCLE",key="hideFovSwitch"},
+    {tipo="cycler",nome="TRACER ORIGIN",valor="BOTTOM",key="tracerOriginBtn"},
     {tipo="cycler",nome="COLOR",valor="WHITE",key="colorBtn"},
     {tipo="cycler",nome="GUI COLOR",valor="RED",key="guiColorBtn"},
 }); gNum=gNum+1
@@ -1030,9 +1032,9 @@ criarGaveta(gNum,"MISC",{
     {tipo="cycler",nome="FOV CAMERA",valor=70,key="camFovBtn"},
     {tipo="switch",nome="FULL BRIGHT",key="fbSwitch"},
     {tipo="switch",nome="ANTI-AFK",key="afkSwitch"},
-    {tipo="switch",nome="HIDE FOOTER",key="hideFooterSwitch"},
+    {tipo="switch",nome="SECURITY MODE",key="hideFooterSwitch"},
     {tipo="switch",nome="ANTI FLING",key="antiFlingSwitch"},
-    {tipo="switch",nome="STREAMER MODE",key="streamerSwitch"},
+    {tipo="switch",nome="0-DELAY PROMPTS",key="zeroPromptSwitch"},
 }); gNum=gNum+1
 
 if IS_PRISON then
@@ -1068,6 +1070,7 @@ atualizarCanvas()
 local espEnabled=false
 local espNameEnabled=false
 local holoEnabled=false
+local hideFovCircle=false
 local aimbotEnabled=false
 local aimbotNpcEnabled=false
 local teamCheck=false
@@ -1084,17 +1087,15 @@ local silentAimNpcEnabled=false
 local fullBrightEnabled=false
 local spinBotEnabled=false
 local antiAfkEnabled=false
-local hideFooterEnabled=false
+local securityModeEnabled=false
 local infJumpEnabled=false
 local noclipEnabled=false
 local antiFlingEnabled=false
+local zeroPromptEnabled=false
 local ANTI_FLING_THRESHOLD=500
 local ANTI_FLING_ROT_THRESHOLD=200
 local lastSafeCFrame=nil
 local lastSafeVelocity=Vector3.new(0,0,0)
-local streamerModeEnabled=false
-local rgbHighlight=nil
-local rgbHue=0
 local originalGravity=workspace.Gravity
 local aimPart="Head"
 local FOV=120
@@ -1102,6 +1103,8 @@ local camFOV=70
 local camFovActive=false
 local priorityIndex=1
 local PRIORITY={"CLOSEST","LOW HP","HIGH HP","FARTHEST"}
+local TRACER_ORIGINS={"BOTTOM","CENTER","TOP"}
+local tracerOriginIdx=1
 local friends={}
 local prisonClickMat=false
 local prisonArrest=false
@@ -1146,6 +1149,17 @@ local function criarESP(p)
 end
 for _,p in pairs(PS:GetPlayers()) do criarESP(p) end
 PS.PlayerAdded:Connect(function(p) task.wait(1); criarESP(p) end)
+
+local function getTracerFrom()
+    local vpSize=CAM.ViewportSize
+    if tracerOriginIdx==1 then
+        return Vector2.new(vpSize.X/2,vpSize.Y)
+    elseif tracerOriginIdx==2 then
+        return Vector2.new(vpSize.X/2,vpSize.Y/2)
+    else
+        return Vector2.new(vpSize.X/2,0)
+    end
+end
 
 local NPC={}
 local function isN(m)
@@ -1259,99 +1273,21 @@ local function rL()
     end
 end
 
--- ===== RGB GLOW =====
-local function setRGBGlow(enabled)
-    if rgbHighlight then pcall(function() rgbHighlight:Destroy() end); rgbHighlight=nil end
-    if not enabled then return end
-    local ch=PL.Character
-    if not ch then return end
-    local hl=Instance.new("Highlight")
-    hl.FillColor=Color3.fromRGB(255,0,0)
-    hl.OutlineColor=Color3.fromRGB(255,0,0)
-    hl.FillTransparency=0.5
-    hl.OutlineTransparency=0
-    hl.DepthMode=Enum.HighlightDepthMode.AlwaysOnTop
-    hl.Adornee=ch
-    hl.Parent=ch
-    rgbHighlight=hl
-end
-RS.RenderStepped:Connect(function(dt)
-    if not streamerModeEnabled or not rgbHighlight then return end
-    rgbHue=(rgbHue+dt*0.4)%1
-    local c=Color3.fromHSV(rgbHue,1,1)
-    rgbHighlight.FillColor=c
-    rgbHighlight.OutlineColor=c
-end)
-
--- ===== SKIN HIDE =====
-local SKIN_COLOR=Color3.fromRGB(80,80,80)
-
-local function hideSkin()
-    local ch=PL.Character
-    if not ch then return end
-    for _,obj in pairs(ch:GetChildren()) do
-        if obj:IsA("Shirt") or obj:IsA("Pants") or obj:IsA("ShirtGraphic") then
-            obj.Transparency=1
-        elseif obj:IsA("Accessory") or obj:IsA("Accoutrement") then
-            local handle=obj:FindFirstChild("Handle")
-            if handle then handle.Transparency=1 end
-        end
-    end
-    for _,part in pairs(ch:GetDescendants()) do
-        if part:IsA("BasePart")
-            and not part:FindFirstAncestorOfClass("Tool")
-            and not part:FindFirstAncestorWhichIsA("Accessory")
-            and not part:FindFirstAncestorWhichIsA("Accoutrement") then
-            part.Color=SKIN_COLOR
-        end
-    end
-end
-
-local function showSkin()
-end
-
-RS.Heartbeat:Connect(function()
-    if not streamerModeEnabled then return end
-    local ch=PL.Character
-    if not ch then return end
-    for _,obj in pairs(ch:GetChildren()) do
-        if obj:IsA("Shirt") or obj:IsA("Pants") or obj:IsA("ShirtGraphic") then
-            if obj.Transparency~=1 then obj.Transparency=1 end
-        elseif obj:IsA("Accessory") or obj:IsA("Accoutrement") then
-            local handle=obj:FindFirstChild("Handle")
-            if handle and handle.Transparency~=1 then handle.Transparency=1 end
-        end
-    end
-    for _,part in pairs(ch:GetDescendants()) do
-        if part:IsA("BasePart")
-            and not part:FindFirstAncestorOfClass("Tool")
-            and not part:FindFirstAncestorWhichIsA("Accessory")
-            and not part:FindFirstAncestorWhichIsA("Accoutrement") then
-            if part.Color~=SKIN_COLOR then part.Color=SKIN_COLOR end
-        end
-    end
-    if not rgbHighlight or rgbHighlight.Parent~=ch then
-        setRGBGlow(true)
-    end
-end)
-
 -- ===== HOLOGRAM ESP =====
-local HOLOS={} -- player -> Highlight
+local HOLOS={}
 local holoHue=0
-local holoRainbow=false
 
 local function createHolo(p)
     if p==PL then return end
     local ch=p.Character
     if not ch then return end
     if HOLOS[p] then HOLOS[p]:Destroy() end
-
     local h=Instance.new("Highlight")
     h.Name="PortugaHolo"
     h.FillColor=RED
     h.OutlineColor=RED
-    h.FillTransparency=1     -- sem preenchimento
-    h.OutlineTransparency=0  -- contorno sólido
+    h.FillTransparency=1
+    h.OutlineTransparency=0
     h.DepthMode=Enum.HighlightDepthMode.AlwaysOnTop
     h.Adornee=ch
     h.Parent=ch
@@ -1405,6 +1341,69 @@ local function refreshHolo()
     end
 end
 
+-- ===== ZERO DELAY PROMPTS =====
+local promptHooked=setmetatable({},{__mode="k"})
+
+local function applyZeroDelay(prompt)
+    pcall(function() prompt.HoldDuration=0 end)
+    pcall(function() prompt.MaxActivationDistance=math.huge end)
+    pcall(function() prompt.RequiresLineOfSight=false end)
+    pcall(function() prompt.Enabled=true end)
+    pcall(function() prompt.ClickablePrompt=true end)
+end
+
+local function restorePromptDefaults(prompt)
+    -- Não temos como saber os valores originais, então só reabilita
+    -- Se quiser, dá pra salvar antes de mexer
+    pcall(function() prompt.RequiresLineOfSight=true end)
+end
+
+local function scanPrompt(prompt)
+    if zeroPromptEnabled then
+        applyZeroDelay(prompt)
+    end
+    if not promptHooked[prompt] then
+        promptHooked[prompt]=true
+    end
+end
+
+for _,d in ipairs(game:GetDescendants()) do
+    if d:IsA("ProximityPrompt") then scanPrompt(d) end
+end
+
+game.DescendantAdded:Connect(function(d)
+    if d:IsA("ProximityPrompt") then scanPrompt(d) end
+end)
+
+-- ===== SECURITY MODE / FOOTER =====
+local function pickRandomPlayer()
+    local plrs={}
+    for _,p in pairs(PS:GetPlayers()) do
+        if p~=PL then table.insert(plrs,p) end
+    end
+    if #plrs==0 then return nil end
+    return plrs[math.random(1,#plrs)]
+end
+
+local function applySecurityMode(on)
+    if on then
+        local rp=pickRandomPlayer()
+        if rp then
+            footerAvatar.Image="rbxthumb://type=AvatarHeadShot&id="..rp.UserId.."&w=48&h=48"
+        else
+            footerAvatar.Image=""
+        end
+        greeting.Text="Security by portuga"
+        title.Text="SECURITY"
+        subtitle.Text="BY PORTUGA"
+    else
+        footerAvatar.Image="rbxthumb://type=AvatarHeadShot&id="..PL.UserId.."&w=48&h=48"
+        greeting.Text="Olá "..string.sub(displayName,1,4).."****"
+        title.Text="PORTUGA"
+        subtitle.Text=IS_PRISON and "H U B • PRISON LIFE" or "H U B"
+    end
+end
+
 local function hLD()
     local ch=PL.Character
     if not ch then return end
@@ -1412,11 +1411,6 @@ local function hLD()
     if h then h.Died:Connect(function() if camFovActive then task.spawn(function() task.wait(1); if camFovActive then CAM.FieldOfView=camFOV end end) end end) end
 end
 PL.CharacterAdded:Connect(function(ch)
-    if streamerModeEnabled then
-        setRGBGlow(true)
-        hideSkin()
-    end
-
     task.wait(1)
     if camFovActive then CAM.FieldOfView=camFOV end
     task.wait(0.5)
@@ -1449,6 +1443,7 @@ UI.holoSwitch.onToggle(function(s)
     holoEnabled=s
     refreshHolo()
 end)
+UI.hideFovSwitch.onToggle(function(s) hideFovCircle=s end)
 UI.aimSwitch.onToggle(function(s) aimbotEnabled=s end)
 UI.aimNpcSwitch.onToggle(function(s) aimbotNpcEnabled=s end)
 UI.aimToolSwitch.onToggle(function(s) aimToolEnabled=s end)
@@ -1457,7 +1452,10 @@ UI.wallCheckSwitch.onToggle(function(s) wallCheck=s end)
 UI.behindSwitch.onToggle(function(s) showBehindCount=s; behindText.Visible=s end)
 UI.fbSwitch.onToggle(function(s) fullBrightEnabled=s; if s then aFB() else rL() end end)
 UI.afkSwitch.onToggle(function(s) antiAfkEnabled=s end)
-UI.hideFooterSwitch.onToggle(function(s) hideFooterEnabled=s; footer.Visible=not s end)
+UI.hideFooterSwitch.onToggle(function(s)
+    securityModeEnabled=s
+    applySecurityMode(s)
+end)
 UI.saSwitch.onToggle(function(s) silentAimEnabled=s end)
 UI.saNpcSwitch.onToggle(function(s) silentAimNpcEnabled=s end)
 UI.spinSwitch.onToggle(function(s) spinBotEnabled=s; local h=PL.Character and PL.Character:FindFirstChildOfClass("Humanoid"); if h then h.AutoRotate=not s end end)
@@ -1474,14 +1472,16 @@ UI.antiFlingSwitch.onToggle(function(s)
         lastSafeVelocity=Vector3.new(0,0,0)
     end
 end)
-UI.streamerSwitch.onToggle(function(s)
-    streamerModeEnabled=s
+UI.zeroPromptSwitch.onToggle(function(s)
+    zeroPromptEnabled=s
     if s then
-        setRGBGlow(true)
-        hideSkin()
+        for _,d in ipairs(game:GetDescendants()) do
+            if d:IsA("ProximityPrompt") then applyZeroDelay(d) end
+        end
     else
-        setRGBGlow(false)
-        showSkin()
+        for _,d in ipairs(game:GetDescendants()) do
+            if d:IsA("ProximityPrompt") then restorePromptDefaults(d) end
+        end
     end
 end)
 
@@ -1506,6 +1506,11 @@ UI.guiColorBtn.clickBtn.MouseButton1Click:Connect(function()
     local k=THEME_ORDER[themeIndex]
     applyTheme(THEME_PRESETS[k])
     UI.guiColorBtn.setValue(k)
+end)
+UI.tracerOriginBtn.clickBtn.MouseButton1Click:Connect(function()
+    tracerOriginIdx+=1
+    if tracerOriginIdx>#TRACER_ORIGINS then tracerOriginIdx=1 end
+    UI.tracerOriginBtn.setValue(TRACER_ORIGINS[tracerOriginIdx])
 end)
 UI.partBtn.clickBtn.MouseButton1Click:Connect(function()
     if aimPart=="Head" then aimPart="HumanoidRootPart"; UI.partBtn.setValue("TORSO")
@@ -1838,7 +1843,7 @@ task.spawn(function()
     end
 end)
 
--- Loop de manutenção do hologram (team check + refresh)
+-- Hologram maintenance
 task.spawn(function()
     while true do
         task.wait(0.3)
@@ -2030,12 +2035,16 @@ local function collectConfig()
     local cfg={
         espEnabled=espEnabled,espNameEnabled=espNameEnabled,
         holoEnabled=holoEnabled,
+        hideFovCircle=hideFovCircle,
+        tracerOriginIdx=tracerOriginIdx,
         aimbotEnabled=aimbotEnabled,aimbotNpcEnabled=aimbotNpcEnabled,
         teamCheck=teamCheck,wallCheck=wallCheck,showBehindCount=showBehindCount,
         aimToolEnabled=aimToolEnabled,silentAimEnabled=silentAimEnabled,silentAimNpcEnabled=silentAimNpcEnabled,
         fullBrightEnabled=fullBrightEnabled,spinBotEnabled=spinBotEnabled,antiAfkEnabled=antiAfkEnabled,
-        hideFooterEnabled=hideFooterEnabled,infJumpEnabled=infJumpEnabled,noclipEnabled=noclipEnabled,
-        antiFlingEnabled=antiFlingEnabled,streamerModeEnabled=streamerModeEnabled,
+        securityModeEnabled=securityModeEnabled,
+        infJumpEnabled=infJumpEnabled,noclipEnabled=noclipEnabled,
+        antiFlingEnabled=antiFlingEnabled,
+        zeroPromptEnabled=zeroPromptEnabled,
         aimPart=aimPart,FOV=FOV,camFOV=camFOV,colorIndex=colorIndex,themeIndex=themeIndex,
         priorityIndex=priorityIndex,
         teamMiscEnabled=teamMiscEnabled,selectedTeamName=selectedTeam and selectedTeam.Name or nil,
@@ -2055,6 +2064,7 @@ local function applyConfigToSwitches(c)
     UI.espSwitch.setOn(c.espEnabled or false)
     UI.espNameSwitch.setOn(c.espNameEnabled==true)
     UI.holoSwitch.setOn(c.holoEnabled or false)
+    UI.hideFovSwitch.setOn(c.hideFovCircle or false)
     UI.aimSwitch.setOn(c.aimbotEnabled or false)
     UI.aimNpcSwitch.setOn(c.aimbotNpcEnabled or false)
     UI.teamCheckSwitch.setOn(c.teamCheck or false)
@@ -2066,14 +2076,15 @@ local function applyConfigToSwitches(c)
     UI.fbSwitch.setOn(c.fullBrightEnabled or false)
     UI.spinSwitch.setOn(c.spinBotEnabled or false)
     UI.afkSwitch.setOn(c.antiAfkEnabled or false)
-    UI.hideFooterSwitch.setOn(c.hideFooterEnabled or false)
+    UI.hideFooterSwitch.setOn(c.securityModeEnabled or false)
     UI.infJumpSwitch.setOn(c.infJumpEnabled or false)
     UI.noclipSwitch.setOn(c.noclipEnabled or false)
     UI.antiFlingSwitch.setOn(c.antiFlingEnabled or false)
-    UI.streamerSwitch.setOn(c.streamerModeEnabled or false)
+    UI.zeroPromptSwitch.setOn(c.zeroPromptEnabled or false)
     espEnabled=c.espEnabled or false
     espNameEnabled=c.espNameEnabled==true
     holoEnabled=c.holoEnabled or false
+    hideFovCircle=c.hideFovCircle or false
     aimbotEnabled=c.aimbotEnabled or false
     aimbotNpcEnabled=c.aimbotNpcEnabled or false
     teamCheck=c.teamCheck or false
@@ -2085,19 +2096,22 @@ local function applyConfigToSwitches(c)
     fullBrightEnabled=c.fullBrightEnabled or false
     spinBotEnabled=c.spinBotEnabled or false
     antiAfkEnabled=c.antiAfkEnabled or false
-    hideFooterEnabled=c.hideFooterEnabled or false
+    securityModeEnabled=c.securityModeEnabled or false
     infJumpEnabled=c.infJumpEnabled or false
     noclipEnabled=c.noclipEnabled or false
     antiFlingEnabled=c.antiFlingEnabled or false
-    streamerModeEnabled=c.streamerModeEnabled or false
-    if streamerModeEnabled then
-        setRGBGlow(true)
-        hideSkin()
-    else
-        setRGBGlow(false)
-        showSkin()
+    zeroPromptEnabled=c.zeroPromptEnabled or false
+    if c.tracerOriginIdx then
+        tracerOriginIdx=c.tracerOriginIdx
+        UI.tracerOriginBtn.setValue(TRACER_ORIGINS[tracerOriginIdx])
     end
+    applySecurityMode(securityModeEnabled)
     refreshHolo()
+    if zeroPromptEnabled then
+        for _,d in ipairs(game:GetDescendants()) do
+            if d:IsA("ProximityPrompt") then applyZeroDelay(d) end
+        end
+    end
     if IS_PRISON then
         prisonClickMat=c.prisonClickMat or false
         prisonArrest=c.prisonArrest or false
@@ -2107,7 +2121,6 @@ local function applyConfigToSwitches(c)
         UI.prisonArrestSwitch.setOn(prisonArrest)
         UI.prisonRangeBtn.setValue(prisonRange)
     end
-    footer.Visible=not hideFooterEnabled
     behindText.Visible=showBehindCount
     local h=PL.Character and PL.Character:FindFirstChildOfClass("Humanoid")
     if h then h.AutoRotate=not spinBotEnabled end
@@ -2426,37 +2439,41 @@ end
 -- ===== PANIC =====
 local function executarPanic()
     espEnabled=false; espNameEnabled=false; holoEnabled=false
+    hideFovCircle=false
     aimbotEnabled=false; aimbotNpcEnabled=false
     teamCheck=false; wallCheck=false; showBehindCount=false; aimToolEnabled=false
     teamMiscEnabled=false; selectedTeam=nil
     silentAimEnabled=false; silentAimTarget=nil; silentAimNpcEnabled=false
     fullBrightEnabled=false; spinBotEnabled=false; antiAfkEnabled=false
-    hideFooterEnabled=false; infJumpEnabled=false; noclipEnabled=false
+    securityModeEnabled=false
+    infJumpEnabled=false; noclipEnabled=false
     antiFlingEnabled=false; lastSafeCFrame=nil; lastSafeVelocity=Vector3.new(0,0,0)
-    streamerModeEnabled=false
-    if rgbHighlight then pcall(function() rgbHighlight:Destroy() end); rgbHighlight=nil end
-    showSkin()
+    zeroPromptEnabled=false
     for p,_ in pairs(HOLOS) do removeHolo(p) end
     prisonClickMat=false; prisonArrest=false
     FOV=120; camFOV=70; camFovActive=false; CAM.FieldOfView=camFOV
-    behindText.Visible=false; footer.Visible=true
+    behindText.Visible=false
     UI.espSwitch.setOn(false); UI.espNameSwitch.setOn(false)
     UI.holoSwitch.setOn(false)
+    UI.hideFovSwitch.setOn(false)
     UI.aimSwitch.setOn(false); UI.aimNpcSwitch.setOn(false); UI.aimToolSwitch.setOn(false)
     UI.teamCheckSwitch.setOn(false); UI.wallCheckSwitch.setOn(false); UI.behindSwitch.setOn(false)
     UI.saSwitch.setOn(false); UI.saNpcSwitch.setOn(false); UI.spinSwitch.setOn(false)
     UI.fbSwitch.setOn(false); UI.afkSwitch.setOn(false); UI.hideFooterSwitch.setOn(false)
     UI.infJumpSwitch.setOn(false); UI.noclipSwitch.setOn(false)
     UI.antiFlingSwitch.setOn(false)
-    UI.streamerSwitch.setOn(false)
+    UI.zeroPromptSwitch.setOn(false)
     if IS_PRISON then
         UI.prisonClickMatSwitch.setOn(false)
         UI.prisonArrestSwitch.setOn(false)
     end
     UI.partBtn.setValue("HEAD"); UI.fovBtn.setValue(120); UI.camFovBtn.setValue(70)
     UI.teamMiscBtn.setValue("OFF"); UI.priorityBtn.setValue("CLOSEST")
+    UI.tracerOriginBtn.setValue(TRACER_ORIGINS[1])
+    tracerOriginIdx=1
     UI.speedBox.setValue(16); UI.jumpBox.setValue(50); UI.gravityBox.setValue(196.2)
     aimPart="Head"; priorityIndex=1
+    applySecurityMode(false)
     local h=PL.Character and PL.Character:FindFirstChildOfClass("Humanoid")
     if h then h.WalkSpeed=16; h.UseJumpPower=true; h.JumpPower=50; h.AutoRotate=true end
     workspace.Gravity=originalGravity
@@ -2478,7 +2495,7 @@ RS.RenderStepped:Connect(function()
     if rainbow then hue+=0.01; if hue>1 then hue=0 end; lineColor=Color3.fromHSV(hue,1,1); fovColor=lineColor end
     circle.Position=Vector2.new(CAM.ViewportSize.X/2,CAM.ViewportSize.Y/2)
     circle.Radius=FOV
-    circle.Visible=(aimbotEnabled or aimbotNpcEnabled)
+    circle.Visible=(aimbotEnabled or aimbotNpcEnabled) and not hideFovCircle
     circle.Color=fovColor
     behindText.Color=lineColor
     local bc=0
@@ -2509,7 +2526,7 @@ RS.RenderStepped:Connect(function()
             if v then
                 local sz=60/ps.Z
                 e[1].Size=Vector2.new(sz*2,sz*3); e[1].Position=Vector2.new(ps.X-sz,ps.Y-sz); e[1].Color=lineColor; e[1].Visible=true
-                e[2].From=Vector2.new(CAM.ViewportSize.X/2,CAM.ViewportSize.Y); e[2].To=Vector2.new(ps.X,ps.Y); e[2].Color=lineColor; e[2].Visible=true
+                e[2].From=getTracerFrom(); e[2].To=Vector2.new(ps.X,ps.Y); e[2].Color=lineColor; e[2].Visible=true
                 local ht="["..math.floor(h.Health).."]"
                 if espNameEnabled then e[3].Text=pl.Name.." "..ht else e[3].Text=ht end
                 e[3].Position=Vector2.new(ps.X,ps.Y-sz*1.8); e[3].Color=lineColor; e[3].Visible=true
