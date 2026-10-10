@@ -1,1308 +1,529 @@
-javascript:(async()=>{
 
-const KEY_CORRETA="rzinmodder";
-
-const key=prompt("Digite a Key:");
-
-if(key!==KEY_CORRETA){
-    alert("Key inválida!");
-    return;
-}
-
-if(document.getElementById("pgFloat"))return;
-
-let minimized=false;
-let hidden=false;
-let apiKey="";
-let nivel="medio";
-let dragging=false;
-let offsetX=0;
-let offsetY=0;
-
-
-// ==============================
-// FAVICON
-// ==============================
-
-const favicon=document.createElement("link");
-
-favicon.rel="icon";
-favicon.href=
-"https://media.tenor.com/m11vauEEbcUAAAAM/meow-neko-arc.gif";
-
-document.head.appendChild(favicon);
-
-
-// ==============================
-// STYLE
-// ==============================
-
-const style=document.createElement("style");
-
-style.textContent=`
-
-#pgFloat,
-#pgToggle,
-#pgNotify{
-    box-sizing:border-box;
-}
-
-#pgFloat{
-
-    position:fixed;
-
-    top:80px;
-    left:50%;
-
-    width:320px;
-
-    padding:16px;
-
-    background:rgba(20,20,20,.82);
-
-    backdrop-filter:blur(15px);
-    -webkit-backdrop-filter:blur(15px);
-
-    color:#eee;
-
-    border:1px solid rgba(255,255,255,.18);
-
-    border-radius:20px;
-
-    z-index:2147483640;
-
-    font-family:"Trebuchet MS",Arial,sans-serif;
-
-    box-shadow:0 15px 50px #000b;
-
-    user-select:none;
-
-    transform:translateX(-50%) scale(1);
-
-    transition:
-        opacity .3s ease,
-        transform .35s cubic-bezier(.2,.8,.2,1),
-        visibility .35s ease;
-}
-
-#pgFloat.pgMini{
-
-    opacity:0;
-
-    visibility:hidden;
-
-    transform:
-        translateX(-50%)
-        scale(.82);
-}
-
-#pgHead{
-
-    height:32px;
-
-    display:flex;
-
-    align-items:center;
-
-    justify-content:center;
-
-    font-size:18px;
-
-    font-weight:bold;
-
-    letter-spacing:1px;
-
-    cursor:move;
-
-    margin-bottom:12px;
-
-    touch-action:none;
-}
-
-#pgLine{
-
-    height:1px;
-
-    background:
-        rgba(255,255,255,.2);
-
-    margin-bottom:14px;
-}
-
-#pgFloat button{
-
-    width:100%;
-
-    border:
-        1px solid rgba(255,255,255,.12);
-
-    border-radius:12px;
-
-    padding:12px;
-
-    margin-top:9px;
-
-    background:
-        rgba(255,255,255,.12);
-
-    color:#eee;
-
-    font-family:
-        "Trebuchet MS",
-        Arial,
-        sans-serif;
-
-    font-weight:bold;
-
-    font-size:14px;
-
-    cursor:pointer;
-
-    transition:
-        background .2s ease,
-        transform .2s ease,
-        box-shadow .2s ease;
-}
-
-#pgFloat button:hover{
-
-    background:
-        rgba(255,255,255,.2);
-
-    transform:
-        translateY(-2px);
-
-    box-shadow:
-        0 6px 18px #0005;
-}
-
-#pgFloat button:active{
-
-    transform:scale(.97);
-}
-
-#pgFloat button:disabled{
-
-    opacity:.6;
-
-    cursor:wait;
-
-    transform:none;
-}
-
-#pgToggle{
-
-    position:fixed;
-
-    right:20px;
-    bottom:25px;
-
-    width:62px;
-    height:62px;
-
-    border-radius:50%;
-
-    background:#111;
-
-    border:
-        2px solid #555;
-
-    z-index:2147483641;
-
-    box-shadow:
-        0 8px 30px #000b;
-
-    cursor:pointer;
-
-    overflow:hidden;
-
-    display:flex;
-
-    align-items:center;
-    justify-content:center;
-
-    transition:
-        transform .3s cubic-bezier(.2,.8,.2,1),
-        box-shadow .3s ease,
-        border-color .3s ease;
-
-    user-select:none;
-
-    touch-action:none;
-}
-
-#pgToggle:hover{
-
-    transform:scale(1.08);
-
-    border-color:#aaa;
-}
-
-#pgToggle:active{
-
-    transform:scale(.92);
-}
-
-#pgToggle img{
-
-    width:100%;
-    height:100%;
-
-    object-fit:cover;
-
-    display:block;
-
-    pointer-events:none;
-}
-
-#pgNotify{
-
-    position:fixed;
-
-    top:25px;
-    left:50%;
-
-    transform:
-        translateX(-50%)
-        translateY(-20px);
-
-    background:#555;
-
-    color:#fff;
-
-    padding:11px 25px;
-
-    border-radius:10px;
-
-    font-family:
-        "Trebuchet MS",
-        Arial,
-        sans-serif;
-
-    font-weight:bold;
-
-    font-size:15px;
-
-    z-index:2147483642;
-
-    opacity:0;
-
-    transition:
-        opacity .3s ease,
-        transform .35s ease;
-
-    box-shadow:
-        0 8px 25px #0008;
-
-    pointer-events:none;
-
-    max-width:80vw;
-
-    text-align:center;
-}
-
-`;
-
-document.head.appendChild(style);
-
-
-// ==============================
-// GUI
-// ==============================
-
-const gui=document.createElement("div");
-
-gui.id="pgFloat";
-
-gui.innerHTML=`
-
-<div id="pgHead">
-    PORTUGA IA
-</div>
-
-<div id="pgLine"></div>
-
-<button id="pgNivel">
-    NÍVEL: MÉDIO
-</button>
-
-<button id="pgGerar">
-    GERAR REDAÇÃO
-</button>
-
-`;
-
-document.body.appendChild(gui);
-
-
-// ==============================
-// BOTÃO
-// ==============================
-
-const toggle=document.createElement("div");
-
-toggle.id="pgToggle";
-
-toggle.innerHTML=`
-
-<img src="https://media.tenor.com/m11vauEEbcUAAAAM/meow-neko-arc.gif">
-
-`;
-
-document.body.appendChild(toggle);
-
-
-// ==============================
-// NOTIFICAÇÃO
-// ==============================
-
-const notifyBox=document.createElement("div");
-
-notifyBox.id="pgNotify";
-
-notifyBox.textContent="Feito!!";
-
-document.body.appendChild(notifyBox);
-
-const $=id=>
-document.getElementById(id);
-
-
-// ==============================
-// NOTIFY
-// ==============================
-
-let notifyTimer=null;
-
-function notify(text="Feito!!",persist=false){
-
-    notifyBox.textContent=text;
-
-    notifyBox.style.opacity="1";
-
-    notifyBox.style.transform=
-        "translateX(-50%) translateY(0)";
-
-    clearTimeout(notifyTimer);
-
-    if(persist)return;
-
-    notifyTimer=setTimeout(()=>{
-
-        notifyBox.style.opacity="0";
-
-        notifyBox.style.transform=
-            "translateX(-50%) translateY(-20px)";
-
-    },1800);
-
-}
-
-
-// ==============================
-// NÍVEIS
-// ==============================
-
-const niveis=["baixo","medio","alto"];
-
-const nomesNivel={
-    baixo:"BAIXO",
-    medio:"MÉDIO",
-    alto:"ALTO"
-};
-
-const descNivel={
-
-    baixo:
-        "Linguagem simples, frases curtas, vocabulário básico, estrutura direta e objetiva.",
-
-    medio:
-        "Vocabulário intermediário, algumas figuras de linguagem, boa coesão e argumentação equilibrada.",
-
-    alto:
-        "Vocabulário rebuscado, argumentação sofisticada, repertório sociocultural, conectivos variados e alta coesão."
-
-};
-
-
-$("pgNivel").onclick=()=>{
-
-    const i=niveis.indexOf(nivel);
-
-    nivel=niveis[(i+1)%niveis.length];
-
-    $("pgNivel").textContent=
-        "NÍVEL: "+
-        nomesNivel[nivel];
-
-    notify("Nível: "+nomesNivel[nivel]);
-
-};
-
-
-// ==============================
-// LER PÁGINA
-// ==============================
-
-function lerPagina(){
-
-    const clone=
-        document.body.cloneNode(true);
-
-    [
-        "#pgFloat",
-        "#pgToggle",
-        "#pgNotify",
-        "script",
-        "style",
-        "noscript"
-    ].forEach(seletor=>{
-
-        clone
-        .querySelectorAll(seletor)
-        .forEach(e=>e.remove());
-
-    });
-
-    return clone.innerText
-        .replace(/\n{3,}/g,"\n\n")
-        .trim()
-        .slice(0,50000);
-
-}
-
-
-// ==============================
-// ACHAR CAMPO DE TEXTO
-// ==============================
-
-function acharCampo(){
-
-    const preferidos=[
-
-        'textarea[name*="redac" i]',
-        'textarea[id*="redac" i]',
-        'textarea[class*="redac" i]',
-        'textarea[placeholder*="redac" i]',
-        'textarea[placeholder*="digite" i]',
-        'textarea[placeholder*="escreva" i]',
-        'textarea[placeholder*="texto" i]',
-        'textarea[aria-label*="redac" i]',
-        'textarea[aria-label*="resposta" i]'
-
-    ];
-
-    for(const sel of preferidos){
-
-        let el;
-
-        try{
-            el=document.querySelector(sel);
-        }catch(e){
-            continue;
+(async () => {
+    "use strict";
+
+    const KEY_CORRETA = "rzinmodder";
+
+    if (prompt("Digite a Key:") !== KEY_CORRETA) {
+        alert("Key inválida!");
+        return;
+    }
+
+    if (document.getElementById("pgFloat")) return;
+
+    let apiKey = "";
+    let nivel = "medio";
+    let busy = false;
+    let minimized = false;
+    let notifyTimer;
+
+    const $ = id => document.getElementById(id);
+
+    const niveis = ["baixo", "medio", "alto"];
+
+    const nomesNivel = {
+        baixo: "BAIXO",
+        medio: "MÉDIO",
+        alto: "ALTO"
+    };
+
+    const descNivel = {
+        baixo: "Use linguagem simples, frases curtas e vocabulário básico.",
+        medio: "Use vocabulário intermediário, boa coesão e argumentação equilibrada.",
+        alto: "Use argumentação aprofundada, repertório sociocultural, conectivos variados e excelente coesão."
+    };
+
+    const style = document.createElement("style");
+
+    style.textContent = `
+        #pgFloat, #pgToggle, #pgNotify { box-sizing: border-box; }
+
+        #pgFloat {
+            position: fixed;
+            top: 80px;
+            left: 50%;
+            width: min(340px, calc(100vw - 24px));
+            padding: 17px;
+            color: #f5f5f5;
+            font: 14px "Trebuchet MS", Arial, sans-serif;
+            background: linear-gradient(145deg,rgba(30,30,34,.95),rgba(8,8,10,.9));
+            border: 1px solid #ffffff35;
+            border-radius: 20px;
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            box-shadow: 0 18px 55px #000b, 0 0 20px #fff1;
+            z-index: 2147483640;
+            transform: translateX(-50%);
+            overflow: hidden;
+            user-select: none;
         }
 
-        if(el && el.offsetParent!==null){
+        #pgFloat:before {
+            content: "";
+            position: absolute;
+            inset: -100%;
+            background: conic-gradient(
+                transparent, #ffffff20, transparent, #ffffff10, transparent
+            );
+            animation: pgGlow 8s linear infinite;
+            pointer-events: none;
+        }
 
-            return el;
+        @keyframes pgGlow {
+            to { transform: rotate(360deg); }
+        }
+
+        #pgFloat > * { position: relative; }
+
+        #pgFloat.pgMini {
+            opacity: 0;
+            visibility: hidden;
+            transform: translateX(-50%) scale(.82);
+            pointer-events: none;
+        }
+
+        #pgHead {
+            height: 36px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 18px;
+            font-weight: 900;
+            letter-spacing: 2px;
+            cursor: move;
+            touch-action: none;
+        }
+
+        #pgStatus {
+            color: #aaa;
+            font-size: 10px;
+            text-align: center;
+            letter-spacing: 1px;
+            margin: 3px 0 14px;
+        }
+
+        #pgLine {
+            height: 1px;
+            margin-bottom: 13px;
+            background: linear-gradient(90deg,transparent,#fff8,transparent);
+        }
+
+        #pgFloat button {
+            width: 100%;
+            padding: 12px;
+            margin-top: 9px;
+            color: #eee;
+            background: #ffffff13;
+            border: 1px solid #ffffff25;
+            border-radius: 11px;
+            font: bold 13px "Trebuchet MS",Arial,sans-serif;
+            cursor: pointer;
+            transition: .2s;
+        }
+
+        #pgFloat button:hover {
+            background: #ffffff28;
+            border-color: #ffffff66;
+        }
+
+        #pgFloat button:disabled {
+            opacity: .6;
+            cursor: wait;
+        }
+
+        #pgGerar {
+            color: #111 !important;
+            background: linear-gradient(110deg,#fff,#ccc) !important;
+            border-color: #fff !important;
+        }
+
+        #pgFoot {
+            margin-top: 13px;
+            color: #999;
+            font-size: 10px;
+            text-align: center;
+            letter-spacing: 1px;
+        }
+
+        #pgToggle {
+            position: fixed;
+            right: 20px;
+            bottom: 25px;
+            width: 62px;
+            height: 62px;
+            border: 2px solid #aaa;
+            border-radius: 50%;
+            background: #111;
+            box-shadow: 0 0 15px #fff3,0 8px 30px #000b;
+            z-index: 2147483641;
+            cursor: pointer;
+            overflow: hidden;
+            touch-action: none;
+        }
+
+        #pgToggle img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            pointer-events: none;
+        }
+
+        #pgNotify {
+            position: fixed;
+            top: 22px;
+            left: 50%;
+            transform: translate(-50%,-15px);
+            padding: 12px 20px;
+            color: #fff;
+            background: rgba(15,15,18,.96);
+            border: 1px solid #ffffff38;
+            border-radius: 12px;
+            font: bold 13px Arial,sans-serif;
+            box-shadow: 0 8px 30px #0008;
+            z-index: 2147483642;
+            opacity: 0;
+            transition: opacity .25s,transform .25s;
+            pointer-events: none;
+            max-width: 85vw;
+            overflow-wrap: anywhere;
+        }
+    `;
+
+    document.head.appendChild(style);
+
+    const gui = document.createElement("div");
+    gui.id = "pgFloat";
+    gui.innerHTML = `
+        <div id="pgHead">✦ PORTUGA IA ✦</div>
+        <div id="pgStatus">INTELIGÊNCIA ARTIFICIAL</div>
+        <div id="pgLine"></div>
+        <button id="pgNivel">NÍVEL: MÉDIO</button>
+        <button id="pgGerar">✧ GERAR REDAÇÃO</button>
+        <div id="pgFoot">PREMIUM INTERFACE</div>
+    `;
+    document.body.appendChild(gui);
+
+    const toggle = document.createElement("div");
+    toggle.id = "pgToggle";
+    toggle.innerHTML = `
+        <img alt="PORTUGA IA"
+        src="https://media.tenor.com/m11vauEEbcUAAAAM/meow-neko-arc.gif">
+    `;
+    document.body.appendChild(toggle);
+
+    const notifyBox = document.createElement("div");
+    notifyBox.id = "pgNotify";
+    document.body.appendChild(notifyBox);
+
+    function notify(msg, persist = false) {
+        notifyBox.textContent = msg;
+        notifyBox.style.opacity = "1";
+        notifyBox.style.transform = "translate(-50%,0)";
+
+        clearTimeout(notifyTimer);
+
+        if (!persist) {
+            notifyTimer = setTimeout(() => {
+                notifyBox.style.opacity = "0";
+                notifyBox.style.transform = "translate(-50%,-15px)";
+            }, 2500);
         }
     }
 
-    const areas=
-        [...document.querySelectorAll("textarea")]
-        .filter(e=>e.offsetParent!==null);
+    $("pgNivel").onclick = () => {
+        nivel = niveis[(niveis.indexOf(nivel) + 1) % niveis.length];
+        $("pgNivel").textContent = "NÍVEL: " + nomesNivel[nivel];
+        notify("Nível: " + nomesNivel[nivel]);
+    };
 
-    if(areas.length){
+    function lerPagina() {
+        const clone = document.body.cloneNode(true);
 
-        return areas.sort((a,b)=>
-            (b.clientHeight*b.clientWidth)-
-            (a.clientHeight*a.clientWidth)
-        )[0];
+        ["#pgFloat", "#pgToggle", "#pgNotify",
+         "script", "style", "noscript"].forEach(selector => {
+            clone.querySelectorAll(selector).forEach(el => el.remove());
+        });
 
+        return (clone.innerText || "")
+            .replace(/\n{3,}/g, "\n\n")
+            .trim()
+            .slice(0, 30000);
     }
 
-    const edit=
-        [...document.querySelectorAll(
-            '[contenteditable="true"]'
-        )].filter(e=>e.offsetParent!==null);
+    function acharCampo() {
+        const seletores = [
+            'textarea[name*="redac" i]',
+            'textarea[id*="redac" i]',
+            'textarea[placeholder*="redac" i]',
+            'textarea[placeholder*="escreva" i]',
+            'textarea[placeholder*="digite" i]',
+            'textarea[placeholder*="resposta" i]'
+        ];
 
-    return edit[0]||null;
+        for (const selector of seletores) {
+            try {
+                const el = document.querySelector(selector);
+                if (el && el.getClientRects().length &&
+                    !el.disabled && !el.readOnly) return el;
+            } catch (_) {}
+        }
 
-}
+        const areas = [...document.querySelectorAll("textarea")]
+            .filter(el => el.getClientRects().length &&
+                !el.disabled && !el.readOnly);
 
+        if (areas.length) {
+            return areas.sort((a,b) =>
+                b.clientWidth*b.clientHeight -
+                a.clientWidth*a.clientHeight
+            )[0];
+        }
 
-// ==============================
-// DESTAQUE DO CAMPO ESCOLHIDO
-// ==============================
+        return [...document.querySelectorAll('[contenteditable="true"]')]
+            .find(el => el.getClientRects().length) || null;
+    }
 
-function destacarCampo(campo){
-
-    const antigo=campo.style.outline;
-
-    campo.style.outline=
-        "3px solid lime";
-
-    setTimeout(()=>{
-
-        campo.style.outline=antigo;
-
-    },1500);
-
-}
-
-
-// ==============================
-// SETTER NATIVO (React / Vue)
-// ==============================
-
-function setNative(el,val){
-
-    const proto=
-        el.tagName==="TEXTAREA"
-        ? HTMLTextAreaElement.prototype
-        : HTMLInputElement.prototype;
-
-    const setter=
-        Object.getOwnPropertyDescriptor(
-            proto,
-            "value"
-        ).set;
-
-    setter.call(el,val);
-
-    el.dispatchEvent(
-        new Event("input",{bubbles:true})
-    );
-
-}
-
-
-// ==============================
-// APLICA TEXTO (FALLBACK)
-// ==============================
-
-function aplicarTexto(campo,texto){
-
-    if(
-        campo.tagName==="TEXTAREA" ||
-        campo.tagName==="INPUT"
-    ){
-
-        setNative(campo,texto);
-
-    }else{
-
+    function aplicarTexto(campo, texto) {
         campo.focus();
 
-        const range=document.createRange();
+        if (campo instanceof HTMLTextAreaElement ||
+            campo instanceof HTMLInputElement) {
+            const proto = campo instanceof HTMLTextAreaElement
+                ? HTMLTextAreaElement.prototype
+                : HTMLInputElement.prototype;
 
-        range.selectNodeContents(campo);
+            const setter = Object.getOwnPropertyDescriptor(proto, "value").set;
+            setter.call(campo, texto);
+            campo.dispatchEvent(new Event("input", { bubbles: true }));
+            campo.dispatchEvent(new Event("change", { bubbles: true }));
+        } else {
+            campo.replaceChildren();
 
-        const sel=window.getSelection();
+            texto.split(/\n{2,}/).forEach(paragrafo => {
+                const p = document.createElement("p");
+                p.textContent = paragrafo;
+                campo.appendChild(p);
+            });
 
-        sel.removeAllRanges();
-
-        sel.addRange(range);
-
-        const ok=
-            document.execCommand(
-                "insertText",
-                false,
-                texto
-            );
-
-        if(!ok){
-
-            campo.innerHTML=
-                texto
-                .split("\n\n")
-                .map(p=>
-                    "<p>"+
-                    p.replace(/\n/g,"<br>")+
-                    "</p>"
-                )
-                .join("");
+            campo.dispatchEvent(new InputEvent("input", {
+                bubbles: true,
+                inputType: "insertText",
+                data: texto
+            }));
         }
     }
-}
 
-
-// ==============================
-// COLAR (SIMULA CTRL+V REAL)
-// ==============================
-
-async function digitar(campo,texto){
-
-    campo.focus();
-
-    // ==========================
-    // 1) SIMULA PASTE REAL
-    // ==========================
-
-    let pasteTratado=false;
-
-    try{
-
-        const dt=new DataTransfer();
-
-        dt.setData("text/plain",texto);
-
-        const evt=new ClipboardEvent(
-            "paste",
+    async function gerarRedacao(chave, pageText) {
+        const response = await fetch(
+            "https://openrouter.ai/api/v1/chat/completions",
             {
-                bubbles:true,
-                cancelable:true,
-                clipboardData:dt
+                method: "POST",
+                headers: {
+                    "Authorization": "Bearer " + chave,
+                    "Content-Type": "application/json",
+                    "X-OpenRouter-Title": "PORTUGA IA"
+                },
+                body: JSON.stringify({
+                    model: "openrouter/auto",
+                    messages: [
+                        {
+                            role: "system",
+                            content:
+                                "Você é especialista em redações escolares em português. " +
+                                "Identifique o tema do material e escreva uma redação original, " +
+                                "coerente e adequada ao nível solicitado. " +
+                                descNivel[nivel] +
+                                " Responda apenas com a redação, sem comentários adicionais. " +
+                                "Separe os parágrafos com uma linha em branco."
+                        },
+                        {
+                            role: "user",
+                            content:
+                                "Material da atividade:\n\n" + pageText
+                        }
+                    ],
+                    temperature: 0.7,
+                    max_tokens: 2500
+                })
             }
         );
 
-        const naoCancelado=
-            campo.dispatchEvent(evt);
+        let dados;
 
-        if(naoCancelado){
-
-            aplicarTexto(campo,texto);
-
-        }else{
-
-            pasteTratado=true;
+        try {
+            dados = await response.json();
+        } catch (_) {
+            throw new Error("A API retornou uma resposta inválida.");
         }
 
-    }catch(e){
+        if (!response.ok || dados.error) {
+            console.error("Erro OpenRouter:", dados);
 
-        aplicarTexto(campo,texto);
-    }
-
-    // ==========================
-    // 2) EVENTOS EXTRAS
-    // ==========================
-
-    campo.dispatchEvent(
-        new Event("input",{bubbles:true})
-    );
-
-    campo.dispatchEvent(
-        new Event("change",{bubbles:true})
-    );
-
-    campo.dispatchEvent(
-        new KeyboardEvent("keyup",{
-            bubbles:true,
-            key:"v",
-            ctrlKey:true
-        })
-    );
-
-    // ==========================
-    // 3) VERIFICA SE COLOU
-    // ==========================
-
-    const conteudo=
-        campo.tagName==="TEXTAREA" ||
-        campo.tagName==="INPUT"
-        ? campo.value
-        : campo.innerText;
-
-    if(!conteudo || conteudo.length < texto.length/2){
-
-        aplicarTexto(campo,texto);
-
-        campo.dispatchEvent(
-            new Event("input",{bubbles:true})
-        );
-
-        campo.dispatchEvent(
-            new Event("change",{bubbles:true})
-        );
-    }
-}
-
-
-// ==============================
-// GERAR REDAÇÃO
-// ==============================
-
-$("pgGerar").onclick=async()=>{
-
-    if(!apiKey){
-
-        apiKey=
-            prompt(
-                "Cole sua chave do OpenRouter:"
+            const erro = dados?.error || {};
+            const mensagem = String(
+                erro.message ||
+                dados?.message ||
+                "Erro HTTP " + response.status
             );
 
-        if(!apiKey){
+            if (response.status === 401 || response.status === 403) {
+                apiKey = "";
+            }
 
+            if (response.status === 429) {
+                throw new Error(
+                    "Limite de requisições atingido. Aguarde e tente novamente. " +
+                    mensagem
+                );
+            }
+
+            if (/user safety|safety|moderation|content.filter/i.test(mensagem)) {
+                throw new Error(
+                    "O provedor ou modelo recusou a solicitação por uma regra " +
+                    "de segurança. Detalhe original: " + mensagem
+                );
+            }
+
+            throw new Error(mensagem);
+        }
+
+        let texto = dados?.choices?.[0]?.message?.content;
+
+        if (Array.isArray(texto)) {
+            texto = texto.map(item =>
+                typeof item === "string" ? item : item?.text || ""
+            ).join("\n");
+        }
+
+        if (typeof texto !== "string" || !texto.trim()) {
+            throw new Error("O modelo não retornou uma redação.");
+        }
+
+        return texto
+            .replace(/^```[\w-]*\s*/, "")
+            .replace(/\s*```$/, "")
+            .trim();
+    }
+
+    $("pgGerar").onclick = async () => {
+        if (busy) return;
+
+        if (!apiKey) {
+            const entrada = prompt("Cole sua chave da API OpenRouter:");
+            if (!entrada) return;
+            apiKey = entrada.trim();
+        }
+
+        const campo = acharCampo();
+
+        if (!campo) {
+            alert("Não encontrei um campo de texto editável nesta página.");
             return;
         }
-    }
 
-    const campo=acharCampo();
+        const pageText = lerPagina();
 
-    if(!campo){
+        if (!pageText) {
+            alert("Não consegui ler o conteúdo da página.");
+            return;
+        }
 
-        alert(
-            "Não encontrei nenhum campo de texto na página!"
-        );
+        busy = true;
+        const btn = $("pgGerar");
+        btn.disabled = true;
+        btn.textContent = "GERANDO...";
+        notify("Solicitando redação à IA...", true);
 
-        return;
-    }
+        try {
+            const texto = await gerarRedacao(apiKey, pageText);
 
-    destacarCampo(campo);
+            btn.textContent = "PREENCHENDO...";
+            aplicarTexto(campo, texto);
 
-    $("pgGerar").disabled=true;
+            notify("Redação preenchida!");
+        } catch (erro) {
+            console.error("[PORTUGA IA]", erro);
+            notify("Erro ao gerar redação.");
 
-    $("pgGerar").textContent=
-        "LENDO PÁGINA...";
-
-    notify("Lendo página...",true);
-
-
-    const pageText=lerPagina();
-
-    if(!pageText){
-
-        alert(
-            "Não consegui ler o conteúdo da página!"
-        );
-
-        $("pgGerar").disabled=false;
-
-        $("pgGerar").textContent=
-            "GERAR REDAÇÃO";
-
-        return;
-    }
-
-
-    $("pgGerar").textContent=
-        "GERANDO...";
-
-    notify(
-        "Gerando redação ("+
-        nomesNivel[nivel]+
-        ")...",
-        true
-    );
-
-
-    try{
-
-        const resposta=
-            await fetch(
-                "https://openrouter.ai/api/v1/chat/completions",
-                {
-
-                    method:"POST",
-
-                    headers:{
-
-                        "Authorization":
-                            "Bearer "+apiKey,
-
-                        "Content-Type":
-                            "application/json"
-
-                    },
-
-                    body:JSON.stringify({
-
-                        model:
-                            "openrouter/free",
-
-                        messages:[
-
-                            {
-
-                                role:"system",
-
-                                content:
-                                    "Você é um especialista em redações. "+
-                                    "PRIMEIRO identifique o TEMA da redação a partir do conteúdo da página. "+
-                                    "DEPOIS escreva uma redação completa em português sobre esse tema. "+
-                                    "NÍVEL DE COMPLEXIDADE DESEJADO: "+
-                                    descNivel[nivel]+" "+
-                                    "REGRAS IMPORTANTES: responda APENAS com o texto final da redação, "+
-                                    "SEM títulos, SEM explicações, SEM marcadores, SEM introdução do tipo "+
-                                    "'aqui está sua redação'. Apenas o texto puro. "+
-                                    "Parágrafos separados por uma linha em branco. "+
-                                    "Tamanho aproximado: entre 25 e 35 linhas."
-
-                            },
-
-                            {
-
-                                role:"user",
-
-                                content:
-                                    "CONTEÚDO DA PÁGINA:\n\n"+
-                                    pageText
-
-                            }
-
-                        ]
-
-                    })
-
-                }
+            alert(
+                "Erro ao gerar redação:\n\n" +
+                (erro?.message || "Erro desconhecido") +
+                "\n\nConsulte o console para obter detalhes."
             );
+        } finally {
+            busy = false;
+            btn.disabled = false;
+            btn.textContent = "✧ GERAR REDAÇÃO";
+        }
+    };
 
+    toggle.onclick = () => {
+        minimized = !minimized;
+        gui.classList.toggle("pgMini", minimized);
+    };
 
-        const dados=
-            await resposta.json();
+    // Arrastar a interface no computador e no celular
+    function iniciarArraste(e) {
+        dragging = true;
 
+        const ponto = e.touches ? e.touches[0] : e;
+        offsetX = ponto.clientX - gui.offsetLeft;
+        offsetY = ponto.clientY - gui.offsetTop;
+    }
 
-        if(!resposta.ok){
+    function moverArraste(e) {
+        if (!dragging) return;
 
-            if(
-                resposta.status===401 ||
-                resposta.status===403
-            ){
+        const ponto = e.touches ? e.touches[0] : e;
+        if (!ponto) return;
 
-                apiKey="";
-            }
+        gui.style.left = (ponto.clientX - offsetX) + "px";
+        gui.style.top = (ponto.clientY - offsetY) + "px";
+        gui.style.transform = "none";
+    }
 
-            throw new Error(
-                dados?.error?.message ||
-                "Erro HTTP "+
-                resposta.status
-            );
+    function pararArraste() {
+        dragging = false;
+    }
 
+    $("pgHead").addEventListener("mousedown", iniciarArraste);
+    document.addEventListener("mousemove", moverArraste);
+    document.addEventListener("mouseup", pararArraste);
+
+    $("pgHead").addEventListener("touchstart", iniciarArraste, {
+        passive: true
+    });
+
+    document.addEventListener("touchmove", moverArraste, {
+        passive: true
+    });
+
+    document.addEventListener("touchend", pararArraste);
+
+    document.addEventListener("keydown", e => {
+        if (e.key === "Escape") {
+            minimized = !minimized;
+            gui.classList.toggle("pgMini", minimized);
         }
 
-
-        let texto=
-            dados
-            ?.choices
-            ?.[0]
-            ?.message
-            ?.content;
-
-
-        if(!texto){
-
-            throw new Error(
-                "A IA não retornou uma resposta."
-            );
-
+        if (e.key === "Alt" && !e.repeat) {
+            hidden = !hidden;
+            gui.style.display = hidden ? "none" : "";
+            toggle.style.display = hidden ? "none" : "";
+            notifyBox.style.display = hidden ? "none" : "";
         }
+    });
 
+    document.addEventListener("mousedown", e => {
+        if (e.button === 1) {
+            e.preventDefault();
 
-        texto=
-            texto
-            .replace(/^```[\w]*\n?/,"")
-            .replace(/```$/,"")
-            .trim();
-
-
-        $("pgGerar").textContent=
-            "COLANDO...";
-
-        notify("Colando redação...",true);
-
-
-        await digitar(campo,texto);
-
-        notify("Redação pronta!");
-
-        $("pgGerar").textContent=
-            "GERAR REDAÇÃO";
-
-        $("pgGerar").disabled=false;
-
-
-    }catch(erro){
-
-        notify("Erro");
-
-        alert(
-            "Erro ao gerar redação:\n\n"+
-            erro.message
-        );
-
-
-        $("pgGerar").textContent=
-            "GERAR REDAÇÃO";
-
-        $("pgGerar").disabled=false;
-
-    }
-
-};
-
-
-// ==============================
-// MINIMIZAR
-// ==============================
-
-toggle.onclick=()=>{
-
-    if(
-        toggle.dataset.dragged===
-        "true"
-    ){
-
-        toggle.dataset.dragged=
-        "false";
-
-        return;
-
-    }
-
-    minimized=!minimized;
-
-    gui.classList.toggle(
-        "pgMini",
-        minimized
-    );
-
-};
-
-
-// ==============================
-// ARRASTAR BOTÃO
-// ==============================
-
-let toggleDragging=false;
-let toggleMoved=false;
-
-let toggleOffsetX=0;
-let toggleOffsetY=0;
-
-
-toggle.addEventListener(
-    "mousedown",
-    event=>{
-
-        toggleDragging=true;
-
-        toggleMoved=false;
-
-        toggleOffsetX=
-            event.clientX-
-            toggle.offsetLeft;
-
-        toggleOffsetY=
-            event.clientY-
-            toggle.offsetTop;
-
-        event.preventDefault();
-
-    }
-);
-
-
-document.addEventListener(
-    "mousemove",
-    event=>{
-
-        if(!toggleDragging)return;
-
-        toggleMoved=true;
-
-        toggle.style.left=
-            event.clientX-
-            toggleOffsetX+
-            "px";
-
-        toggle.style.top=
-            event.clientY-
-            toggleOffsetY+
-            "px";
-
-        toggle.style.right="auto";
-        toggle.style.bottom="auto";
-
-    }
-);
-
-
-document.addEventListener(
-    "mouseup",
-    ()=>{
-
-        if(!toggleDragging)return;
-
-        if(toggleMoved){
-
-            toggle.dataset.dragged=
-            "true";
-
+            hidden = !hidden;
+            gui.style.display = hidden ? "none" : "";
+            toggle.style.display = hidden ? "none" : "";
+            notifyBox.style.display = hidden ? "none" : "";
         }
+    });
 
-        toggleDragging=false;
-
-    }
-);
-
-
-// ==============================
-// CELULAR
-// ==============================
-
-toggle.addEventListener(
-    "touchstart",
-    event=>{
-
-        const touch=
-            event.touches[0];
-
-        toggleDragging=true;
-
-        toggleMoved=false;
-
-        toggleOffsetX=
-            touch.clientX-
-            toggle.offsetLeft;
-
-        toggleOffsetY=
-            touch.clientY-
-            toggle.offsetTop;
-
-    },
-    {passive:true}
-);
-
-
-document.addEventListener(
-    "touchmove",
-    event=>{
-
-        if(!toggleDragging)return;
-
-        const touch=
-            event.touches[0];
-
-        toggleMoved=true;
-
-        toggle.style.left=
-            touch.clientX-
-            toggleOffsetX+
-            "px";
-
-        toggle.style.top=
-            touch.clientY-
-            toggleOffsetY+
-            "px";
-
-        toggle.style.right="auto";
-        toggle.style.bottom="auto";
-
-    },
-    {passive:true}
-);
-
-
-document.addEventListener(
-    "touchend",
-    ()=>{
-
-        if(!toggleDragging)return;
-
-        if(toggleMoved){
-
-            toggle.dataset.dragged=
-            "true";
-
-        }
-
-        toggleDragging=false;
-
-    }
-);
-
-
-// ==============================
-// ARRASTAR GUI
-// ==============================
-
-$("pgHead").addEventListener(
-    "mousedown",
-    event=>{
-
-        dragging=true;
-
-        offsetX=
-            event.clientX-
-            gui.offsetLeft;
-
-        offsetY=
-            event.clientY-
-            gui.offsetTop;
-
-        event.preventDefault();
-
-    }
-);
-
-
-document.addEventListener(
-    "mousemove",
-    event=>{
-
-        if(!dragging)return;
-
-        gui.style.left=
-            event.clientX-
-            offsetX+
-            "px";
-
-        gui.style.top=
-            event.clientY-
-            offsetY+
-            "px";
-
-        gui.style.transform=
-            "scale(1)";
-
-    }
-);
-
-
-document.addEventListener(
-    "mouseup",
-    ()=>{
-
-        dragging=false;
-
-    }
-);
-
-
-// ==============================
-// GUI NO CELULAR
-// ==============================
-
-let touchDragging=false;
-
-let touchOffsetX=0;
-let touchOffsetY=0;
-
-
-$("pgHead").addEventListener(
-    "touchstart",
-    event=>{
-
-        const touch=
-            event.touches[0];
-
-        touchDragging=true;
-
-        touchOffsetX=
-            touch.clientX-
-            gui.offsetLeft;
-
-        touchOffsetY=
-            touch.clientY-
-            gui.offsetTop;
-
-    },
-    {passive:true}
-);
-
-
-document.addEventListener(
-    "touchmove",
-    event=>{
-
-        if(!touchDragging)return;
-
-        const touch=
-            event.touches[0];
-
-        gui.style.left=
-            touch.clientX-
-            touchOffsetX+
-            "px";
-
-        gui.style.top=
-            touch.clientY-
-            touchOffsetY+
-            "px";
-
-        gui.style.transform=
-            "scale(1)";
-
-    },
-    {passive:true}
-);
-
-
-document.addEventListener(
-    "touchend",
-    ()=>{
-
-        touchDragging=false;
-
-    }
-);
-
-
-// ==============================
-// ESC / ALT
-// ==============================
-
-function toggleHiddenMode(){
-
-    hidden=!hidden;
-
-    if(hidden){
-
-        gui.style.display="none";
-        toggle.style.display="none";
-        notifyBox.style.display="none";
-
-    }else{
-
-        gui.style.display="";
-        toggle.style.display="";
-        notifyBox.style.display="";
-
-    }
-
-}
-
-
-document.addEventListener(
-    "keydown",
-    event=>{
-
-        if(event.key==="Escape"){
-
-            minimized=!minimized;
-
-            gui.classList.toggle(
-                "pgMini",
-                minimized
-            );
-
-        }
-
-        if(event.key==="Alt"){
-
-            toggleHiddenMode();
-
-        }
-
-    }
-);
-
-
-// ==============================
-// BOTÃO CENTRAL
-// ==============================
-
-document.addEventListener(
-    "mousedown",
-    event=>{
-
-        if(event.button!==1)return;
-
-        event.preventDefault();
-
-        toggleHiddenMode();
-
-    }
-);
-
+    notify("PORTUGA IA iniciado!");
 })();
