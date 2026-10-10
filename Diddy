@@ -685,7 +685,6 @@
             const ok2 = await clickEl(tile.element);
             if (ok2) {
                 await wait(450);
-                if (isMatchFilled(prompt.element)) return { ok: true };
                 return { ok: true };
             }
         }
@@ -1019,7 +1018,7 @@
         return { ok: false, motivo: "Falha ao clicar em Enviar." };
     }
 
-    /* ===================== MATCH ===================== */
+    /* ===================== MATCH HELPERS ===================== */
 
     function extractLetter(v) {
         const s = clean(v);
@@ -1094,15 +1093,20 @@
             .map(n => ({ n, text: map[n] }));
     }
 
-    /* ===================== PROMPT ===================== */
+    /* ===================== PROMPT (BLINDADO) ===================== */
 
     function buildPrompt(data, extra) {
-        const type = data.tipoQuestao;
-        const fields = data.menus || [];
-        const choices = data.alternativas || [];
-        const blanks = data.blanks || [];
-        const draggables = data.itensArrastaveis || [];
-        const match = data.associacao;
+        // Blindagem total contra dados malformados
+        data = data || {};
+        const type = typeof data.tipoQuestao === "string" ? data.tipoQuestao : "";
+        const fields = Array.isArray(data.menus) ? data.menus : [];
+        const choices = Array.isArray(data.alternativas) ? data.alternativas : [];
+        const blanks = Array.isArray(data.blanks) ? data.blanks : [];
+        const draggables = Array.isArray(data.itensArrastaveis) ? data.itensArrastaveis : [];
+
+        const match = (data.associacao && typeof data.associacao === "object") ? data.associacao : null;
+        const matchPrompts = (match && Array.isArray(match.prompts)) ? match.prompts : [];
+        const matchRegioes = (match && Array.isArray(match.regioes)) ? match.regioes : [];
 
         const fotoNote = data.temFoto ? `
 ATENCAO: o usuario anexou uma FOTO da questao. Use a FOTO como FONTE PRIMARIA.
@@ -1159,9 +1163,13 @@ Regras:
 - O texto deve ser copiado LITERALMENTE de "itensArrastaveis".
 - Se não houver dados, escreva "INDETERMINADO".
 `;
-        } else if (type === "match" && match) {
-            const pLines = match.prompts.map((p, i) => `PROMPT ${i + 1}: ${p.texto}`).join("\n");
-            const tLines = match.regioes.map((t, i) => `REGIAO ${i + 1}: ${t.texto}`).join("\n");
+        } else if (type === "match" && matchPrompts.length > 0 && matchRegioes.length > 0) {
+            const pLines = matchPrompts
+                .map((p, i) => `PROMPT ${i + 1}: ${(p && p.texto) ? p.texto : ""}`)
+                .join("\n");
+            const tLines = matchRegioes
+                .map((t, i) => `REGIAO ${i + 1}: ${(t && t.texto) ? t.texto : ""}`)
+                .join("\n");
 
             extra_instructions = `
 ATENCAO: a pagina tem uma questao de ASSOCIACAO (match).
@@ -1457,7 +1465,7 @@ ${JSON.stringify(data, null, 2)}
             return;
         }
 
-        if (lastType === "match" && lastMatch) {
+        if (lastType === "match" && lastMatch && Array.isArray(lastMatch.prompts) && Array.isArray(lastMatch.tiles)) {
             const parsed = parseNumberedAnswers(aiText);
             const byNumber = {};
             parsed.forEach(item => { byNumber[item.n] = item.text; });
@@ -1547,12 +1555,24 @@ ${JSON.stringify(data, null, 2)}
 
             modo = type;
             lastType = type;
-            lastFields = fields;
-            lastChoices = choices;
-            lastBlanks = blanks;
-            lastDraggables = draggables;
-            lastMatch = match;
+            lastFields = Array.isArray(fields) ? fields : [];
+            lastChoices = Array.isArray(choices) ? choices : [];
+            lastBlanks = Array.isArray(blanks) ? blanks : [];
+            lastDraggables = Array.isArray(draggables) ? draggables : [];
+            lastMatch = match || null;
             lastAnswer = "";
+
+            // === BLINDADO: monta associacao com checagem de arrays ===
+            const safeAssoc = (match && Array.isArray(match.prompts) && Array.isArray(match.tiles)) ? {
+                prompts: match.prompts.map((p, i) => ({
+                    campo: i + 1,
+                    texto: (p && p.text) ? p.text : ""
+                })),
+                regioes: match.tiles.map((t, i) => ({
+                    indice: i + 1,
+                    texto: (t && t.text) ? t.text : ""
+                }))
+            } : null;
 
             report = {
                 modo: modeNames[modo] || modo,
@@ -1560,19 +1580,16 @@ ${JSON.stringify(data, null, 2)}
                 tipoQuestao: type || "desconhecido",
                 temFoto: !!imageData,
                 textoDaPagina: pageText,
-                menus: fields.map(f => ({
+                menus: (Array.isArray(fields) ? fields : []).map(f => ({
                     campo: f.campo,
                     valorAtual: f.valorAtual,
-                    opcoesDetectadas: f.opcoesDetectadas,
+                    opcoesDetectadas: Array.isArray(f.opcoesDetectadas) ? f.opcoesDetectadas : [],
                     erro: f.erro || ""
                 })),
-                alternativas: choices.map(c => c.text),
-                blanks: blanks.map((b, i) => ({ campo: i + 1, valorAtual: "" })),
-                itensArrastaveis: draggables.map(d => d.text),
-                associacao: match ? {
-                    prompts: match.prompts.map((p, i) => ({ campo: i + 1, texto: p.text })),
-                    regioes: match.tiles.map((t, i) => ({ indice: i + 1, texto: t.text }))
-                } : null
+                alternativas: (Array.isArray(choices) ? choices : []).map(c => c.text),
+                blanks: (Array.isArray(blanks) ? blanks : []).map((b, i) => ({ campo: i + 1, valorAtual: "" })),
+                itensArrastaveis: (Array.isArray(draggables) ? draggables : []).map(d => d.text),
+                associacao: safeAssoc
             };
 
             $("pgAnswer").value = imageData
@@ -1628,7 +1645,7 @@ ${JSON.stringify(data, null, 2)}
             }
 
             let answer = data?.choices?.[0]?.message?.content;
-            if (Array.isArray(answer)) answer = answer.map(p => p.text || "").join("\n");
+            if (Array.isArray(answer)) answer = answer.map(p => (p && p.text) ? p.text : "").join("\n");
             if (typeof answer !== "string" || !answer.trim()) {
                 throw new Error("A IA não retornou uma resposta.");
             }
