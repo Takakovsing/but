@@ -1488,4 +1488,4 @@ ${JSON.stringify(data, null, 2)}
     });
 
     notify("PORTUGA IA Premium carregada!");
-})();
+})(); 
