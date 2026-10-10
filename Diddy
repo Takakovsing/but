@@ -515,7 +515,6 @@
             seen.add(el);
             out.push(el);
         }
-        // Ordena por posição na tela (topo → base, esquerda → direita)
         out.sort((a, b) => {
             const ra = a.getBoundingClientRect();
             const rb = b.getBoundingClientRect();
@@ -526,19 +525,19 @@
     }
 
     function getDraggableItems() {
+        const candidates = [];
+        const seen = new Set();
+
         const specificSelectors = [
             '[data-cy*="drag-item"]',
             '[data-cy*="dragItem"]',
             '[data-cy*="drag-option"]',
+            '[data-cy*="option-item"]',
             '[draggable="true"]',
             '[class*="drag-item"]',
             '[class*="DragItem"]',
-            '[class*="draggable"]',
-            '[class*="option-item"]'
+            '[class*="draggable"]'
         ];
-
-        const candidates = [];
-        const seen = new Set();
 
         for (const sel of specificSelectors) {
             let list;
@@ -550,10 +549,9 @@
                 if (el.matches('[data-cy^="droppable-blank"]')) continue;
 
                 const text = clean(el.innerText || el.textContent);
-                if (!text || text.length > 300) continue;
-                if (/^(enviar|submit|undo|menu|bars|bônus|bonus)/i.test(text)) continue;
+                if (!text || text.length > 200) continue;
+                if (/^(enviar|submit|undo|menu|bars|bônus|bonus|placeholder)$/i.test(text)) continue;
                 if (/^\d+$/.test(text)) continue;
-                if (/^placeholder$/i.test(text)) continue;
 
                 seen.add(el);
                 candidates.push({ element: el, text });
@@ -561,17 +559,21 @@
             if (candidates.length >= 2) break;
         }
 
-        // Fallback: botões/divs que pareçam "opções" e não são dropdown nem blank
+        // Fallback: cards brancos clicáveis no rodapé (layout do Wayground)
         if (candidates.length < 2) {
-            for (const el of document.querySelectorAll('button, [role="button"], [draggable]')) {
+            for (const el of document.querySelectorAll('button, [role="button"], div[class*="option"], div[class*="Option"]')) {
                 if (seen.has(el)) continue;
                 if (el.closest("#pgFloat")) continue;
                 if (!isVisible(el)) continue;
                 if (el.matches("button.options-dropdown, [data-cy^='dropdown-'], [data-cy^='droppable-blank'], [aria-label='Enviar'], [aria-label='undo'], [aria-label='bars']")) continue;
 
+                const rect = el.getBoundingClientRect();
+                if (rect.width < 40 || rect.height < 20) continue;
+
                 const text = clean(el.innerText || el.textContent);
                 if (!text || text.length > 60) continue;
-                if (/^(enviar|submit|undo|menu|bars|bônus|bonus|placeholder)$/i.test(text)) continue;
+                if (/^(enviar|submit|undo|menu|bars|bônus|bonus|placeholder|question\s*\d+)/i.test(text)) continue;
+                if (/^\d+\s*(of|\/)\s*\d+$/i.test(text)) continue;
                 if (/^\d+$/.test(text)) continue;
 
                 seen.add(el);
@@ -579,9 +581,17 @@
             }
         }
 
-        // Dedup por texto (mantém o primeiro)
+        // Se pegou o card wrapper E o texto interno, mantém só o wrapper
+        const cleaned = candidates.filter(c =>
+            !candidates.some(o =>
+                o !== c && c.element.contains(o.element) &&
+                clean(o.text) === clean(c.text) &&
+                o.element.getBoundingClientRect().width > c.element.getBoundingClientRect().width
+            )
+        );
+
         const byText = new Map();
-        for (const c of candidates) {
+        for (const c of cleaned) {
             const k = c.text.toLowerCase();
             if (!byText.has(k)) byText.set(k, c);
         }
@@ -597,21 +607,116 @@
         return out;
     }
 
-    function simulateDragDrop(source, target) {
+    function isBlankFilled(blank) {
+        if (!blank) return false;
+        if (!blank.isConnected) return true;
+
+        const text = clean(blank.innerText || blank.textContent);
+        if (text && !/^placeholder$/i.test(text) && text.length >= 1) return true;
+
+        const cls = (blank.className || "") + "";
+        if (/filled|dropped|has-item|dropped-item|with-item/i.test(cls)) return true;
+
+        const filho = [...blank.querySelectorAll("*")].find(el => {
+            if (!isVisible(el)) return false;
+            if (el.tagName === "SPAN" && /placeholder/i.test(el.className)) return false;
+            const t = clean(el.innerText || el.textContent);
+            return t && t.length >= 1 && !/^placeholder$/i.test(t);
+        });
+        if (filho) return true;
+
+        return false;
+    }
+
+    async function pointerDrag(source, target) {
+        const sRect = source.getBoundingClientRect();
+        const tRect = target.getBoundingClientRect();
+        const startX = Math.round(sRect.left + sRect.width / 2);
+        const startY = Math.round(sRect.top + sRect.height / 2);
+        const endX = Math.round(tRect.left + tRect.width / 2);
+        const endY = Math.round(tRect.top + tRect.height / 2);
+
+        const PID = 1;
+
+        const firePointer = (type, x, y, el) => {
+            try {
+                el.dispatchEvent(new PointerEvent(type, {
+                    bubbles: true, cancelable: true, composed: true,
+                    pointerId: PID, pointerType: "mouse",
+                    clientX: x, clientY: y,
+                    button: 0, buttons: type === "pointerup" ? 0 : 1,
+                    isPrimary: true
+                }));
+            } catch {}
+        };
+        const fireMouse = (type, x, y, el) => {
+            try {
+                el.dispatchEvent(new MouseEvent(type, {
+                    bubbles: true, cancelable: true, composed: true,
+                    clientX: x, clientY: y, button: 0,
+                    buttons: type === "mouseup" ? 0 : 1
+                }));
+            } catch {}
+        };
+        const fireTouch = (type, x, y, el) => {
+            try {
+                const t = new Touch({ identifier: 1, target: el, clientX: x, clientY: y });
+                el.dispatchEvent(new TouchEvent(type, {
+                    bubbles: true, cancelable: true, composed: true,
+                    touches: type === "touchend" ? [] : [t],
+                    targetTouches: type === "touchend" ? [] : [t],
+                    changedTouches: [t]
+                }));
+            } catch {}
+        };
+
+        source.scrollIntoView({ block: "center", behavior: "instant" });
+        await wait(80);
+
+        firePointer("pointerdown", startX, startY, source);
+        fireMouse("mousedown", startX, startY, source);
+        fireTouch("touchstart", startX, startY, source);
+        await wait(60);
+
+        const STEPS = 18;
+        for (let i = 1; i <= STEPS; i++) {
+            const p = i / STEPS;
+            const x = Math.round(startX + (endX - startX) * p);
+            const y = Math.round(startY + (endY - startY) * p);
+            const elUnder = document.elementFromPoint(x, y) || target;
+
+            firePointer("pointermove", x, y, elUnder);
+            fireMouse("mousemove", x, y, elUnder);
+            fireTouch("touchmove", x, y, elUnder);
+
+            if (i === 1) {
+                try {
+                    const dt = new DataTransfer();
+                    source.dispatchEvent(new DragEvent("dragstart", { bubbles: true, cancelable: true, dataTransfer: dt }));
+                    elUnder.dispatchEvent(new DragEvent("dragenter", { bubbles: true, cancelable: true, dataTransfer: dt }));
+                } catch {}
+            }
+            if (i === STEPS) {
+                try {
+                    const dt = new DataTransfer();
+                    elUnder.dispatchEvent(new DragEvent("dragover", { bubbles: true, cancelable: true, dataTransfer: dt }));
+                    elUnder.dispatchEvent(new DragEvent("drop", { bubbles: true, cancelable: true, dataTransfer: dt }));
+                } catch {}
+            }
+            await wait(18);
+        }
+
+        await wait(80);
+        firePointer("pointerup", endX, endY, target);
+        fireMouse("mouseup", endX, endY, target);
+        fireTouch("touchend", endX, endY, target);
+
         try {
             const dt = new DataTransfer();
-            const opts = { bubbles: true, cancelable: true, dataTransfer: dt };
+            source.dispatchEvent(new DragEvent("dragend", { bubbles: true, cancelable: true, dataTransfer: dt }));
+        } catch {}
 
-            source.dispatchEvent(new DragEvent("dragstart", opts));
-            source.dispatchEvent(new DragEvent("drag", opts));
-            target.dispatchEvent(new DragEvent("dragenter", opts));
-            target.dispatchEvent(new DragEvent("dragover", opts));
-            target.dispatchEvent(new DragEvent("drop", opts));
-            source.dispatchEvent(new DragEvent("dragend", opts));
-            return true;
-        } catch (e) {
-            return false;
-        }
+        await wait(200);
     }
 
     async function applyDragDropAnswer(itemText, blankIndex) {
@@ -632,23 +737,38 @@
 
         if (!target) return { ok: false, motivo: "Item não encontrado: " + itemText };
 
-        // Estratégia 1: clique no item → clique no blank
+        // === Estratégia 1: Pointer-based drag (funciona com React DnD) ===
+        await pointerDrag(target.element, blank);
+        await wait(300);
+
+        if (isBlankFilled(blank)) return { ok: true };
+
+        // === Estratégia 2: click-to-place ===
         const ok1 = await clickEl(target.element);
         if (ok1) {
-            await wait(200);
+            await wait(250);
             const ok2 = await clickEl(blank);
             if (ok2) {
-                await wait(400);
-                return { ok: true };
+                await wait(450);
+                if (isBlankFilled(blank)) return { ok: true };
             }
         }
 
-        // Estratégia 2: simular HTML5 drag-and-drop
-        const ok3 = simulateDragDrop(target.element, blank);
-        if (ok3) {
-            await wait(400);
-            return { ok: true };
-        }
+        // === Estratégia 3: HTML5 drag puro ===
+        try {
+            const dt = new DataTransfer();
+            const opts = { bubbles: true, cancelable: true, dataTransfer: dt };
+            target.element.dispatchEvent(new DragEvent("dragstart", opts));
+            await wait(60);
+            blank.dispatchEvent(new DragEvent("dragenter", opts));
+            blank.dispatchEvent(new DragEvent("dragover", opts));
+            blank.dispatchEvent(new DragEvent("drop", opts));
+            await wait(60);
+            target.element.dispatchEvent(new DragEvent("dragend", opts));
+        } catch {}
+        await wait(350);
+
+        if (isBlankFilled(blank)) return { ok: true };
 
         return { ok: false, motivo: "Nenhuma estratégia de drop funcionou." };
     }
@@ -888,10 +1008,6 @@ ${JSON.stringify(data, null, 2)}
         }
 
         if (lastType === "choices" && lastChoices.length > 0) {
-            const answer = parsed.length > 0
-                ? parsed.map(p => p.text).join(" ")
-                : $("pgAnswer").value;
-
             const row = document.createElement("div");
             row.className = "pgField";
 
