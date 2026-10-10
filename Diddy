@@ -19,7 +19,6 @@ let dragging=false;
 let offsetX=0;
 let offsetY=0;
 
-
 // ==============================
 // FAVICON
 // ==============================
@@ -32,9 +31,8 @@ favicon.href=
 
 document.head.appendChild(favicon);
 
-
 // ==============================
-// STYLE
+// STYLE  (idêntico ao original)
 // ==============================
 
 const style=document.createElement("style");
@@ -239,6 +237,15 @@ style.textContent=`
     transform:scale(.97);
 }
 
+#pgFloat button:disabled{
+
+    opacity:.55;
+
+    cursor:wait;
+
+    transform:none;
+}
+
 #pgToggle{
 
     position:fixed;
@@ -304,6 +311,33 @@ style.textContent=`
     pointer-events:none;
 }
 
+#pgToggle.pgWorking{
+
+    animation:pgSpin 1.4s linear infinite;
+
+    border-color:#4af;
+}
+
+#pgToggle.pgOk{
+
+    border-color:#4f8;
+
+    box-shadow:0 0 32px #4f8c;
+}
+
+#pgToggle.pgErr{
+
+    border-color:#f55;
+
+    box-shadow:0 0 32px #f55c;
+}
+
+@keyframes pgSpin{
+
+    from{transform:rotate(0);}
+    to{transform:rotate(360deg);}
+}
+
 #pgNotify{
 
     position:fixed;
@@ -344,15 +378,18 @@ style.textContent=`
         0 8px 25px #0008;
 
     pointer-events:none;
+
+    max-width:82vw;
+
+    text-align:center;
 }
 
 `;
 
 document.head.appendChild(style);
 
-
 // ==============================
-// GUI
+// GUI  (mesmo layout, 1 botão)
 // ==============================
 
 const gui=document.createElement("div");
@@ -369,15 +406,11 @@ gui.innerHTML=`
 
 <textarea
 id="pgQuestion"
-placeholder="Digite sua pergunta para a IA..."
+placeholder="Pergunta extra (opcional)..."
 ></textarea>
 
-<button id="pgRead">
-    LER PÁGINA
-</button>
-
-<button id="pgAsk">
-    PERGUNTAR À IA
+<button id="pgGo">
+    PROCURAR RESPOSTA
 </button>
 
 <textarea
@@ -390,9 +423,8 @@ readonly
 
 document.body.appendChild(gui);
 
-
 // ==============================
-// BOTÃO
+// BOTÃO FLUTUANTE
 // ==============================
 
 const toggle=document.createElement("div");
@@ -407,7 +439,6 @@ toggle.innerHTML=`
 
 document.body.appendChild(toggle);
 
-
 // ==============================
 // NOTIFICAÇÃO
 // ==============================
@@ -420,15 +451,15 @@ notifyBox.textContent="Feito!!";
 
 document.body.appendChild(notifyBox);
 
-const $=id=>
-document.getElementById(id);
-
+const $=id=>document.getElementById(id);
 
 // ==============================
 // NOTIFY
 // ==============================
 
-function notify(text="Feito!!"){
+let notifyTimer=null;
+
+function notify(text="Feito!!",ms=1800){
 
     notifyBox.textContent=text;
 
@@ -437,22 +468,56 @@ function notify(text="Feito!!"){
     notifyBox.style.transform=
         "translateX(-50%) translateY(0)";
 
-    setTimeout(()=>{
+    clearTimeout(notifyTimer);
+
+    notifyTimer=setTimeout(()=>{
 
         notifyBox.style.opacity="0";
 
         notifyBox.style.transform=
             "translateX(-50%) translateY(-20px)";
 
-    },1800);
+    },ms);
 }
 
+// ==============================
+// HELPERS
+// ==============================
+
+const store={
+
+    get:(k,d=null)=>{
+        try{
+            const v=localStorage.getItem("pgia."+k);
+            return v===null?d:v;
+        }catch{return d;}
+    },
+
+    set:(k,v)=>{
+        try{localStorage.setItem("pgia."+k,v);}catch{}
+    },
+
+    del:(k)=>{
+        try{localStorage.removeItem("pgia."+k);}catch{}
+    }
+
+};
+
+function normalize(s){
+    return (s||"")
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g,"")
+        .replace(/[^\w\s]/g," ")
+        .replace(/\s+/g," ")
+        .trim();
+}
 
 // ==============================
 // LER PÁGINA
 // ==============================
 
-$("pgRead").onclick=()=>{
+function readPage(){
 
     const clone=
         document.body.cloneNode(true);
@@ -463,186 +528,353 @@ $("pgRead").onclick=()=>{
         "#pgNotify",
         "script",
         "style",
-        "noscript"
-    ].forEach(seletor=>{
+        "noscript",
+        "svg",
+        "iframe"
+    ].forEach(sel=>{
 
         clone
-        .querySelectorAll(seletor)
+        .querySelectorAll(sel)
         .forEach(e=>e.remove());
 
     });
 
-    pageText=
-        clone.innerText
+    return (clone.innerText||"")
         .replace(/\n{3,}/g,"\n\n")
-        .trim();
-
-    if(!pageText){
-
-        alert(
-            "Não encontrei texto na página!"
-        );
-
-        return;
-    }
-
-    pageText=
-        pageText.slice(0,50000);
-
-    notify("Página lida!");
-
-};
-
+        .trim()
+        .slice(0,48000);
+}
 
 // ==============================
-// PERGUNTAR À IA
+// COLETAR CLICÁVEIS
 // ==============================
 
-$("pgAsk").onclick=async()=>{
+function getClickableCandidates(){
 
-    const pergunta=
-        $("pgQuestion")
-        .value
-        .trim();
+    const selectors=[
+        "button","[role=button]","[role=radio]","[role=option]",
+        "label","a[href]",
+        "input[type=radio]","input[type=checkbox]",
+        "input[type=submit]","input[type=button]",
+        "li[onclick]","div[onclick]","span[onclick]"
+    ];
 
-    if(!pergunta){
+    const found=new Set();
 
-        alert(
-            "Digite uma pergunta primeiro!"
-        );
+    for(const sel of selectors){
 
-        return;
-    }
+        document.querySelectorAll(sel).forEach(el=>{
 
-    if(!pageText){
+            if(el.closest("#pgFloat, #pgToggle, #pgNotify"))return;
+            if(el.disabled)return;
 
-        alert(
-            "Clique em LER PÁGINA primeiro!"
-        );
+            const r=el.getBoundingClientRect();
 
-        return;
-    }
+            if(r.width<4||r.height<4)return;
 
+            const s=getComputedStyle(el);
 
-    // ==========================
-    // PEDE A CHAVE SOMENTE 1 VEZ
-    // ==========================
+            if(s.display==="none"||
+               s.visibility==="hidden"||
+               s.opacity==="0")return;
 
-    if(!apiKey){
+            found.add(el);
 
-        apiKey=
-            prompt(
-                "Cole sua chave do OpenRouter:"
-            );
-
-        if(!apiKey){
-
-            return;
-        }
+        });
 
     }
 
+    return [...found];
+}
 
-    $("pgAsk").textContent=
-        "CONSULTANDO IA...";
+// ==============================
+// CLICAR
+// ==============================
 
-    $("pgAsk").disabled=true;
-
-    $("pgAnswer").value=
-        "Enviando conteúdo para a IA...";
-
+function doClick(el){
 
     try{
 
-        const resposta=
-            await fetch(
-                "https://openrouter.ai/api/v1/chat/completions",
-                {
+        el.scrollIntoView({behavior:"smooth",block:"center"});
 
-                    method:"POST",
+        const rect=el.getBoundingClientRect();
 
-                    headers:{
+        const cx=rect.left+rect.width/2;
+        const cy=rect.top+rect.height/2;
 
-                        "Authorization":
-                            "Bearer "+apiKey,
+        if(el.tagName==="INPUT"){
 
-                        "Content-Type":
-                            "application/json"
+            try{el.click();return true;}catch{}
 
-                    },
+        }
 
-                    body:JSON.stringify({
+        ["pointerdown","mousedown","pointerup","mouseup","click"]
+        .forEach(type=>{
 
-                        model:
-                            "openrouter/free",
+            el.dispatchEvent(new MouseEvent(type,{
 
-                        messages:[
+                bubbles:true,
+                cancelable:true,
+                view:window,
+                clientX:cx,
+                clientY:cy,
+                button:0
 
-                            {
+            }));
 
-                                role:"system",
+        });
 
-                                content:
-                                    "Você é um assistente que analisa páginas da internet. Responda em português, de forma clara e objetiva."
+        if(typeof el.click==="function"){
 
-                            },
+            try{el.click();}catch{}
 
-                            {
+        }
 
-                                role:"user",
+        return true;
 
-                                content:
-                                    "PERGUNTA:\n"+
-                                    pergunta+
-                                    "\n\n"+
-                                    "CONTEÚDO DA PÁGINA:\n"+
-                                    pageText
+    }catch{return false;}
 
-                            }
+}
 
-                        ]
+// ==============================
+// ENCONTRAR E CLICAR
+// ==============================
 
-                    })
+function clickAnswer(answerText){
 
-                }
-            );
+    const target=normalize(answerText);
 
+    if(!target)return false;
 
-        const dados=
-            await resposta.json();
+    const candidates=getClickableCandidates();
 
+    if(!candidates.length)return false;
 
-        if(!resposta.ok){
+    const targetTokens=
+        target.split(" ").filter(t=>t.length>2);
 
-            // Se a chave estiver inválida,
-            // apaga a chave salva na sessão.
+    let best=null;
+    let bestScore=0;
 
-            if(
-                resposta.status===401 ||
-                resposta.status===403
-            ){
+    for(const el of candidates){
 
-                apiKey="";
-            }
+        let txt=
+            el.innerText||
+            el.value||
+            el.getAttribute("aria-label")||"";
+
+        if(el.tagName==="INPUT"&&el.id){
+
+            const lbl=
+                document.querySelector(
+                    `label[for="${CSS.escape(el.id)}"]`
+                );
+
+            if(lbl)txt=lbl.innerText;
+
+        }
+
+        const norm=normalize(txt);
+
+        if(!norm)continue;
+
+        if(norm===target){
+
+            doClick(el);
+            return true;
+
+        }
+
+        let score=0;
+
+        if(norm.includes(target))score+=100;
+        if(target.includes(norm))score+=80;
+
+        if(targetTokens.length){
+
+            const tokens=
+                norm.split(" ").filter(t=>t.length>2);
+
+            const hits=
+                targetTokens.filter(t=>tokens.includes(t)).length;
+
+            score+=(hits/targetTokens.length)*70;
+
+        }
+
+        if(score>bestScore){
+
+            bestScore=score;
+            best=el;
+
+        }
+
+    }
+
+    if(best&&bestScore>=55){
+
+        doClick(best);
+        return true;
+
+    }
+
+    return false;
+}
+
+// ==============================
+// EXTRAIR RESPOSTA
+// ==============================
+
+function extractAnswer(text){
+
+    if(!text)return "";
+
+    const m=
+        text.match(/RESPOSTA\s*[:\-]\s*(.+?)(?:\n|$)/i);
+
+    if(m&&m[1]){
+
+        let a=m[1].trim();
+
+        a=a.replace(/^["'`*\-•\s]+|["'`*\s]+$/g,"");
+        a=a.replace(/^\(?[a-z]\)?[\s.\-:]+/i,"");
+        a=a.replace(/^\d+[\s.\-:]+/,"");
+
+        return a.trim();
+
+    }
+
+    const line=
+        text.split("\n")
+            .map(l=>l.trim())
+            .filter(Boolean)[0]||"";
+
+    return line;
+}
+
+// ==============================
+// PROCURAR RESPOSTA  (tudo junto)
+// ==============================
+
+apiKey=store.get("apikey","");
+
+let busy=false;
+
+$("pgGo").onclick=async()=>{
+
+    if(busy)return;
+    busy=true;
+
+    toggle.classList.remove("pgOk","pgErr");
+    toggle.classList.add("pgWorking");
+
+    $("pgGo").disabled=true;
+    $("pgGo").textContent="PROCURANDO...";
+
+    try{
+
+        // 1) lê a página
+        pageText=readPage();
+
+        if(!pageText||pageText.length<30){
 
             throw new Error(
-                dados?.error?.message ||
-                "Erro HTTP "+
-                resposta.status
+                "Não encontrei conteúdo na página."
             );
 
         }
 
+        notify("Página lida! Consultando IA...",2200);
 
-        const resultado=
-            dados
-            ?.choices
-            ?.[0]
-            ?.message
-            ?.content;
+        // 2) api key
+        if(!apiKey){
 
+            apiKey=prompt(
+                "Cole sua chave do OpenRouter:"
+            );
 
-        if(!resultado){
+            if(!apiKey){
+                throw new Error("Chave não informada.");
+            }
+
+            store.set("apikey",apiKey);
+
+        }
+
+        $("pgAnswer").value=
+            "Enviando conteúdo para a IA...";
+
+        // 3) chamar IA
+        const extra=$("pgQuestion").value.trim();
+
+        const pergunta=
+            "Analise o conteúdo da página, identifique a PERGUNTA e as ALTERNATIVAS, "+
+            "e determine a alternativa CORRETA. Responda na primeira linha exatamente com:\n"+
+            "RESPOSTA: <texto exato da alternativa correta>\n\n"+
+            (extra?("OBSERVAÇÃO EXTRA DO USUÁRIO:\n"+extra+"\n\n"):"");
+
+        const res=await fetch(
+            "https://openrouter.ai/api/v1/chat/completions",
+            {
+                method:"POST",
+                headers:{
+                    "Authorization":"Bearer "+apiKey,
+                    "Content-Type":"application/json"
+                },
+                body:JSON.stringify({
+
+                    model:"google/gemini-2.0-flash-exp:free",
+
+                    messages:[
+                        {
+                            role:"system",
+                            content:
+                                "Você é um assistente especializado em responder questões de múltipla escolha. "+
+                                "Analise o conteúdo da página, identifique a PERGUNTA e as ALTERNATIVAS. "+
+                                "Responda OBRIGATORIAMENTE na primeira linha exatamente no formato:\n"+
+                                "RESPOSTA: <texto exato da alternativa correta como aparece na página>\n"+
+                                "Não use numeração, letras, aspas ou marcadores antes do texto. "+
+                                "Use o texto IDÊNTICO ao que aparece na alternativa correta."
+                        },
+                        {
+                            role:"user",
+                            content:
+                                pergunta+
+                                "\n\nCONTEÚDO DA PÁGINA:\n"+
+                                pageText
+                        }
+                    ]
+
+                })
+            }
+        );
+
+        if(!res.ok){
+
+            if(res.status===401||res.status===403){
+
+                apiKey="";
+                store.del("apikey");
+
+            }
+
+            let msg="HTTP "+res.status;
+
+            try{
+                const j=await res.json();
+                msg=j?.error?.message||msg;
+            }catch{}
+
+            throw new Error(msg);
+
+        }
+
+        const dados=await res.json();
+
+        const resposta=
+            dados?.choices?.[0]?.message?.content||"";
+
+        if(!resposta){
 
             throw new Error(
                 "A IA não retornou uma resposta."
@@ -650,38 +882,68 @@ $("pgAsk").onclick=async()=>{
 
         }
 
+        $("pgAnswer").value=resposta;
 
-        $("pgAnswer").value=
-            resultado;
+        // 4) extrair e clicar
+        const alvo=extractAnswer(resposta);
 
-        notify(
-            "Resposta recebida!"
-        );
+        if(!alvo){
 
+            throw new Error(
+                "Não consegui extrair a resposta."
+            );
+
+        }
+
+        await new Promise(r=>setTimeout(r,200));
+
+        const clicou=clickAnswer(alvo);
+
+        toggle.classList.remove("pgWorking");
+
+        if(clicou){
+
+            toggle.classList.add("pgOk");
+            notify("✓ "+alvo.slice(0,90),3200);
+
+        }else{
+
+            toggle.classList.add("pgErr");
+            notify(
+                "Resposta: "+alvo.slice(0,120)+
+                " — não achei p/ clicar",
+                4500
+            );
+
+        }
 
     }catch(erro){
 
+        toggle.classList.remove("pgWorking");
+        toggle.classList.add("pgErr");
+
         $("pgAnswer").value=
-            "ERRO:\n\n"+
-            erro.message;
+            "ERRO:\n\n"+erro.message;
 
-        alert(
-            "Erro ao consultar a IA:\n\n"+
-            erro.message
-        );
+        notify("Erro: "+erro.message,3800);
 
+        console.error("[PortugaIA]",erro);
 
     }finally{
 
-        $("pgAsk").textContent=
-            "PERGUNTAR À IA";
+        $("pgGo").disabled=false;
+        $("pgGo").textContent="PROCURAR RESPOSTA";
 
-        $("pgAsk").disabled=false;
+        busy=false;
+
+        setTimeout(
+            ()=>toggle.classList.remove("pgOk","pgErr"),
+            2600
+        );
 
     }
 
 };
-
 
 // ==============================
 // MINIMIZAR
@@ -689,309 +951,198 @@ $("pgAsk").onclick=async()=>{
 
 toggle.onclick=()=>{
 
-    if(
-        toggle.dataset.dragged===
-        "true"
-    ){
+    if(toggle.dataset.dragged==="true"){
 
-        toggle.dataset.dragged=
-        "false";
-
+        toggle.dataset.dragged="false";
         return;
 
     }
 
     minimized=!minimized;
 
-    gui.classList.toggle(
-        "pgMini",
-        minimized
-    );
+    gui.classList.toggle("pgMini",minimized);
 
 };
 
-
 // ==============================
-// ARRASTAR BOTÃO
+// ARRASTAR BOTÃO (mouse)
 // ==============================
 
 let toggleDragging=false;
 let toggleMoved=false;
-
 let toggleOffsetX=0;
 let toggleOffsetY=0;
 
+toggle.addEventListener("mousedown",event=>{
 
-toggle.addEventListener(
-    "mousedown",
-    event=>{
+    toggleDragging=true;
+    toggleMoved=false;
 
-        toggleDragging=true;
+    toggleOffsetX=event.clientX-toggle.offsetLeft;
+    toggleOffsetY=event.clientY-toggle.offsetTop;
 
-        toggleMoved=false;
+    event.preventDefault();
 
-        toggleOffsetX=
-            event.clientX-
-            toggle.offsetLeft;
+});
 
-        toggleOffsetY=
-            event.clientY-
-            toggle.offsetTop;
+document.addEventListener("mousemove",event=>{
 
-        event.preventDefault();
+    if(!toggleDragging)return;
 
-    }
-);
+    toggleMoved=true;
 
+    toggle.style.left=
+        event.clientX-toggleOffsetX+"px";
 
-document.addEventListener(
-    "mousemove",
-    event=>{
+    toggle.style.top=
+        event.clientY-toggleOffsetY+"px";
 
-        if(!toggleDragging)return;
+    toggle.style.right="auto";
+    toggle.style.bottom="auto";
 
-        toggleMoved=true;
+});
 
-        toggle.style.left=
-            event.clientX-
-            toggleOffsetX+
-            "px";
+document.addEventListener("mouseup",()=>{
 
-        toggle.style.top=
-            event.clientY-
-            toggleOffsetY+
-            "px";
+    if(!toggleDragging)return;
 
-        toggle.style.right="auto";
-        toggle.style.bottom="auto";
+    if(toggleMoved){
+
+        toggle.dataset.dragged="true";
 
     }
-);
 
+    toggleDragging=false;
 
-document.addEventListener(
-    "mouseup",
-    ()=>{
-
-        if(!toggleDragging)return;
-
-        if(toggleMoved){
-
-            toggle.dataset.dragged=
-            "true";
-
-        }
-
-        toggleDragging=false;
-
-    }
-);
-
+});
 
 // ==============================
-// CELULAR
+// ARRASTAR BOTÃO (touch)
 // ==============================
 
-toggle.addEventListener(
-    "touchstart",
-    event=>{
+toggle.addEventListener("touchstart",event=>{
 
-        const touch=
-            event.touches[0];
+    const touch=event.touches[0];
 
-        toggleDragging=true;
+    toggleDragging=true;
+    toggleMoved=false;
 
-        toggleMoved=false;
+    toggleOffsetX=touch.clientX-toggle.offsetLeft;
+    toggleOffsetY=touch.clientY-toggle.offsetTop;
 
-        toggleOffsetX=
-            touch.clientX-
-            toggle.offsetLeft;
+},{passive:true});
 
-        toggleOffsetY=
-            touch.clientY-
-            toggle.offsetTop;
+document.addEventListener("touchmove",event=>{
 
-    },
-    {passive:true}
-);
+    if(!toggleDragging)return;
 
+    const touch=event.touches[0];
 
-document.addEventListener(
-    "touchmove",
-    event=>{
+    toggleMoved=true;
 
-        if(!toggleDragging)return;
+    toggle.style.left=
+        touch.clientX-toggleOffsetX+"px";
 
-        const touch=
-            event.touches[0];
+    toggle.style.top=
+        touch.clientY-toggleOffsetY+"px";
 
-        toggleMoved=true;
+    toggle.style.right="auto";
+    toggle.style.bottom="auto";
 
-        toggle.style.left=
-            touch.clientX-
-            toggleOffsetX+
-            "px";
+},{passive:true});
 
-        toggle.style.top=
-            touch.clientY-
-            toggleOffsetY+
-            "px";
+document.addEventListener("touchend",()=>{
 
-        toggle.style.right="auto";
-        toggle.style.bottom="auto";
+    if(!toggleDragging)return;
 
-    },
-    {passive:true}
-);
+    if(toggleMoved){
 
-
-document.addEventListener(
-    "touchend",
-    ()=>{
-
-        if(!toggleDragging)return;
-
-        if(toggleMoved){
-
-            toggle.dataset.dragged=
-            "true";
-
-        }
-
-        toggleDragging=false;
+        toggle.dataset.dragged="true";
 
     }
-);
 
+    toggleDragging=false;
+
+});
 
 // ==============================
-// ARRASTAR GUI
+// ARRASTAR PAINEL (mouse)
 // ==============================
 
-$("pgHead").addEventListener(
-    "mousedown",
-    event=>{
+$("pgHead").addEventListener("mousedown",event=>{
 
-        dragging=true;
+    dragging=true;
 
-        offsetX=
-            event.clientX-
-            gui.offsetLeft;
+    offsetX=event.clientX-gui.offsetLeft;
+    offsetY=event.clientY-gui.offsetTop;
 
-        offsetY=
-            event.clientY-
-            gui.offsetTop;
+    event.preventDefault();
 
-        event.preventDefault();
+});
 
-    }
-);
+document.addEventListener("mousemove",event=>{
 
+    if(!dragging)return;
 
-document.addEventListener(
-    "mousemove",
-    event=>{
+    gui.style.left=
+        event.clientX-offsetX+"px";
 
-        if(!dragging)return;
+    gui.style.top=
+        event.clientY-offsetY+"px";
 
-        gui.style.left=
-            event.clientX-
-            offsetX+
-            "px";
+    gui.style.transform="scale(1)";
 
-        gui.style.top=
-            event.clientY-
-            offsetY+
-            "px";
+});
 
-        gui.style.transform=
-            "scale(1)";
+document.addEventListener("mouseup",()=>{
 
-    }
-);
+    dragging=false;
 
-
-document.addEventListener(
-    "mouseup",
-    ()=>{
-
-        dragging=false;
-
-    }
-);
-
+});
 
 // ==============================
-// GUI NO CELULAR
+// ARRASTAR PAINEL (touch)
 // ==============================
 
 let touchDragging=false;
-
 let touchOffsetX=0;
 let touchOffsetY=0;
 
+$("pgHead").addEventListener("touchstart",event=>{
 
-$("pgHead").addEventListener(
-    "touchstart",
-    event=>{
+    const touch=event.touches[0];
 
-        const touch=
-            event.touches[0];
+    touchDragging=true;
 
-        touchDragging=true;
+    touchOffsetX=touch.clientX-gui.offsetLeft;
+    touchOffsetY=touch.clientY-gui.offsetTop;
 
-        touchOffsetX=
-            touch.clientX-
-            gui.offsetLeft;
+},{passive:true});
 
-        touchOffsetY=
-            touch.clientY-
-            gui.offsetTop;
+document.addEventListener("touchmove",event=>{
 
-    },
-    {passive:true}
-);
+    if(!touchDragging)return;
 
+    const touch=event.touches[0];
 
-document.addEventListener(
-    "touchmove",
-    event=>{
+    gui.style.left=
+        touch.clientX-touchOffsetX+"px";
 
-        if(!touchDragging)return;
+    gui.style.top=
+        touch.clientY-touchOffsetY+"px";
 
-        const touch=
-            event.touches[0];
+    gui.style.transform="scale(1)";
 
-        gui.style.left=
-            touch.clientX-
-            touchOffsetX+
-            "px";
+},{passive:true});
 
-        gui.style.top=
-            touch.clientY-
-            touchOffsetY+
-            "px";
+document.addEventListener("touchend",()=>{
 
-        gui.style.transform=
-            "scale(1)";
+    touchDragging=false;
 
-    },
-    {passive:true}
-);
-
-
-document.addEventListener(
-    "touchend",
-    ()=>{
-
-        touchDragging=false;
-
-    }
-);
-
+});
 
 // ==============================
-// ESC / ALT
+// ESC / ALT / BOTÃO DO MEIO
 // ==============================
 
 function toggleHiddenMode(){
@@ -1014,47 +1165,40 @@ function toggleHiddenMode(){
 
 }
 
+document.addEventListener("keydown",event=>{
 
-document.addEventListener(
-    "keydown",
-    event=>{
+    if(event.key==="Escape"){
 
-        if(event.key==="Escape"){
+        minimized=!minimized;
 
-            minimized=!minimized;
-
-            gui.classList.toggle(
-                "pgMini",
-                minimized
-            );
-
-        }
-
-        if(event.key==="Alt"){
-
-            toggleHiddenMode();
-
-        }
+        gui.classList.toggle("pgMini",minimized);
 
     }
-);
 
-
-// ==============================
-// BOTÃO CENTRAL
-// ==============================
-
-document.addEventListener(
-    "mousedown",
-    event=>{
-
-        if(event.button!==1)return;
-
-        event.preventDefault();
+    if(event.key==="Alt"){
 
         toggleHiddenMode();
 
     }
-);
+
+    if(event.altKey&&(event.key==="q"||event.key==="Q")){
+
+        event.preventDefault();
+
+        $("pgGo").click();
+
+    }
+
+});
+
+document.addEventListener("mousedown",event=>{
+
+    if(event.button!==1)return;
+
+    event.preventDefault();
+
+    toggleHiddenMode();
+
+});
 
 })();
