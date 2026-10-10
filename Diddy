@@ -24,7 +24,7 @@
     let notifyTimer;
     let report = null;
     let lastFields = [];
-    let autoApply = true; // responder automaticamente
+    let autoApply = true;
 
     const store = {
         get(key, fallback = "") {
@@ -52,7 +52,7 @@
     }
     favicon.href = ICONE;
 
-    /* CSS PREMIUM */
+    /* CSS PREMIUM (idêntico ao seu) */
 
     const style = document.createElement("style");
     style.textContent = `
@@ -446,7 +446,52 @@
             .replace(/\n{3,}/g, "\n\n").trim().slice(0, 30000);
     }
 
-    /* DETECÇÃO DE DROPDOWNS "SELECIONE A RESPOSTA" */
+    /* ============================================================
+       EXTRAÇÃO DE LETRA — CORRIGIDO
+       Só aceita:
+         - "B" (letra isolada)
+         - "B) ..." / "B. ..." / "B - ..." / "B: ..." (letra + separador + texto)
+       NUNCA aceita "Bolo" como letra "B".
+    ============================================================ */
+
+    function extractLetter(v) {
+        const s = clean(v);
+        if (!s) return null;
+
+        // Letra isolada
+        if (/^[a-eA-E]$/.test(s)) {
+            return { letter: s.toLowerCase(), rest: "" };
+        }
+        // Letra + separador + resto
+        const m = s.match(/^([a-eA-E])\s*[\.\)\-:]\s*(.*)$/);
+        if (m) {
+            return { letter: m[1].toLowerCase(), rest: (m[2] || "").trim() };
+        }
+        return null;
+    }
+
+    /* ============================================================
+       NORMALIZAÇÃO — mantém semântica de "texto puro sem letra"
+    ============================================================ */
+
+    function stripLetterPrefix(v) {
+        const s = clean(v);
+        const m = s.match(/^([a-eA-E])\s*[\.\)\-:]\s*(.*)$/);
+        if (m) return (m[2] || "").trim();
+        return s;
+    }
+
+    function normalizeForMatch(v) {
+        return stripLetterPrefix(v)
+            .toLowerCase()
+            .replace(/[“”"']/g, "")
+            .replace(/\s+/g, " ")
+            .trim();
+    }
+
+    /* ============================================================
+       DETECÇÃO DE DROPDOWNS
+    ============================================================ */
 
     function isSelectAnswerText(t) {
         return /^\s*selecione(\s+a\s+resposta)?\s*$/i.test(t) ||
@@ -458,18 +503,16 @@
         const results = [];
         const seen = new Set();
 
-        // 1) <select> nativo
         document.querySelectorAll("select").forEach(el => {
             if (!isVisible(el) || seen.has(el)) return;
+            if (el.closest("#pgFloat")) return;
             seen.add(el);
             results.push(el);
         });
 
-        // 2) role="combobox" ou aria-haspopup="listbox"
         const semantic = [
             '[role="combobox"]',
             '[aria-haspopup="listbox"]',
-            '[aria-haspopup="menu"][aria-expanded]',
             "button.options-dropdown",
             '[data-cy*="dropdown"] button'
         ].flatMap(sel => {
@@ -479,11 +522,12 @@
 
         semantic.forEach(el => {
             if (!isVisible(el) || seen.has(el)) return;
-            // precisa ser claramente um dropdown; texto "Selecione..." OU aria-haspopup listbox
+            if (el.closest("#pgFloat")) return;
             const text = clean(el.innerText || el.textContent);
             const hasListbox = el.getAttribute("aria-haspopup") === "listbox";
             const hasCombo = el.getAttribute("role") === "combobox";
-            if (!hasListbox && !hasCombo && !isSelectAnswerText(text)) return;
+            const looksSelect = isSelectAnswerText(text) || /selecione|select|escolha/i.test(text);
+            if (!hasListbox && !hasCombo && !looksSelect) return;
             seen.add(el);
             results.push(el);
         });
@@ -491,59 +535,100 @@
         return results;
     }
 
-    /* DETECÇÃO DE OPÇÕES CLICÁVEIS (assinalar / V-F / múltipla escolha) */
+    /* ============================================================
+       DETECÇÃO DE OPÇÕES CLICÁVEIS (assinalar) — REESCRITA
+       Ordem de prioridade: pára no primeiro seletor que devolver ≥2.
+       Deduplica por texto normalizado. Ordena por posição no DOM.
+    ============================================================ */
 
     function getAnswerChoiceElements() {
-        const results = [];
-        const seen = new Set();
-
         const selectors = [
+            '[data-cy*="option"]',
+            '[data-cy*="answer"]',
             '[role="radio"]',
             '[role="checkbox"]',
             'button[aria-checked]',
-            '[data-cy*="option"]',
-            '[data-cy*="answer"]',
-            '[class*="option"][role="button"]',
             '[class*="AnswerOption"]',
-            '[class*="OptionContainer"] > *'
+            '[class*="answer-option"]',
+            '[class*="option"][role="button"]'
         ];
 
         for (const sel of selectors) {
             let list;
             try { list = document.querySelectorAll(sel); }
             catch { continue; }
-            list.forEach(el => {
-                if (!isVisible(el) || seen.has(el)) return;
-                // ignorar se for o próprio painel
-                if (el.closest("#pgFloat")) return;
-                const text = clean(el.innerText || el.textContent);
-                if (!text || text.length > 400) return;
-                seen.add(el);
-                results.push({ element: el, text });
-            });
-        }
 
-        // Fallback: um grupo de botões com letras A/B/C/D
-        if (results.length < 2) {
-            const letterRe = /^\s*([A-Ea-e])\s*[\.\)\-:]\s*(.+)$/;
-            const buttons = [...document.querySelectorAll('button, [role="button"]')]
-                .filter(b => {
-                    if (!isVisible(b)) return false;
-                    if (b.closest("#pgFloat")) return false;
-                    const t = clean(b.innerText || b.textContent);
-                    return t && t.length < 400 && letterRe.test(t);
-                });
-            if (buttons.length >= 2) {
-                buttons.forEach(b => {
-                    if (seen.has(b)) return;
-                    seen.add(b);
-                    results.push({ element: b, text: clean(b.innerText || b.textContent) });
-                });
+            const items = [];
+            const seen = new Set();
+            for (const el of list) {
+                if (!isVisible(el) || seen.has(el)) continue;
+                if (el.closest("#pgFloat")) continue;
+                const text = clean(el.innerText || el.textContent);
+                if (!text || text.length > 500) continue;
+                seen.add(el);
+                items.push({ element: el, text });
+            }
+            if (items.length >= 2) {
+                const deduped = dedupeChoices(items);
+                if (deduped.length >= 2) return deduped;
             }
         }
 
-        return results;
+        /* Fallback: botões/role=button com prefixo de letra A–E */
+        const letterRe = /^\s*([a-eA-E])\s*[\.\)\-:]\s*(.+)$/;
+        const buttons = [...document.querySelectorAll('button, [role="button"], [role="radio"], [role="checkbox"]')]
+            .filter(b => {
+                if (!isVisible(b)) return false;
+                if (b.closest("#pgFloat")) return false;
+                const t = clean(b.innerText || b.textContent);
+                return t && t.length < 500 && letterRe.test(t);
+            });
+
+        const seen = new Set();
+        const items = [];
+        for (const b of buttons) {
+            if (seen.has(b)) continue;
+            seen.add(b);
+            items.push({ element: b, text: clean(b.innerText || b.textContent) });
+        }
+
+        return dedupeChoices(items);
     }
+
+    function dedupeChoices(items) {
+        if (!items.length) return items;
+
+        // Remove elementos que contêm outro item (wrappers/containers).
+        // Se A contém B e ambos têm o mesmo texto normalizado,
+        // mantemos apenas B (o mais interno).
+        let filtered = items.filter(item => {
+            return !items.some(other =>
+                other !== item &&
+                item.element.contains(other.element) &&
+                normalizeForMatch(other.text) === normalizeForMatch(item.text)
+            );
+        });
+
+        // Deduplica por texto normalizado (guarda o primeiro em ordem DOM).
+        const byText = new Map();
+        for (const it of filtered) {
+            const k = normalizeForMatch(it.text) || it.text;
+            if (!byText.has(k)) byText.set(k, it);
+        }
+        const out = [...byText.values()];
+
+        // Ordena por posição no DOM.
+        out.sort((a, b) => {
+            const pos = a.element.compareDocumentPosition(b.element);
+            if (pos & Node.DOCUMENT_POSITION_FOLLOWING) return -1;
+            if (pos & Node.DOCUMENT_POSITION_PRECEDING) return 1;
+            return 0;
+        });
+
+        return out;
+    }
+
+    /* MENU DE OPÇÕES (para dropdowns) */
 
     function getVisibleLeaves() {
         return [...document.querySelectorAll("body *")].filter(el => {
@@ -638,6 +723,109 @@
         return fields;
     }
 
+    /* ============================================================
+       MATCH DE DROPDOWN — prioriza LETRA, depois texto, depois índice
+    ============================================================ */
+
+    function matchOption(suggestion, options) {
+        if (!suggestion || !Array.isArray(options) || options.length === 0) return "";
+
+        const raw = clean(suggestion);
+        if (!raw) return "";
+        if (/^indeterminado$/i.test(raw)) return "";
+
+        const letterInfo = extractLetter(raw);
+        if (letterInfo) {
+            const targetLetter = letterInfo.letter;
+
+            // 1) Procura opção com a MESMA letra
+            for (const opt of options) {
+                const ol = extractLetter(opt);
+                if (ol && ol.letter === targetLetter) return opt;
+            }
+            // 2) Só cai em índice se a sugestão for letra isolada E
+            //    nenhuma opção tiver letra
+            const anyOptionHasLetter = options.some(opt => extractLetter(opt));
+            if (!anyOptionHasLetter && !letterInfo.rest) {
+                const idx = targetLetter.charCodeAt(0) - 97;
+                if (idx >= 0 && idx < options.length) return options[idx];
+            }
+        }
+
+        // 3) Comparação por texto puro
+        const s = normalizeForMatch(raw);
+        if (!s) return "";
+        for (const opt of options) {
+            if (normalizeForMatch(opt) === s) return opt;
+        }
+        for (const opt of options) {
+            const o = normalizeForMatch(opt);
+            if (!o) continue;
+            if (o.length >= 3 && s.length >= 3 && (s.includes(o) || o.includes(s))) return opt;
+        }
+        for (const opt of options) {
+            const o = normalizeForMatch(opt);
+            if (o.length < 6 || s.length < 6) continue;
+            if (o.slice(0, 6) === s.slice(0, 6)) return opt;
+        }
+        return "";
+    }
+
+    /* ============================================================
+       MATCH DE OPÇÃO CLICÁVEL (assinalar) — REESCRITO
+       Letra é a chave primária. Nunca usa índice se a opção tem letra.
+    ============================================================ */
+
+    function matchChoiceAnswer(aiText, choiceText, choiceIndex) {
+        const cleanAi = clean(aiText);
+        const aiLetter = extractLetter(cleanAi);
+        const choiceLetter = extractLetter(choiceText);
+
+        /* 1) Se AMBOS têm letra, compara só a letra. */
+        if (aiLetter && choiceLetter) {
+            return aiLetter.letter === choiceLetter.letter;
+        }
+
+        /* 2) IA só devolveu letra ("B"), opção não tem letra:
+              usa índice A=0, B=1, ... */
+        if (aiLetter && !aiLetter.rest && !choiceLetter) {
+            const idx = aiLetter.letter.charCodeAt(0) - 97;
+            return idx === choiceIndex;
+        }
+
+        /* 3) Caso contrário, compara TEXTO (ignorando letra). */
+        const aiPart = aiLetter ? aiLetter.rest : cleanAi;
+        const choicePart = choiceLetter ? choiceLetter.rest : choiceText;
+
+        const aiNorm = normalizeForMatch(aiPart);
+        const choiceNorm = normalizeForMatch(choicePart);
+
+        if (aiNorm && choiceNorm && aiNorm.length >= 2 && choiceNorm.length >= 2) {
+            if (aiNorm === choiceNorm) return true;
+            if (aiNorm.includes(choiceNorm) || choiceNorm.includes(aiNorm)) return true;
+        }
+        return false;
+    }
+
+    /* ============================================================
+       PARSE DAS RESPOSTAS NUMERADAS
+    ============================================================ */
+
+    function parseNumberedAnswers(text) {
+        if (!text) return [];
+        const map = {};
+        const re = /^\s*(\d{1,3})\s*[\.\)\-:]\s*(.+?)\s*$/gm;
+        let m;
+        while ((m = re.exec(text)) !== null) {
+            const n = parseInt(m[1], 10);
+            const val = m[2].trim();
+            if (!val) continue;
+            if (!map[n]) map[n] = val;
+        }
+        return Object.keys(map).map(Number).sort((a, b) => a - b)
+            .map(n => ({ n, text: map[n] }));
+    }
+
     /* PROMPT PARA A IA */
 
     function buildPrompt(data, extra) {
@@ -673,9 +861,8 @@ FORMATO OBRIGATÓRIO DA PRIMEIRA PARTE (sem texto adicional):
 
 Regras:
 - Uma linha por campo, no formato "<número>. <texto>".
-- O texto precisa ser copiado LITERALMENTE de "opcoesDetectadas".
-- Se não houver dados, escreva "INDETERMINADO".
 - Use a letra quando as opções tiverem letra.
+- Se não houver dados, escreva "INDETERMINADO".
 
 Depois, se quiser, uma seção "EXPLICAÇÃO:" (não usada para preencher).
 `;
@@ -698,102 +885,6 @@ ${fieldInstructions}
 CONTEÚDO CAPTURADO (JSON):
 ${JSON.stringify(data, null, 2)}
 `;
-    }
-
-    /* PARSE DAS RESPOSTAS NUMERADAS */
-
-    function parseNumberedAnswers(text) {
-        if (!text) return [];
-        const map = {};
-        const re = /^\s*(\d{1,3})\s*[\.\)\-:]\s*(.+?)\s*$/gm;
-        let m;
-        while ((m = re.exec(text)) !== null) {
-            const n = parseInt(m[1], 10);
-            const val = m[2].trim();
-            if (!val) continue;
-            if (!map[n]) map[n] = val;
-        }
-        return Object.keys(map).map(Number).sort((a, b) => a - b)
-            .map(n => ({ n, text: map[n] }));
-    }
-
-    /* MATCH ENTRE SUGESTÃO DA IA E OPÇÕES REAIS */
-
-    function stripLetterPrefix(v) {
-        return clean(v).replace(/^([a-eA-E])\s*[\.\)\-:]\s*/, "").trim();
-    }
-
-    function normalizeForMatch(v) {
-        return stripLetterPrefix(v)
-            .toLowerCase()
-            .replace(/[“”"']/g, "")
-            .replace(/\s+/g, " ")
-            .trim();
-    }
-
-    function extractLetter(v) {
-        const m = clean(v).match(/^\s*([a-eA-E])\s*[\.\)\-:]?\s*(.*)$/);
-        if (!m) return null;
-        // se for só "B", o "resto" fica vazio -> letter pura
-        // se for "B) Falso", letter + texto
-        // se for "Bolo", o regex pega "B" + "olo"? Não, exige separador OU fim.
-        // Aqui aceitamos letra isolada (com ou sem separador) só se restante curto/vazio
-        const letter = m[1].toLowerCase();
-        const rest = (m[2] || "").trim();
-        // evita pegar "Bolo" como letra B
-        if (!/^\s*[a-eA-E]\s*([\.\)\-:]|$)/i.test(clean(v))) return null;
-        return { letter, rest };
-    }
-
-    function matchOption(suggestion, options) {
-        if (!suggestion || !Array.isArray(options) || options.length === 0) return "";
-
-        const raw = clean(suggestion);
-        if (!raw) return "";
-        if (/^indeterminado$/i.test(raw)) return "";
-
-        // 1) Letra explícita ("B", "B)", "B) Falso", "B. Falso")
-        const letterInfo = extractLetter(raw);
-        if (letterInfo) {
-            const targetLetter = letterInfo.letter;
-
-            // 1.a) tentar casar com a opção de MESMA letra
-            for (const opt of options) {
-                const optLetter = extractLetter(opt);
-                if (optLetter && optLetter.letter === targetLetter) {
-                    // Se temos texto em comum, reforça o match; se não, aceita pela letra.
-                    return opt;
-                }
-            }
-            // 1.b) opções sem letra: usar índice
-            const idx = targetLetter.charCodeAt(0) - 97;
-            if (idx >= 0 && idx < options.length) {
-                // só aceita por índice se o texto da opção não contradiz claramente
-                return options[idx];
-            }
-        }
-
-        // 2) Comparação por TEXTO (sem letras)
-        const s = normalizeForMatch(raw);
-        if (!s) return "";
-
-        // 2.a) igualdade exata
-        for (const opt of options) {
-            if (normalizeForMatch(opt) === s) return opt;
-        }
-        // 2.b) inclusão
-        for (const opt of options) {
-            const o = normalizeForMatch(opt);
-            if (!o) continue;
-            if (s === o || s.includes(o) || o.includes(s)) return opt;
-        }
-        // 2.c) prefixo comum ≥ 6 chars
-        for (const opt of options) {
-            const o = normalizeForMatch(opt);
-            if (o.length < 6 || s.length < 6) continue;
-            if (o.slice(0, 6) === s.slice(0, 6)) return opt;
-        }
-        return "";
     }
 
     /* RENDERIZA OS CAMPOS NA INTERFACE */
@@ -883,12 +974,11 @@ ${JSON.stringify(data, null, 2)}
         });
     }
 
-    /* APLICAR RESPOSTA EM UM CAMPO (abre e clica na opção certa) */
+    /* APLICAR RESPOSTA EM UM DROPDOWN */
 
     async function applyFieldAnswer(field, targetText) {
         if (!targetText) return { ok: false, motivo: "Sem texto para aplicar." };
 
-        // Sempre re-obtém a lista atual de dropdowns
         const all = getDropdowns();
         let button = all[(field.campo - 1)] || null;
         if (!button) button = field.element;
@@ -896,23 +986,29 @@ ${JSON.stringify(data, null, 2)}
             return { ok: false, motivo: "Campo não está mais na página." };
         }
 
-        // <select> nativo
         if (button.tagName === "SELECT") {
             const target = normalizeForMatch(targetText);
+            const targetLetter = extractLetter(targetText);
             for (const opt of button.options) {
-                if (normalizeForMatch(opt.text) === target ||
-                    normalizeForMatch(opt.text).includes(target) ||
-                    target.includes(normalizeForMatch(opt.text))) {
+                if (normalizeForMatch(opt.text) === target) {
                     button.value = opt.value;
                     button.dispatchEvent(new Event("input", { bubbles: true }));
                     button.dispatchEvent(new Event("change", { bubbles: true }));
                     return { ok: true };
                 }
+                if (targetLetter) {
+                    const ol = extractLetter(opt.text);
+                    if (ol && ol.letter === targetLetter.letter) {
+                        button.value = opt.value;
+                        button.dispatchEvent(new Event("input", { bubbles: true }));
+                        button.dispatchEvent(new Event("change", { bubbles: true }));
+                        return { ok: true };
+                    }
+                }
             }
             return { ok: false, motivo: "Opção não encontrada no select." };
         }
 
-        // Dropdown custom
         const before = new Set(getVisibleLeaves());
         try { button.click(); }
         catch { return { ok: false, motivo: "Não foi possível abrir o menu." }; }
@@ -923,29 +1019,19 @@ ${JSON.stringify(data, null, 2)}
         const targetNormalized = normalizeForMatch(targetText);
         const targetLetter = (extractLetter(targetText) || {}).letter || "";
 
-        // 1) match exato por texto normalizado
         let chosen = optionEls.find(o => normalizeForMatch(o.text) === targetNormalized);
-
-        // 2) match por letra (opção tem "B) ..." e alvo é "B...")
         if (!chosen && targetLetter) {
             chosen = optionEls.find(o => {
                 const ol = extractLetter(o.text);
                 return ol && ol.letter === targetLetter;
             });
         }
-
-        // 3) inclusão de texto
         if (!chosen) {
             chosen = optionEls.find(o => {
                 const o2 = normalizeForMatch(o.text);
-                return o2 && (o2.includes(targetNormalized) || targetNormalized.includes(o2));
+                return o2.length >= 3 && targetNormalized.length >= 3 &&
+                    (o2.includes(targetNormalized) || targetNormalized.includes(o2));
             });
-        }
-
-        // 4) índice pela letra
-        if (!chosen && targetLetter) {
-            const idx = targetLetter.charCodeAt(0) - 97;
-            if (idx >= 0 && idx < optionEls.length) chosen = optionEls[idx];
         }
 
         if (!chosen) {
@@ -967,34 +1053,15 @@ ${JSON.stringify(data, null, 2)}
         return { ok: true };
     }
 
-    /* AUTO-APLICAR RESPOSTAS DE ASSINALAR (radio/checkbox) */
-
-    function matchChoiceAnswer(aiText, choiceText) {
-        // Reutiliza matchOption, tratando a opção como se fosse um "menu de 1 opção".
-        // Aqui comparamos letra + texto.
-        const norm = normalizeForMatch(choiceText);
-        const letter = (extractLetter(choiceText) || {}).letter || "";
-        const aiNorm = normalizeForMatch(aiText);
-
-        // match por letra
-        if (letter) {
-            const reLetter = new RegExp(`(^|[^a-z])${letter}([^a-z]|$)`, "i");
-            if (reLetter.test(clean(aiText))) {
-                // reforça: a letra deve estar próxima do texto também (evita A dentro de "Afirmação")
-                const reWithText = new RegExp(`\\b${letter}\\b[\\s\\.\\)\\-:]+`, "i");
-                if (reWithText.test(clean(aiText))) return true;
-            }
-        }
-        // match por texto
-        if (norm && aiNorm && (aiNorm.includes(norm) || norm.includes(aiNorm))) return true;
-        return false;
-    }
+    /* ============================================================
+       AUTO-APLICAR — agora com match por LETRA priorizado
+    ============================================================ */
 
     async function autoApplyAnswers(aiText) {
         if (!autoApply) return;
 
         const parsed = parseNumberedAnswers(aiText);
-        const answers = parsed.map(p => p.text);
+        const answers = parsed.map(p => p.text).filter(Boolean);
 
         /* 1) Dropdowns "Selecione a resposta" */
         if (lastFields.length > 0) {
@@ -1007,27 +1074,34 @@ ${JSON.stringify(data, null, 2)}
                 const matched = matchOption(suggestion, field.opcoesDetectadas);
                 if (!matched) continue;
                 const r = await applyFieldAnswer(field, matched);
-                if (r.ok) {
-                    notify("Campo " + field.campo + " preenchido automaticamente.");
-                }
+                if (r.ok) notify("Campo " + field.campo + " preenchido automaticamente.");
                 await wait(320);
             }
         }
 
         /* 2) Opções clicáveis (assinalar) */
         const choices = getAnswerChoiceElements();
+        console.log("[PortugaIA] Opções clicáveis detectadas:", choices.map(c => c.text));
+
         if (choices.length >= 2) {
-            // Para cada resposta, tenta achar a opção correspondente
-            const targetAnswers = answers.length > 0 ? answers : [aiText];
+            // Se houver mais de uma resposta, usa as parsed. Senão, usa o texto todo.
+            const targetAnswers = answers.length > 0 ? answers : [clean(aiText)];
+            console.log("[PortugaIA] Respostas alvo:", targetAnswers);
 
             for (const ans of targetAnswers) {
-                let best = null;
-                for (const c of choices) {
-                    if (matchChoiceAnswer(ans, c.text)) { best = c; break; }
+                let bestIndex = -1;
+                let bestText = "";
+                for (let i = 0; i < choices.length; i++) {
+                    if (matchChoiceAnswer(ans, choices[i].text, i)) {
+                        bestIndex = i;
+                        bestText = choices[i].text;
+                        break;
+                    }
                 }
-                if (best) {
-                    try { best.element.click(); }
-                    catch {}
+                console.log(`[PortugaIA] "${ans}" → match índice ${bestIndex} (${bestText || "-"})`);
+                if (bestIndex >= 0) {
+                    try { choices[bestIndex].element.click(); }
+                    catch (e) { console.error("[PortugaIA] Falha ao clicar:", e); }
                     await wait(220);
                 }
             }
