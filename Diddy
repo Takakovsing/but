@@ -16,6 +16,7 @@
     const $ = id => document.getElementById(id);
     const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
 
+    let modo = "alternativa";
     let apiKey = "";
     let busy = false;
     let minimized = false;
@@ -184,11 +185,10 @@
         $("pgAutoRow").classList.toggle("pgOn", autoApply);
         notify(autoApply ? "Resposta automática ATIVADA." : "Resposta automática DESATIVADA.");
 
-        // Se acabou de ligar e já temos resposta, esconde o card e aplica
         if (autoApply && lastAnswer) {
             renderFields();
             autoApplyAnswers(lastAnswer).catch(() => {});
-        } else if (!autoApply) {
+        } else {
             renderFields();
         }
     });
@@ -900,7 +900,7 @@
 
         let extra_instructions = "";
 
-        if (type === "dropdown" && fields.length > 0) {
+        if (type === "vf" && fields.length > 0) {
             extra_instructions = `
 ATENÇÃO: a página tem ${fields.length} dropdown(s) "Selecione a resposta".
 Você DEVE responder CADA CAMPO, na ordem.
@@ -915,11 +915,11 @@ Regras:
 - O texto deve ser copiado LITERALMENTE de "opcoesDetectadas".
 - Se não houver dados, escreva "INDETERMINADO".
 `;
-        } else if (type === "choices" && choices.length > 0) {
+        } else if ((type === "choices" || type === "alternativa" || type === "multi") && choices.length > 0) {
             extra_instructions = `
 ATENÇÃO: a página tem ${choices.length} alternativa(s) clicável(is).
 Você DEVE responder com LETRA e TEXTO EXATO da(s) alternativa(s) correta(s).
-${choices.length > 4 ? "Se houver mais de uma correta, responda em linhas numeradas:\n1. A) <texto>\n2. C) <texto>\n" : "Responda em UMA linha: LETRA) TEXTO. Ex.: \"B) Falso\".\n"}
+${type === "multi" ? "Se houver mais de uma correta, responda em linhas numeradas:\n1. A) <texto>\n2. C) <texto>\n" : "Responda em UMA linha: LETRA) TEXTO. Ex.: \"B) Falso\".\n"}
 - O texto deve ser copiado LITERALMENTE de "alternativas".
 `;
         } else if (type === "dragdrop" && blanks.length > 0) {
@@ -968,7 +968,6 @@ ${JSON.stringify(data, null, 2)}
         if (!container) return;
         container.innerHTML = "";
 
-        // Auto ligado: não mostra nada de "aplicar"
         if (autoApply) {
             const hint = document.createElement("div");
             hint.className = "pgHint";
@@ -977,7 +976,6 @@ ${JSON.stringify(data, null, 2)}
             return;
         }
 
-        // Auto desligado: mostra 1 card único com botão APLICAR RESPOSTA
         if (!lastAnswer) {
             const hint = document.createElement("div");
             hint.className = "pgHint";
@@ -1164,7 +1162,7 @@ ${JSON.stringify(data, null, 2)}
     async function autoApplyAnswers(aiText, forceSubmit) {
         if (!autoApply && !forceSubmit) return;
 
-        if (lastType === "dropdown" && lastFields.length > 0) {
+        if (lastType === "vf" && lastFields.length > 0) {
             const parsed = parseNumberedAnswers(aiText);
             const byNumber = {};
             parsed.forEach(item => { byNumber[item.n] = item.text; });
@@ -1209,38 +1207,10 @@ ${JSON.stringify(data, null, 2)}
             return;
         }
 
-        if (lastType === "choices" && lastChoices.length > 0) {
+        if ((lastType === "choices" || lastType === "alternativa" || lastType === "multi") && lastChoices.length > 0) {
             const r = await applyChoiceAnswer();
             if (r.ok) notify("Alternativa clicada automaticamente.");
         }
-    }
-
-    /* ===================== DETECÇÃO AUTOMÁTICA DE MODO ===================== */
-
-    function detectarModo() {
-        const dropdowns = getDropdowns();
-        if (dropdowns.length > 0) {
-            // Se há dropdowns com "Selecione a resposta" → V/F por dropdowns
-            // Mas também pode ser "múltipla escolha com campos". Vamos ver.
-            // Verifica se as opções de cada dropdown são V/F (2 opções curtas)
-            // Pra simplificar: modo "vf" se houver ≥3 dropdowns, senão "alternativa".
-            return dropdowns.length >= 3 ? "vf" : "vf";
-        }
-
-        const blanks = getDroppableBlanks();
-        if (blanks.length > 0) return "dragdrop";
-
-        const choices = getChoices();
-        if (choices.length > 0) {
-            // Múltipla se algum item tem checkbox ou o enunciado diz "selecione todas"
-            const text = (document.body.innerText || "").toLowerCase();
-            if (/selecione todas|marque todas|assinale todas|múltiplas|multiple choice/i.test(text)) {
-                return "multi";
-            }
-            return "alternativa";
-        }
-
-        return "alternativa";
     }
 
     /* ===================== BOTÃO PRINCIPAL ===================== */
@@ -1265,7 +1235,6 @@ ${JSON.stringify(data, null, 2)}
             const pageText = readPage();
             $("pgAnswer").value = "① Página lida.\n② Identificando tipo de questão...";
 
-            // Detecta o modo automaticamente
             const dropdowns = getDropdowns();
             const blanks = getDroppableBlanks();
 
@@ -1285,7 +1254,6 @@ ${JSON.stringify(data, null, 2)}
             } else {
                 choices = getChoices();
                 if (choices.length > 0) {
-                    // Distingue múltipla escolha
                     const text = (document.body.innerText || "").toLowerCase();
                     type = /selecione todas|marque todas|assinale todas|múltiplas|multiple choice/i.test(text)
                         ? "multi"
@@ -1295,7 +1263,7 @@ ${JSON.stringify(data, null, 2)}
                 }
             }
 
-            modo = type;
+            modo = type === "choices" ? "alternativa" : type;
             lastType = type;
             lastFields = fields;
             lastChoices = choices;
