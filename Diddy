@@ -1,7 +1,6 @@
 (async () => {
     "use strict";
 
-    /* ===== LIMPA QUALQUER INSTÂNCIA ANTERIOR ===== */
     ["pgFloat","pgToggle","pgNotify","pgStyle"].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.remove();
@@ -38,10 +37,11 @@
     let lastChoices = [];
     let lastBlanks = [];
     let lastDraggables = [];
+    let lastMatch = null;
     let lastType = "";
     let lastAnswer = "";
     let autoApply = true;
-    let imageData = null; // { dataUrl, mime, name }
+    let imageData = null;
 
     const store = {
         get(key, fallback = "") {
@@ -152,7 +152,7 @@
         <button id="pgImgRemove" class="pgImgRemove" type="button">REMOVER FOTO</button>
     </div>
 </div>
-<div class="pgImgHint">Tire uma foto ou cole uma imagem (Ctrl+V). Quando houver foto, a IA usa um modelo com visao.</div>
+<div class="pgImgHint">So use quando o texto da questao nao estiver legivel no DOM.</div>
 <span class="pgLabel">ORIENTACAO EXTRA (OPCIONAL)</span>
 <textarea id="pgQuestion" placeholder="Ex.: explique os conceitos envolvidos na pergunta..."></textarea>
 <button id="pgGo" class="pgAction" type="button">LER E PERGUNTAR A IA</button>
@@ -176,7 +176,7 @@
     notifyBox.id = "pgNotify";
     document.body.appendChild(notifyBox);
 
-    /* ===================== NOTIFICAÇÕES ===================== */
+    /* ===================== NOTIFICACOES ===================== */
 
     function notify(message, ms = 2300) {
         notifyBox.textContent = message;
@@ -206,7 +206,8 @@
         vf: "Verdadeiro ou Falso",
         alternativa: "Alternativa",
         multi: "Multisseleção",
-        dragdrop: "Arrastar e Soltar"
+        dragdrop: "Arrastar e Soltar",
+        match: "Associação"
     };
 
     /* ===================== TOGGLE AUTO ===================== */
@@ -259,9 +260,7 @@
                         const quality = mime === "image/jpeg" ? 0.82 : undefined;
                         const dataUrl = canvas.toDataURL(mime, quality);
                         resolve({ dataUrl, mime, name: file.name || "imagem" });
-                    } catch (e) {
-                        reject(e);
-                    }
+                    } catch (e) { reject(e); }
                 };
                 img.onerror = () => reject(new Error("Imagem inválida."));
                 img.src = reader.result;
@@ -314,7 +313,6 @@
         notify("Foto removida.");
     };
 
-    // Colar imagem (Ctrl+V no desktop, compartilhar no mobile)
     document.addEventListener("paste", async (e) => {
         if (!document.getElementById("pgFloat")) return;
         const items = e.clipboardData && e.clipboardData.items;
@@ -335,7 +333,7 @@
         }
     });
 
-    /* ===================== UTILITÁRIOS ===================== */
+    /* ===================== UTILITARIOS ===================== */
 
     function clean(v) { return (v || "").replace(/\s+/g, " ").trim(); }
 
@@ -542,7 +540,7 @@
                 if (!el || seen.has(el)) continue;
                 if (el.closest("#pgFloat")) continue;
                 if (!isVisible(el)) continue;
-                if (el.matches("button.options-dropdown, [data-cy^='dropdown-']")) continue;
+                if (el.matches("button.options-dropdown, [data-cy^='dropdown-'], .match-order-option-inner")) continue;
 
                 const text = clean(el.innerText || el.textContent);
                 if (!text || text.length > 500) continue;
@@ -563,6 +561,7 @@
             if (seen.has(el)) continue;
             if (el.closest("#pgFloat")) continue;
             if (!isVisible(el)) continue;
+            if (el.matches(".match-order-option-inner")) continue;
             const text = clean(el.innerText || el.textContent);
             if (!text || text.length > 500) continue;
             if (!letterRe.test(text)) continue;
@@ -571,30 +570,6 @@
         }
         const dedupedLettered = dedupeChoices(lettered);
         if (dedupedLettered.length >= 2) return dedupedLettered;
-
-        const groups = new Map();
-        for (const btn of document.querySelectorAll('button, [role="button"]')) {
-            if (btn.closest("#pgFloat")) continue;
-            if (!isVisible(btn)) continue;
-            const text = clean(btn.innerText || btn.textContent);
-            if (!text || text.length > 300) continue;
-            if (btn.matches("button.options-dropdown, [data-cy^='dropdown-']")) continue;
-            if (/^(enviar|submit|undo|menu|bars|bônus|bonus)/i.test(text)) continue;
-
-            const parent = btn.parentElement;
-            if (!parent) continue;
-            if (!groups.has(parent)) groups.set(parent, []);
-            groups.get(parent).push({ element: btn, text });
-        }
-
-        let best = [];
-        for (const [, items] of groups) {
-            const texts = new Set(items.map(i => i.text));
-            if (items.length >= 2 && items.length <= 6 && texts.size === items.length) {
-                if (items.length > best.length) best = items;
-            }
-        }
-        if (best.length >= 2) return dedupeChoices(best);
 
         return [];
     }
@@ -624,6 +599,116 @@
         });
 
         return out;
+    }
+
+    /* ===================== MATCH / ASSOCIACAO ===================== */
+
+    function getMatchData() {
+        const all = [...document.querySelectorAll(".match-order-option-inner")];
+        const prompts = [];
+        const tiles = [];
+        const seenP = new Set();
+        const seenT = new Set();
+
+        for (const el of all) {
+            if (el.closest("#pgFloat")) continue;
+            if (!isVisible(el)) continue;
+
+            const text = clean(el.innerText || el.textContent);
+            if (!text) continue;
+
+            const isTile = el.classList.contains("is-drop-tile");
+            if (isTile) {
+                if (seenT.has(text)) continue;
+                seenT.add(text);
+                tiles.push({ element: el, text });
+            } else {
+                if (seenP.has(text)) continue;
+                seenP.add(text);
+                prompts.push({ element: el, text });
+            }
+        }
+
+        // Ordena por posição na tela
+        const sortByPos = arr => arr.sort((a, b) => {
+            const ra = a.element.getBoundingClientRect();
+            const rb = b.element.getBoundingClientRect();
+            if (Math.abs(ra.top - rb.top) > 8) return ra.top - rb.top;
+            return ra.left - rb.left;
+        });
+
+        sortByPos(prompts);
+        sortByPos(tiles);
+
+        if (prompts.length === 0 && tiles.length === 0) return null;
+        return { prompts, tiles };
+    }
+
+    function isMatchFilled(promptEl) {
+        if (!promptEl) return false;
+        if (!promptEl.isConnected) return true;
+        const cls = (promptEl.className || "") + "";
+        if (/matched|paired|is-matched|has-match|done/i.test(cls)) return true;
+        return false;
+    }
+
+    async function applyMatchPair(promptText, tileText, promptIndex) {
+        if (!promptText || !tileText) return { ok: false, motivo: "Sem texto para associar." };
+
+        const data = getMatchData();
+        if (!data) return { ok: false, motivo: "Questão de associação não encontrada." };
+
+        const prompt = data.prompts.find(p => normalize(p.text) === normalize(promptText))
+            || data.prompts.find(p => {
+                const a = normalize(p.text);
+                const b = normalize(promptText);
+                return a.length >= 3 && b.length >= 3 && (a.includes(b) || b.includes(a));
+            })
+            || data.prompts[promptIndex];
+
+        const tile = data.tiles.find(t => normalize(t.text) === normalize(tileText))
+            || data.tiles.find(t => {
+                const a = normalize(t.text);
+                const b = normalize(tileText);
+                return a.length >= 3 && b.length >= 3 && (a.includes(b) || b.includes(a));
+            });
+
+        if (!prompt) return { ok: false, motivo: "Prompt não encontrado: " + promptText.slice(0, 40) };
+        if (!tile) return { ok: false, motivo: "Região não encontrada: " + tileText.slice(0, 40) };
+
+        // Estratégia 1: pointer drag do prompt até o tile
+        await pointerDrag(prompt.element, tile.element);
+        await wait(300);
+        if (isMatchFilled(prompt.element)) return { ok: true };
+
+        // Estratégia 2: clique no prompt, clique no tile
+        const ok1 = await clickEl(prompt.element);
+        if (ok1) {
+            await wait(250);
+            const ok2 = await clickEl(tile.element);
+            if (ok2) {
+                await wait(450);
+                if (isMatchFilled(prompt.element)) return { ok: true };
+                // mesmo sem classe confiável, considerar sucesso se o tile ficou "ocupado"
+                return { ok: true };
+            }
+        }
+
+        // Estratégia 3: HTML5 drag
+        try {
+            const dt = new DataTransfer();
+            const opts = { bubbles: true, cancelable: true, dataTransfer: dt };
+            prompt.element.dispatchEvent(new DragEvent("dragstart", opts));
+            await wait(60);
+            tile.element.dispatchEvent(new DragEvent("dragenter", opts));
+            tile.element.dispatchEvent(new DragEvent("dragover", opts));
+            tile.element.dispatchEvent(new DragEvent("drop", opts));
+            await wait(60);
+            prompt.element.dispatchEvent(new DragEvent("dragend", opts));
+        } catch {}
+        await wait(350);
+
+        return { ok: true };
     }
 
     /* ===================== DRAG-AND-DROP ===================== */
@@ -692,7 +777,7 @@
                 if (seen.has(el)) continue;
                 if (el.closest("#pgFloat")) continue;
                 if (!isVisible(el)) continue;
-                if (el.matches("button.options-dropdown, [data-cy^='dropdown-'], [data-cy^='droppable-blank'], [aria-label='Enviar'], [aria-label='undo'], [aria-label='bars']")) continue;
+                if (el.matches("button.options-dropdown, [data-cy^='dropdown-'], [data-cy^='droppable-blank'], [aria-label='Enviar'], [aria-label='undo'], [aria-label='bars'], .match-order-option-inner")) continue;
 
                 const rect = el.getBoundingClientRect();
                 if (rect.width < 40 || rect.height < 20) continue;
@@ -895,7 +980,7 @@
         return { ok: false, motivo: "Nenhuma estratégia de drop funcionou." };
     }
 
-    /* ===================== BOTÃO ENVIAR ===================== */
+    /* ===================== BOTAO ENVIAR ===================== */
 
     function findSubmitButton() {
         const candidatos = [];
@@ -1022,6 +1107,7 @@
         const choices = data.alternativas || [];
         const blanks = data.blanks || [];
         const draggables = data.itensArrastaveis || [];
+        const match = data.associacao;
 
         const fotoNote = data.temFoto ? `
 ATENCAO: o usuario anexou uma FOTO da questao. Use a FOTO como FONTE PRIMARIA.
@@ -1032,7 +1118,8 @@ Se o conteudo do DOM nao bater com a foto, priorize a foto.
         const instructions = {
             vf: `\nAnalise cada afirmação separadamente.\nOrganize na ordem em que aparecem: número, sugestão (Verdadeira/Falsa/Indeterminada)\ne uma justificativa curta.\n`,
             alternativa: `\nIdentifique a alternativa CORRETA.\nResponda com a LETRA e o TEXTO exato. Ex.: "B) Falso".\n`,
-            multi: `\nAnalise as alternativas e diga quais devem ser assinaladas.\nUse a LETRA e o TEXTO de cada uma.\n`
+            multi: `\nAnalise as alternativas e diga quais devem ser assinaladas.\nUse a LETRA e o TEXTO de cada uma.\n`,
+            match: `\nAssocie cada característica à sua região correta.\n`
         };
 
         let extra_instructions = "";
@@ -1077,9 +1164,34 @@ Regras:
 - O texto deve ser copiado LITERALMENTE de "itensArrastaveis".
 - Se não houver dados, escreva "INDETERMINADO".
 `;
+        } else if (type === "match" && match) {
+            const pLines = match.prompts.map((p, i) => `PROMPT ${i + 1}: ${p.text}`).join("\n");
+            const tLines = match.tiles.map((t, i) => `REGIAO ${i + 1}: ${t.text}`).join("\n");
+
+            extra_instructions = `
+ATENCAO: a pagina tem uma questao de ASSOCIACAO (match).
+Cada prompt abaixo precisa ser pareado com UMA regiao.
+
+PROMPTS (lado esquerdo):
+${pLines}
+
+REGIOES (lado direito):
+${tLines}
+
+FORMATO OBRIGATORIO (sem texto adicional):
+1. <texto EXATO de uma das REGIOES>   (para o PROMPT 1)
+2. <texto EXATO de uma das REGIOES>   (para o PROMPT 2)
+...
+
+Regras:
+- Uma linha por prompt, formato "<numero do prompt>. <texto da regiao>".
+- O texto da regiao deve ser copiado LITERALMENTE de uma das REGIOES acima.
+- Nenhuma regiao pode ser usada mais de uma vez.
+- Se nao houver dados suficientes, escreva "INDETERMINADO" para aquele prompt.
+`;
         } else if (data.temFoto) {
             extra_instructions = `
-Como o DOM nao trouxe alternativas claras, leia TUDO da FOTO.
+Como o DOM nao trouxe estrutura clara, leia TUDO da FOTO.
 Responda em UMA linha: LETRA) TEXTO da alternativa correta. Ex.: "B) Falso".
 Se nao houver alternativas, responda com o texto da resposta direta.
 `;
@@ -1350,13 +1462,37 @@ ${JSON.stringify(data, null, 2)}
             return;
         }
 
+        if (lastType === "match" && lastMatch) {
+            const parsed = parseNumberedAnswers(aiText);
+            const byNumber = {};
+            parsed.forEach(item => { byNumber[item.n] = item.text; });
+
+            const tileTexts = lastMatch.tiles.map(t => t.text);
+
+            for (let i = 0; i < lastMatch.prompts.length; i++) {
+                const campo = i + 1;
+                const suggestion = byNumber[campo] || "";
+                if (!suggestion) continue;
+                const matched = matchOption(suggestion, tileTexts);
+                if (!matched) continue;
+                const r = await applyMatchPair(lastMatch.prompts[i].text, matched, i);
+                if (r.ok) notify("Par " + campo + " associado.");
+                await wait(350);
+            }
+
+            await wait(400);
+            const sub = await clickSubmit();
+            if (!sub.ok) notify("Auto-envio: " + sub.motivo, 2600);
+            return;
+        }
+
         if ((lastType === "alternativa" || lastType === "multi") && lastChoices.length > 0) {
             const r = await applyChoiceAnswer();
             if (r.ok) notify("Alternativa clicada automaticamente.");
         }
     }
 
-    /* ===================== BOTÃO PRINCIPAL ===================== */
+    /* ===================== BOTAO PRINCIPAL ===================== */
 
     $("pgGo").onclick = async () => {
         if (busy) return;
@@ -1382,16 +1518,22 @@ ${JSON.stringify(data, null, 2)}
 
             const dropdowns = getDropdowns();
             const blanks = getDroppableBlanks();
+            const matchData = getMatchData();
 
             let fields = [];
             let choices = [];
             let draggables = [];
+            let match = null;
             let type = "";
 
             if (dropdowns.length > 0) {
                 type = "vf";
                 $("pgAnswer").value = "1. Página lida.\n2. V/F detectado.\n3. Lendo opções...";
                 fields = await scanDropdowns();
+            } else if (matchData && matchData.prompts.length > 0 && matchData.tiles.length > 0) {
+                type = "match";
+                match = matchData;
+                $("pgAnswer").value = "1. Página lida.\n2. Associação detectada.\n3. Lendo pares...";
             } else if (blanks.length > 0) {
                 type = "dragdrop";
                 draggables = getDraggableItems();
@@ -1414,6 +1556,7 @@ ${JSON.stringify(data, null, 2)}
             lastChoices = choices;
             lastBlanks = blanks;
             lastDraggables = draggables;
+            lastMatch = match;
             lastAnswer = "";
 
             report = {
@@ -1430,7 +1573,11 @@ ${JSON.stringify(data, null, 2)}
                 })),
                 alternativas: choices.map(c => c.text),
                 blanks: blanks.map((b, i) => ({ campo: i + 1, valorAtual: "" })),
-                itensArrastaveis: draggables.map(d => d.text)
+                itensArrastaveis: draggables.map(d => d.text),
+                associacao: match ? {
+                    prompts: match.prompts.map((p, i) => ({ campo: i + 1, texto: p.text })),
+                    regioes: match.tiles.map((t, i) => ({ indice: i + 1, texto: t.text }))
+                } : null
             };
 
             $("pgAnswer").value = imageData
@@ -1464,6 +1611,8 @@ ${JSON.stringify(data, null, 2)}
                                 "com lista numerada. Se houver alternativas clicáveis, responda " +
                                 "com LETRA e TEXTO exato da correta. Se houver blanks de drag-and-drop, " +
                                 "responda com lista numerada indicando o item exato para cada blank. " +
+                                "Se houver associação (match), responda com lista numerada pareando " +
+                                "cada prompt com o texto exato da região. " +
                                 "Se houver foto da questão, leia com atenção antes de responder."
                         },
                         {
@@ -1535,7 +1684,7 @@ ${JSON.stringify(data, null, 2)}
         }
     };
 
-    /* ===================== ARRASTAR ÍCONE ===================== */
+    /* ===================== ARRASTAR ICONE ===================== */
 
     let iconDrag = null, iconMoved = false;
 
@@ -1581,7 +1730,7 @@ ${JSON.stringify(data, null, 2)}
     });
     toggle.addEventListener("click", e => { e.preventDefault(); e.stopPropagation(); });
 
-    /* ===================== ARRASTAR PAINEL (só pela alça) ===================== */
+    /* ===================== ARRASTAR PAINEL (so pela alca) ===================== */
 
     let panelDrag = null;
 
