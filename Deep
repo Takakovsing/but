@@ -42,7 +42,7 @@ if(!favicon){
 
 favicon.href=ICONE;
 
-/* CSS */
+/* ESTILOS */
 const style=document.createElement("style");
 
 style.textContent=`
@@ -198,7 +198,7 @@ style.textContent=`
         box-shadow .18s ease;
 }
 
-/* ANEL GIRATÓRIO */
+/* ESPIRAL NORMAL: BRANCO E CINZA-ESCURO */
 #pgToggle:before{
     content:"";
     position:absolute;
@@ -206,22 +206,23 @@ style.textContent=`
     border-radius:50%;
     background:conic-gradient(
         from 0deg,
-        transparent 0deg,
-        #fff 55deg,
-        #bcbcc8 100deg,
-        transparent 145deg,
-        transparent 180deg,
-        #fff 235deg,
-        #aaa 280deg,
-        transparent 325deg,
-        transparent 360deg
+        #101010 0deg,
+        #44444a 45deg,
+        #bdbdc8 90deg,
+        #fff 135deg,
+        #65656d 180deg,
+        #171717 225deg,
+        #aaaab4 270deg,
+        #353535 315deg,
+        #101010 360deg
     );
     animation:pgRingRotate 2.2s linear infinite;
     z-index:-1;
     pointer-events:none;
+    transition:inset .25s ease,box-shadow .25s ease;
 }
 
-/* BORDA PRETA */
+/* BORDA PRETA FINA */
 #pgToggle:after{
     content:"";
     position:absolute;
@@ -232,7 +233,7 @@ style.textContent=`
     z-index:3;
 }
 
-/* IMAGEM CENTRAL */
+/* IMAGEM */
 #pgToggle img{
     position:relative;
     z-index:1;
@@ -279,20 +280,47 @@ style.textContent=`
     }
 }
 
-/* ANEL INTEIRAMENTE VERDE DURANTE A GERAÇÃO */
+/* ESPIRAL VERDE MAIOR DURANTE A GERAÇÃO */
 #pgToggle.pgWorking:before{
-    background:#00ff55;
-    animation:pgRingRotate .65s linear infinite;
-    box-shadow:0 0 12px #00ff55,0 0 24px #00ff5570;
+    inset:-8px;
+    background:conic-gradient(
+        from 0deg,
+        #003b19 0deg,
+        #006b2b 45deg,
+        #00a83b 90deg,
+        #39ff78 135deg,
+        #008f35 180deg,
+        #004d20 225deg,
+        #20e85b 270deg,
+        #003b19 315deg,
+        #003b19 360deg
+    );
+    animation:pgRingRotate .8s linear infinite;
+    box-shadow:
+        0 0 8px #00ff5570,
+        0 0 18px #00ff5545;
 }
 
+/* BRILHO DO BOTÃO DURANTE A GERAÇÃO */
 #pgToggle.pgWorking{
     animation:pgWorkingPulse .7s ease-in-out infinite alternate;
 }
 
 @keyframes pgWorkingPulse{
-    from{filter:brightness(1);transform:scale(1)}
-    to{filter:brightness(1.3);transform:scale(1.04)}
+    from{
+        filter:brightness(1);
+        transform:scale(1);
+    }
+    to{
+        filter:brightness(1.2);
+        transform:scale(1.025);
+    }
+}
+
+/* RESTAURAR TAMANHO NORMAL */
+#pgToggle:not(.pgWorking):before{
+    inset:-4px;
+    box-shadow:none;
 }
 
 /* NOTIFICAÇÕES */
@@ -413,7 +441,6 @@ $("pgEditApi").addEventListener("pointerdown",event=>{
 
 $("pgEditApi").onclick=event=>{
     event.stopPropagation();
-
     const value=prompt("Cole sua chave da OpenRouter:");
 
     if(value&&value.trim()){
@@ -439,7 +466,7 @@ function lerPagina(){
         .slice(0,30000);
 }
 
-/* ENCONTRAR CAMPO */
+/* ENCONTRAR CAMPO DE TEXTO */
 function acharCampo(){
     const preferidos=[
         'textarea[name*="redac" i]',
@@ -485,7 +512,7 @@ function destacarCampo(campo){
     setTimeout(()=>campo.style.outline=antigo,1500);
 }
 
-/* INSERIR REDAÇÃO */
+/* INSERIR TEXTO */
 function aplicarTexto(campo,texto){
     if(campo.matches("textarea,input")){
         const proto=campo.tagName==="TEXTAREA"
@@ -521,15 +548,13 @@ function aplicarTexto(campo,texto){
     campo.dispatchEvent(new Event("change",{bubbles:true}));
 }
 
-/* GERAR REDAÇÃO AUTOMATICAMENTE */
+/* GERAR REDAÇÃO */
 $("pgGerar").onclick=async()=>{
     if(busy)return;
 
     if(!apiKey){
         const value=prompt("Cole sua chave da OpenRouter:");
-
         if(!value||!value.trim())return;
-
         apiKey=value.trim();
     }
 
@@ -627,7 +652,7 @@ $("pgGerar").onclick=async()=>{
     }
 };
 
-/* TOQUE, ANIMAÇÃO E ARRASTE DO ÍCONE */
+/* ANIMAÇÃO AO APERTAR E ARRASTAR */
 toggle.addEventListener("pointerdown",event=>{
     if(event.button!==undefined&&event.button!==0)return;
 
@@ -660,7 +685,6 @@ toggle.addEventListener("pointermove",event=>{
     const dy=event.clientY-iconStartY;
 
     if(Math.abs(dx)>7||Math.abs(dy)>7)iconMoved=true;
-
     if(!iconMoved)return;
 
     const width=toggle.offsetWidth;
@@ -700,7 +724,6 @@ function finishIconPointer(event){
     });
 
     if(!dragged)setMinimized(!minimized);
-
     iconMoved=false;
 }
 
@@ -721,7 +744,7 @@ toggle.addEventListener("click",event=>{
     event.stopPropagation();
 });
 
-/* ARRASTAR PAINEL PELO TÍTULO */
+/* ARRASTAR PAINEL */
 const head=$("pgHead");
 
 head.addEventListener("pointerdown",event=>{
@@ -776,7 +799,6 @@ head.addEventListener("pointercancel",finishPanelDrag);
 /* ATALHOS */
 function toggleHiddenMode(){
     hidden=!hidden;
-
     gui.style.display=hidden?"none":"";
     toggle.style.display=hidden?"none":"";
     notifyBox.style.display=hidden?"none":"";
@@ -794,7 +816,7 @@ document.addEventListener("mousedown",event=>{
     }
 });
 
-/* AJUSTE DE TELA */
+/* AJUSTAR À TELA */
 window.addEventListener("resize",()=>{
     const rect=gui.getBoundingClientRect();
 
