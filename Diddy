@@ -23,9 +23,9 @@
     let hidden = false;
     let notifyTimer;
     let report = null;
-    let lastFields = [];   // dropdowns detectados
-    let lastChoices = [];  // alternativas clicáveis detectadas
-    let lastType = "";     // "dropdown" | "choices" | ""
+    let lastFields = [];
+    let lastChoices = [];
+    let lastType = "";
     let autoApply = true;
 
     const store = {
@@ -243,7 +243,7 @@
         }
     }
 
-    /* ===================== DETECÇÃO DE DROPDOWNS ===================== */
+    /* ===================== DROPDOWNS ===================== */
 
     function getDropdowns() {
         const results = [];
@@ -388,10 +388,9 @@
         return fields;
     }
 
-    /* ===================== DETECÇÃO DE ALTERNATIVAS CLICÁVEIS ===================== */
+    /* ===================== ALTERNATIVAS CLICÁVEIS ===================== */
 
     function getChoices() {
-        // Estratégia 1: seletores específicos (Wayground/Quizizz)
         const specificSelectors = [
             '[data-cy*="answer-option"]',
             '[data-cy*="option-container"]',
@@ -417,9 +416,8 @@
 
                 const text = clean(el.innerText || el.textContent);
                 if (!text || text.length > 500) continue;
-                // Filtra UI (não é alternativa)
                 if (/^(enviar|submit|undo|menu|bars|bônus|bonus)/i.test(text)) continue;
-                if (/^\d+$/.test(text)) continue; // só número
+                if (/^\d+$/.test(text)) continue;
 
                 seen.add(el);
                 items.push({ element: el, text });
@@ -428,7 +426,6 @@
             if (deduped.length >= 2) return deduped;
         }
 
-        // Estratégia 2: botões com texto começando com "A)", "B)", etc.
         const letterRe = /^\s*([A-Ea-e])\s*[\.\)\-:]\s*(.+)$/;
         const lettered = [];
         const seen = new Set();
@@ -445,7 +442,6 @@
         const dedupedLettered = dedupeChoices(lettered);
         if (dedupedLettered.length >= 2) return dedupedLettered;
 
-        // Estratégia 3: grupo de botões irmãos dentro de um container de questão
         const groups = new Map();
         for (const btn of document.querySelectorAll('button, [role="button"]')) {
             if (btn.closest("#pgFloat")) continue;
@@ -461,7 +457,6 @@
             groups.get(parent).push({ element: btn, text });
         }
 
-        // Escolhe o maior grupo com 2-6 botões com textos distintos
         let best = [];
         for (const [, items] of groups) {
             const texts = new Set(items.map(i => i.text));
@@ -477,7 +472,6 @@
     function dedupeChoices(items) {
         if (!items.length) return items;
 
-        // Remove wrappers que contenham outro item com o mesmo texto
         const filtered = items.filter(item =>
             !items.some(other =>
                 other !== item && item.element.contains(other.element) &&
@@ -485,7 +479,6 @@
             )
         );
 
-        // Dedup por texto normalizado
         const byText = new Map();
         for (const it of filtered) {
             const k = it.text.toLowerCase();
@@ -493,7 +486,6 @@
         }
         const out = [...byText.values()];
 
-        // Ordena por posição (topo → base, esquerda → direita)
         out.sort((a, b) => {
             const ra = a.element.getBoundingClientRect();
             const rb = b.element.getBoundingClientRect();
@@ -502,6 +494,59 @@
         });
 
         return out;
+    }
+
+    /* ===================== BOTÃO ENVIAR ===================== */
+
+    function findSubmitButton() {
+        const candidatos = [];
+
+        // Específicos do Wayground
+        document.querySelectorAll('[data-cy="submit-button"], button[aria-label="Enviar"], button[aria-label="Submit"]')
+            .forEach(el => candidatos.push(el));
+
+        // Genéricos: texto "Enviar" / "Submit" / "Confirmar"
+        if (candidatos.length === 0) {
+            for (const el of document.querySelectorAll('button, [role="button"]')) {
+                if (el.closest("#pgFloat")) continue;
+                if (!isVisible(el)) continue;
+                const text = clean(el.innerText || el.textContent);
+                if (/^(enviar|submit|confirmar|confirm|responder)$/i.test(text)) {
+                    candidatos.push(el);
+                }
+            }
+        }
+
+        // Filtra desabilitados (a não ser que fiquem habilitados por um instante)
+        for (const el of candidatos) {
+            if (el.closest("#pgFloat")) continue;
+            if (!isVisible(el)) continue;
+            return el;
+        }
+        return null;
+    }
+
+    async function clickSubmit() {
+        // Espera o botão habilitar (o site habilita depois que todos os campos são preenchidos)
+        let submit = null;
+        for (let i = 0; i < 15; i++) {
+            submit = findSubmitButton();
+            if (submit && !submit.disabled) break;
+            await wait(200);
+        }
+        if (!submit) {
+            return { ok: false, motivo: "Botão Enviar não encontrado." };
+        }
+        if (submit.disabled) {
+            return { ok: false, motivo: "Botão Enviar ainda desabilitado." };
+        }
+
+        const ok = await clickEl(submit);
+        if (ok) {
+            notify("Resposta enviada!");
+            return { ok: true };
+        }
+        return { ok: false, motivo: "Falha ao clicar em Enviar." };
     }
 
     /* ===================== MATCH ===================== */
@@ -617,7 +662,6 @@ Você DEVE responder com LETRA e TEXTO EXATO da(s) alternativa(s) correta(s).
 ${modo === "multi" ? "Se houver mais de uma correta, responda em linhas numeradas:\n1. A) <texto>\n2. C) <texto>\n" : "Responda em UMA linha: LETRA) TEXTO. Ex.: \"B) Falso\".\n"}
 - O texto deve ser copiado LITERALMENTE de "alternativas".
 - Sem explicações na primeira parte.
-- Se quiser, uma seção "EXPLICAÇÃO:" no final (não usada para preencher).
 `;
         }
 
@@ -640,7 +684,7 @@ ${JSON.stringify(data, null, 2)}
 `;
     }
 
-    /* ===================== RENDER DOS CAMPOS NA UI ===================== */
+    /* ===================== RENDER ===================== */
 
     function renderFields() {
         const container = $("pgFields");
@@ -778,7 +822,7 @@ ${JSON.stringify(data, null, 2)}
         container.appendChild(hint);
     }
 
-    /* ===================== APLICAR EM DROPDOWN ===================== */
+    /* ===================== APLICAR DROPDOWN ===================== */
 
     async function applyFieldAnswer(field, targetText) {
         if (!targetText) return { ok: false, motivo: "Sem texto para aplicar." };
@@ -844,21 +888,19 @@ ${JSON.stringify(data, null, 2)}
         return { ok: true };
     }
 
-    /* ===================== APLICAR EM ALTERNATIVA CLICÁVEL ===================== */
+    /* ===================== APLICAR ALTERNATIVA ===================== */
 
     async function applyChoiceAnswer() {
         if (lastChoices.length === 0) return { ok: false, motivo: "Sem alternativas." };
 
         const parsed = parseNumberedAnswers($("pgAnswer").value);
         const answers = parsed.length > 0 ? parsed.map(p => p.text) : [$("pgAnswer").value];
-        const optionsTexts = lastChoices.map(c => c.text);
 
         let clickedAny = false;
 
         for (const ans of answers) {
             if (!ans) continue;
 
-            // 1) match direto pela letra+texto
             const letterInfo = extractLetter(ans);
             let targetIdx = -1;
 
@@ -868,7 +910,6 @@ ${JSON.stringify(data, null, 2)}
                     const cl = extractLetter(lastChoices[i].text);
                     if (cl && cl.letter === letter) { targetIdx = i; break; }
                 }
-                // Se nenhuma alternativa tem letra visível, usa índice
                 if (targetIdx === -1) {
                     const anyHasLetter = lastChoices.some(c => extractLetter(c.text));
                     if (!anyHasLetter) {
@@ -878,7 +919,6 @@ ${JSON.stringify(data, null, 2)}
                 }
             }
 
-            // 2) match por texto
             if (targetIdx === -1) {
                 const s = normalize(ans);
                 for (let i = 0; i < lastChoices.length; i++) {
@@ -896,7 +936,6 @@ ${JSON.stringify(data, null, 2)}
 
             if (targetIdx === -1) continue;
 
-            // Pega referência fresca
             const fresh = getChoices();
             const target = fresh[targetIdx] || lastChoices[targetIdx];
             if (!target || !isVisible(target.element)) continue;
@@ -932,6 +971,13 @@ ${JSON.stringify(data, null, 2)}
                 if (r.ok) notify("Campo " + field.campo + " preenchido.");
                 await wait(250);
             }
+
+            // === AUTO-SUBMIT === (só V/F com dropdowns, só se autoApply ligado)
+            await wait(400);
+            const sub = await clickSubmit();
+            if (!sub.ok) {
+                notify("Auto-envio: " + sub.motivo, 2600);
+            }
             return;
         }
 
@@ -963,7 +1009,6 @@ ${JSON.stringify(data, null, 2)}
             const pageText = readPage();
             $("pgAnswer").value = "① Página lida.\n② Identificando tipo de questão...";
 
-            // 1) Detecta tipo: dropdown ou alternativa
             const dropdowns = getDropdowns();
             let fields = [];
             let choices = [];
@@ -975,9 +1020,7 @@ ${JSON.stringify(data, null, 2)}
                 fields = await scanDropdowns();
             } else {
                 choices = getChoices();
-                if (choices.length > 0) {
-                    type = "choices";
-                }
+                if (choices.length > 0) type = "choices";
             }
 
             lastType = type;
