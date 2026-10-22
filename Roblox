@@ -175,34 +175,6 @@ registerTheme(function(c)
     dsStroke.Color=c
 end)
 
--- ===== VIEWPORT FRAME (Campaign Mode 3D P) =====
-local vpFrame=Instance.new("ViewportFrame",gui)
-vpFrame.Size=UDim2.new(0,100,0,100)
-vpFrame.Position=UDim2.new(1,-110,0,10)
-vpFrame.BackgroundTransparency=1
-vpFrame.Visible=false
-vpFrame.ZIndex=50
-
-local vpPart=Instance.new("Part",vpFrame)
-vpPart.Size=Vector3.new(2,2,0.2)
-vpPart.Anchored=true
-vpPart.CanCollide=false
-vpPart.Color=Color3.fromRGB(255,255,255)
-
-local sGui=Instance.new("SurfaceGui",vpPart)
-sGui.Face=Enum.NormalId.Front
-local tLabel=Instance.new("TextLabel",sGui)
-tLabel.Size=UDim2.new(1,0,1,0)
-tLabel.BackgroundTransparency=1
-tLabel.Text="P"
-tLabel.TextColor3=Color3.fromRGB(255,0,0)
-tLabel.Font=Enum.Font.GothamBlack
-tLabel.TextScaled=true
-
-local vpCam=Instance.new("Camera",vpFrame)
-vpCam.CFrame=CFrame.new(Vector3.new(0,0,5),Vector3.new(0,0,0))
-vpFrame.CurrentCamera=vpCam
-
 local function criarSwitch(parent)
     local switch=Instance.new("TextButton",parent)
     switch.Size=UDim2.new(0,56,0,28)
@@ -1063,7 +1035,6 @@ criarGaveta(gNum,"MISC",{
     {tipo="switch",nome="SECURITY MODE",key="hideFooterSwitch"},
     {tipo="switch",nome="ANTI FLING",key="antiFlingSwitch"},
     {tipo="switch",nome="0-DELAY PROMPTS",key="zeroPromptSwitch"},
-    {tipo="switch",nome="CAMPAIGN MODE",key="campaignModeSwitch"},
 }); gNum=gNum+1
 
 if IS_PRISON then
@@ -1121,8 +1092,6 @@ local infJumpEnabled=false
 local noclipEnabled=false
 local antiFlingEnabled=false
 local zeroPromptEnabled=false
-local campaignModeEnabled=false
-local ownerDetected=false
 local ANTI_FLING_THRESHOLD=500
 local ANTI_FLING_ROT_THRESHOLD=200
 local lastSafeCFrame=nil
@@ -1343,7 +1312,6 @@ end
 
 registerTheme(function(c)
     updateHoloColor()
-    tLabel.TextColor3=c
 end)
 
 PS.PlayerAdded:Connect(function(p)
@@ -1451,45 +1419,6 @@ PL.CharacterAdded:Connect(function(ch)
 end)
 if PL.Character then hLD() end
 
--- ===== DONO DETECTOR & PANIC =====
-task.spawn(function()
-    while true do
-        task.wait(2)
-        if not ownerDetected then
-            local ownerId=nil
-            if game.CreatorType==Enum.CreatorType.User then
-                ownerId=game.CreatorId
-            end
-            
-            if ownerId then
-                for _,p in pairs(PS:GetPlayers()) do
-                    if p.UserId==ownerId then
-                        ownerDetected=true
-                        pcall(function()
-                            game:GetService("StarterGui"):SetCore("SendNotification",{
-                                Title="ALERTA DE SEGURANÇA",
-                                Text="O dono do jogo entrou no servidor! Panic Mode Ativado.",
-                                Duration=10
-                            })
-                        end)
-                        if UI.panicBtn and UI.panicBtn.clickBtn then
-                            -- Simula o clique no panic
-                            local panicFunc=UI.panicBtn.clickBtn
-                            for _,conn in pairs(getconnections and getconnections(panicFunc.MouseButton1Click) or {}) do
-                                pcall(conn.Fire)
-                            end
-                        else
-                            -- fallback: se o UI não tiver pronto, executa manualmente
-                            if executarPanic then executarPanic() end
-                        end
-                        break
-                    end
-                end
-            end
-        end
-    end
-end)
-
 -- ===== UI TOGGLES =====
 UI.espSwitch.onToggle(function(s) espEnabled=s end)
 UI.espNameSwitch.onToggle(function(s) espNameEnabled=s end)
@@ -1538,15 +1467,6 @@ UI.zeroPromptSwitch.onToggle(function(s)
         end
     end
 end)
-UI.campaignModeSwitch.onToggle(function(s)
-    campaignModeEnabled=s
-    vpFrame.Visible=s
-    if s then
-        CAM.FieldOfView=120
-    else
-        CAM.FieldOfView=camFOV
-    end
-end)
 
 if IS_PRISON then
     UI.prisonClickMatSwitch.onToggle(function(s) prisonClickMat=s end)
@@ -1592,7 +1512,7 @@ end)
 UI.camFovBtn.clickBtn.MouseButton1Click:Connect(function()
     camFOV=camFOV+10
     if camFOV>120 then camFOV=60 end
-    if not campaignModeEnabled then CAM.FieldOfView=camFOV end
+    CAM.FieldOfView=camFOV
     UI.camFovBtn.setValue(camFOV)
     camFovActive=(camFOV~=70)
 end)
@@ -2107,7 +2027,6 @@ local function collectConfig()
         infJumpEnabled=infJumpEnabled,noclipEnabled=noclipEnabled,
         antiFlingEnabled=antiFlingEnabled,
         zeroPromptEnabled=zeroPromptEnabled,
-        campaignModeEnabled=campaignModeEnabled,
         aimPart=aimPart,FOV=FOV,camFOV=camFOV,colorIndex=colorIndex,themeIndex=themeIndex,
         priorityIndex=priorityIndex,
         teamMiscEnabled=teamMiscEnabled,selectedTeamName=selectedTeam and selectedTeam.Name or nil,
@@ -2144,7 +2063,6 @@ local function applyConfigToSwitches(c)
     UI.noclipSwitch.setOn(c.noclipEnabled or false)
     UI.antiFlingSwitch.setOn(c.antiFlingEnabled or false)
     UI.zeroPromptSwitch.setOn(c.zeroPromptEnabled or false)
-    UI.campaignModeSwitch.setOn(c.campaignModeEnabled or false)
     espEnabled=c.espEnabled or false
     espNameEnabled=c.espNameEnabled==true
     holoEnabled=c.holoEnabled or false
@@ -2165,9 +2083,6 @@ local function applyConfigToSwitches(c)
     noclipEnabled=c.noclipEnabled or false
     antiFlingEnabled=c.antiFlingEnabled or false
     zeroPromptEnabled=c.zeroPromptEnabled or false
-    campaignModeEnabled=c.campaignModeEnabled or false
-    vpFrame.Visible=campaignModeEnabled
-    if campaignModeEnabled then CAM.FieldOfView=120 else CAM.FieldOfView=camFOV end
     if c.tracerOriginIdx then
         tracerOriginIdx=c.tracerOriginIdx
         UI.tracerOriginBtn.setValue(TRACER_ORIGINS[tracerOriginIdx])
@@ -2198,7 +2113,7 @@ local function applyFullConfig(c)
     applyConfigToSwitches(c)
     if c.aimPart then aimPart=c.aimPart; UI.partBtn.setValue(aimPart=="Head" and "HEAD" or "TORSO") end
     if c.FOV then FOV=c.FOV; UI.fovBtn.setValue(FOV) end
-    if c.camFOV then camFOV=c.camFOV; UI.camFovBtn.setValue(camFOV); if camFOV~=70 and not campaignModeEnabled then CAM.FieldOfView=camFOV; camFovActive=true else camFovActive=false end end
+    if c.camFOV then camFOV=c.camFOV; UI.camFovBtn.setValue(camFOV); if camFOV~=70 then CAM.FieldOfView=camFOV; camFovActive=true else camFovActive=false end end
     if c.colorIndex then
         colorIndex=c.colorIndex
         if colorNames[colorIndex]=="RAINBOW" then rainbow=true; UI.colorBtn.setValue("RAINBOW")
@@ -2504,7 +2419,7 @@ if UI.tpSearchBox then
 end
 
 -- ===== PANIC =====
-function executarPanic()
+local function executarPanic()
     espEnabled=false; espNameEnabled=false; holoEnabled=false
     hideFovCircle=false
     aimbotEnabled=false; aimbotNpcEnabled=false
@@ -2516,8 +2431,6 @@ function executarPanic()
     infJumpEnabled=false; noclipEnabled=false
     antiFlingEnabled=false; lastSafeCFrame=nil; lastSafeVelocity=Vector3.new(0,0,0)
     zeroPromptEnabled=false
-    campaignModeEnabled=false
-    vpFrame.Visible=false
     for p,_ in pairs(HOLOS) do removeHolo(p) end
     prisonClickMat=false; prisonArrest=false
     FOV=120; camFOV=70; camFovActive=false; CAM.FieldOfView=camFOV
@@ -2532,7 +2445,6 @@ function executarPanic()
     UI.infJumpSwitch.setOn(false); UI.noclipSwitch.setOn(false)
     UI.antiFlingSwitch.setOn(false)
     UI.zeroPromptSwitch.setOn(false)
-    UI.campaignModeSwitch.setOn(false)
     if IS_PRISON then
         UI.prisonClickMatSwitch.setOn(false)
         UI.prisonArrestSwitch.setOn(false)
@@ -2562,10 +2474,6 @@ end)
 
 -- ===== RENDER =====
 RS.RenderStepped:Connect(function()
-    if campaignModeEnabled then
-        vpPart.CFrame=CFrame.new(0,0,0)*CFrame.Angles(0,tick()*2,0)
-    end
-
     if rainbow then hue+=0.01; if hue>1 then hue=0 end; lineColor=Color3.fromHSV(hue,1,1); fovColor=lineColor end
     circle.Position=Vector2.new(CAM.ViewportSize.X/2,CAM.ViewportSize.Y/2)
     circle.Radius=FOV
